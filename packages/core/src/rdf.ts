@@ -1,42 +1,25 @@
+import { buildResourceGraph } from './resource-graph';
+import {
+  buildSchemaCache,
+  getRequiredPropsFromCache,
+  SchemaRoot,
+} from './schema-mapping';
 import { RowRecord } from './types';
+import { normalizeValue } from './row-utils';
 
 type RdfOptions = {
   baseIri?: string;
   includePrefixes?: boolean;
+  schema?: SchemaRoot;
+  autoFill?: boolean;
 };
 
 const DEFAULT_BASE = 'https://www.sbco.or.jp/ont/resource/';
 
-const KIND_CLASS: Record<string, string> = {
-  site: 'Site',
-  building: 'Building',
-  floor: 'Level',
-  space: 'Room',
-  device: 'Equipment',
-  point: 'Point',
-};
-
-function normalizeValue(value: string | undefined): string {
-  return (value ?? '').toString().trim();
-}
-
-function resolveId(row: RowRecord): string {
-  return normalizeValue(row.id) || normalizeValue(row.pointId) || normalizeValue(row.deviceId);
-}
-
-function resolveName(row: RowRecord, fallbackId: string): string {
-  return (
-    normalizeValue(row.name) ||
-    normalizeValue(row.pointName) ||
-    normalizeValue(row.deviceName) ||
-    fallbackId
-  );
-}
-
 function escapeLiteral(value: string): string {
   return value
     .replace(/\\/g, '\\\\')
-    .replace(/\"/g, '\\"')
+    .replace(/"/g, '\\"')
     .replace(/\r/g, '\\r')
     .replace(/\n/g, '\\n')
     .replace(/\t/g, '\\t');
@@ -50,6 +33,22 @@ function iriFor(baseIri: string, id: string): string {
 export function exportRdf(rows: RowRecord[], options: RdfOptions = {}): string {
   const baseIri = options.baseIri ?? DEFAULT_BASE;
   const includePrefixes = options.includePrefixes ?? true;
+  const autoFill = options.autoFill ?? true;
+  const schemaCache = options.schema ? buildSchemaCache(options.schema) : undefined;
+
+  const { resources, relations } = buildResourceGraph(rows);
+  const relationMap = new Map<string, { predicate: string; objectId: string }[]>();
+  for (const relation of relations) {
+    if (!relationMap.has(relation.subjectId)) {
+      relationMap.set(relation.subjectId, []);
+    }
+    relationMap.get(relation.subjectId)?.push({
+      predicate: relation.predicate,
+      objectId: relation.objectId,
+    });
+  }
+
+  const requiredFallback = new Set(['id', 'name']);
 
   const lines: string[] = [];
   if (includePrefixes) {
@@ -59,25 +58,44 @@ export function exportRdf(rows: RowRecord[], options: RdfOptions = {}): string {
     lines.push('');
   }
 
-  const seen = new Set<string>();
-  for (const row of rows) {
-    const id = resolveId(row);
-    if (!id || seen.has(id)) continue;
-    seen.add(id);
+  for (const resource of resources) {
+    const subject = iriFor(baseIri, resource.id);
+    const className = resource.className || 'Resource';
+    const required = schemaCache
+      ? getRequiredPropsFromCache(schemaCache, className)
+      : requiredFallback;
 
-    const name = resolveName(row, id);
-    const kind = normalizeValue(row.kind);
-    const className = KIND_CLASS[kind] ?? 'Resource';
-    const parentId = normalizeValue(row.parentId);
+    const props: string[] = [`a sbco:${className}`];
 
-    const subject = iriFor(baseIri, id);
-    const props: string[] = [
-      `a sbco:${className}`,
-      `sbco:id "${escapeLiteral(id)}"`,
-      `sbco:name "${escapeLiteral(name)}"`,
-    ];
-    if (parentId) {
-      props.push(`sbco:isPartOf ${iriFor(baseIri, parentId)}`);
+    for (const field of required) {
+      if (field === 'id') {
+        props.push(`sbco:id "${escapeLiteral(resource.id)}"`);
+        continue;
+      }
+      if (field === 'name') {
+        const value = normalizeValue(resource.name) || (autoFill ? resource.id : '');
+        if (value) {
+          props.push(`sbco:name "${escapeLiteral(value)}"`);
+        }
+        continue;
+      }
+
+      const rowValue = normalizeValue(resource.row?.[field]);
+      const fallbackValue =
+        field === 'pointType'
+          ? normalizeValue(resource.row?.pointSpecification) ||
+            normalizeValue(resource.row?.objectTypeBacnet) ||
+            ''
+          : '';
+      const finalValue = rowValue || fallbackValue || (autoFill ? 'Unknown' : '');
+      if (finalValue) {
+        props.push(`sbco:${field} "${escapeLiteral(finalValue)}"`);
+      }
+    }
+
+    const relationsForResource = relationMap.get(resource.id) ?? [];
+    for (const relation of relationsForResource) {
+      props.push(`sbco:${relation.predicate} ${iriFor(baseIri, relation.objectId)}`);
     }
 
     lines.push(`${subject} ${props.join(' ;\n  ')} .`);

@@ -8,5 +8,5 @@
     "noEmit": false,
     "types": ["node", "vitest"]
   },
-  "include": ["src", "test"]
+  "include": ["src"]
 }

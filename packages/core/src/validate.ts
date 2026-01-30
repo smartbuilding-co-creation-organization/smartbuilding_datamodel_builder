@@ -1,4 +1,6 @@
 ﻿import { z } from 'zod';
+import { getRequiredPropsFromCache, SchemaRoot, buildSchemaCache } from './schema-mapping';
+import { inferRowKind, normalizeValue } from './row-utils';
 import { Issue, RowRecord } from './types';
 
 const KindSchema = z.enum(['site', 'building', 'floor', 'space', 'device', 'point']);
@@ -41,8 +43,8 @@ function resolveRow(row: RowRecord): RowRecord {
   const nameKey = resolveNameKey(row);
   const id = row[idKey] ? String(row[idKey]).trim() : '';
   const name = row[nameKey] ? String(row[nameKey]).trim() : '';
-  const parentId = row.parentId ? String(row.parentId).trim() : undefined;
-  const kind = row.kind ? String(row.kind).trim() : undefined;
+  const parentId = row.parentId ? String(row.parentId).trim() : '';
+  const kind = row.kind ? String(row.kind).trim() : '';
   return {
     ...row,
     id,
@@ -52,7 +54,14 @@ function resolveRow(row: RowRecord): RowRecord {
   };
 }
 
-export function validate(rows: RowRecord[]): { issues: Issue[] } {
+type ValidateOptions = {
+  schema?: SchemaRoot;
+};
+
+export function validate(
+  rows: RowRecord[],
+  options: ValidateOptions = {},
+): { issues: Issue[] } {
   const issues: Issue[] = [];
   const issueKeys = new Set<string>();
   const addIssue = (issue: Issue) => {
@@ -72,9 +81,15 @@ export function validate(rows: RowRecord[]): { issues: Issue[] } {
   const normalizedRows = rows.map((row) => resolveRow(normalizeRow(row)));
   const ids = new Set<string>();
   const idCounts = new Map<string, number>();
+  const schemaCache = options.schema ? buildSchemaCache(options.schema) : undefined;
 
   for (const row of normalizedRows) {
-    const result = RowSchema.safeParse(row);
+    const schemaRow = {
+      ...row,
+      parentId: row.parentId ? String(row.parentId).trim() : undefined,
+      kind: row.kind ? String(row.kind).trim() : undefined,
+    };
+    const result = RowSchema.safeParse(schemaRow);
     if (!result.success) {
       for (const detail of result.error.issues) {
         let field = detail.path[0] ? String(detail.path[0]) : undefined;
@@ -92,6 +107,28 @@ export function validate(rows: RowRecord[]): { issues: Issue[] } {
     if (row.id) {
       ids.add(row.id);
       idCounts.set(row.id, (idCounts.get(row.id) ?? 0) + 1);
+    }
+
+    if (schemaCache) {
+      const kind = row.kind ? normalizeValue(row.kind) : inferRowKind(row);
+      const required = getRequiredPropsFromCache(schemaCache, kind);
+      for (const field of required) {
+        if (field === 'id' || field === 'name') continue;
+        const value =
+          field === 'id'
+            ? row.id
+            : field === 'name'
+              ? row.name
+              : row[field];
+        if (!normalizeValue(value)) {
+          addIssue({
+            code: 'schema',
+            message: 'Required',
+            rowId: rowIdForIssue(row),
+            field,
+          });
+        }
+      }
     }
   }
 

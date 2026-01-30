@@ -1,28 +1,30 @@
 import { RowRecord } from './types';
 
-type SchemaDefinition = {
-  properties?: Record<string, unknown>;
-  required?: string[];
-};
-
 export type SchemaRoot = {
   properties?: Record<string, unknown>;
   required?: string[];
-  $defs?: Record<string, SchemaDefinition>;
+  $defs?: Record<string, unknown>;
 };
 
-type SchemaCache = {
+export type SchemaCache = {
   byKind: Map<string, Set<string>>;
   root: Set<string>;
+  requiredByKind: Map<string, Set<string>>;
+  requiredRoot: Set<string>;
 };
 
 const KIND_TO_DEF: Record<string, string> = {
   site: 'Site',
   building: 'Building',
   floor: 'Level',
+  level: 'Level',
   space: 'Room',
-  device: 'Equipment',
-  point: 'Point',
+  room: 'Room',
+  device: 'EquipmentExt',
+  equipment: 'EquipmentExt',
+  equipmentext: 'EquipmentExt',
+  point: 'PointExt',
+  pointext: 'PointExt',
 };
 
 const INTERNAL_KEYS = new Set([
@@ -35,30 +37,70 @@ const INTERNAL_KEYS = new Set([
   'deviceName',
 ]);
 
-function toPropSet(def?: SchemaDefinition): Set<string> {
-  const props = def?.properties ? Object.keys(def.properties) : [];
-  const required = def?.required ?? [];
+function isObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+function toPropSet(def?: unknown): Set<string> {
+  if (!isObject(def)) return new Set<string>();
+  const props = isObject(def.properties) ? Object.keys(def.properties) : [];
+  const required = Array.isArray(def.required) ? def.required : [];
   return new Set([...props, ...required]);
 }
 
-function buildCache(schema: SchemaRoot): SchemaCache {
+function toRequiredSet(def?: unknown): Set<string> {
+  if (!isObject(def)) return new Set<string>();
+  const required = Array.isArray(def.required) ? def.required : [];
+  return new Set(required);
+}
+
+export function buildSchemaCache(schema: SchemaRoot): SchemaCache {
   const root = toPropSet(schema);
+  const requiredRoot = toRequiredSet(schema);
   const byKind = new Map<string, Set<string>>();
+  const requiredByKind = new Map<string, Set<string>>();
 
   if (schema.$defs) {
     for (const [defName, def] of Object.entries(schema.$defs)) {
-      byKind.set(defName.toLowerCase(), toPropSet(def));
+      const propSet = toPropSet(def);
+      if (propSet.size > 0) {
+        byKind.set(defName.toLowerCase(), propSet);
+      }
+      const required = toRequiredSet(def);
+      if (required.size > 0) {
+        requiredByKind.set(defName.toLowerCase(), required);
+      }
     }
   }
 
-  return { byKind, root };
+  return { byKind, root, requiredByKind, requiredRoot };
+}
+
+function normalizeKindKey(kind?: string): string | undefined {
+  if (!kind) return undefined;
+  const trimmed = kind.trim();
+  if (!trimmed) return undefined;
+  const mapped = KIND_TO_DEF[trimmed.toLowerCase()] ?? trimmed;
+  return mapped;
 }
 
 function getSchemaProps(cache: SchemaCache, kind?: string): Set<string> {
-  const key = kind ? KIND_TO_DEF[kind] ?? kind : undefined;
+  const key = normalizeKindKey(kind);
   if (!key) return cache.root;
   const props = cache.byKind.get(key.toLowerCase());
   return props ?? cache.root;
+}
+
+export function getRequiredPropsFromCache(cache: SchemaCache, kind?: string): Set<string> {
+  const key = normalizeKindKey(kind);
+  if (!key) return cache.requiredRoot;
+  const required = cache.requiredByKind.get(key.toLowerCase());
+  return required ?? cache.requiredRoot;
+}
+
+export function getRequiredProps(schema: SchemaRoot, kind?: string): string[] {
+  const cache = buildSchemaCache(schema);
+  return Array.from(getRequiredPropsFromCache(cache, kind));
 }
 
 function parseCustomProperties(value: string | undefined): Record<string, string> {
@@ -82,7 +124,7 @@ function parseCustomProperties(value: string | undefined): Record<string, string
 }
 
 export function mapRowsToSchema(rows: RowRecord[], schema: SchemaRoot): RowRecord[] {
-  const cache = buildCache(schema);
+  const cache = buildSchemaCache(schema);
 
   return rows.map((row) => {
     const kind = row.kind ? row.kind.trim().toLowerCase() : undefined;

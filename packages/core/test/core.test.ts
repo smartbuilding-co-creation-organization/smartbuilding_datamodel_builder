@@ -14,9 +14,14 @@ import schema from '../../../schema/building_model.schema.json';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const fixturesDir = path.resolve(__dirname, '../../fixtures');
+const samplePath = path.resolve(__dirname, '../../../sample/debug-sample.csv');
 
 function loadCsv(name: string) {
   return readFileSync(path.join(fixturesDir, name), 'utf-8');
+}
+
+function loadSampleCsv() {
+  return readFileSync(samplePath, 'utf-8');
 }
 
 describe('buildTree', () => {
@@ -29,6 +34,73 @@ describe('buildTree', () => {
 
     const building = site?.children.find((node) => node.id === 'bldg-1');
     expect(building?.children.some((node) => node.id === 'floor-1')).toBe(true);
+  });
+});
+
+describe('buildTree (hierarchy csv)', () => {
+  it('builds site-building-level-equipment-point structure', () => {
+    const rows = parseCsv(loadSampleCsv(), { schema });
+    const tree = buildTree(rows);
+
+    const site = tree.find((node) => node.name === 'TokyoSite1');
+    expect(site?.kind).toBe('Site');
+
+    const building = site?.children.find((node) => node.name === 'MainBldg');
+    expect(building?.kind).toBe('Building');
+
+    const level = building?.children.find((node) => node.name === '3F');
+    expect(level?.kind).toBe('Level');
+
+    const room = level?.children.find((node) => node.name === 'Room101');
+    expect(room?.kind).toBe('Room');
+
+    const equipment = room?.children.find(
+      (node) => node.name === 'Temperature Sensor 01',
+    );
+    expect(equipment?.kind).toBe('EquipmentExt');
+
+    const point = equipment?.children.find((node) => node.id === 'PT001');
+    expect(point?.kind).toBe('PointExt');
+  });
+
+  it('generates ids when deviceId or pointId is missing', () => {
+    const rows = [
+      {
+        site: 'Site X',
+        building: 'Building X',
+        level: 'Level X',
+        deviceName: 'Device X',
+        pointName: 'Point X',
+      },
+    ];
+    const tree = buildTree(rows);
+    const site = tree[0];
+    const building = site?.children[0];
+    const level = building?.children[0];
+    const equipment = level?.children[0];
+    const point = equipment?.children[0];
+
+    expect(equipment?.id).toBeTruthy();
+    expect(point?.id).toBeTruthy();
+    expect(equipment?.id).not.toBe(point?.id);
+  });
+
+  it('allows equipment directly under level when level is empty', () => {
+    const rows = [
+      {
+        site: 'Site X',
+        building: 'Building X',
+        level: '-',
+        installationArea: 'Room X',
+        deviceName: 'Device X',
+        pointName: 'Point X',
+      },
+    ];
+    const tree = buildTree(rows);
+    const level = tree[0]?.children[0]?.children[0];
+    expect(level?.kind).toBe('Level');
+    expect(level?.children.some((node) => node.kind === 'Room')).toBe(false);
+    expect(level?.children[0]?.kind).toBe('EquipmentExt');
   });
 });
 
@@ -64,7 +136,7 @@ describe('exportCsv', () => {
 describe('exportRdf', () => {
   it('emits RDF with class and parent relationships', () => {
     const rows = parseCsv(loadCsv('valid.csv'), { schema });
-    const rdf = exportRdf(rows);
+    const rdf = exportRdf(rows, { schema });
 
     expect(rdf).toContain('@prefix sbco: <https://www.sbco.or.jp/ont/> .');
     expect(rdf).toContain('<https://www.sbco.or.jp/ont/resource/site-1> a sbco:Site ;');
@@ -77,7 +149,7 @@ describe('exportRdf', () => {
 describe('exportYaml', () => {
   it('emits YAML resources aligned to the RDF mapping', () => {
     const rows = parseCsv(loadCsv('valid.csv'), { schema });
-    const yaml = exportYaml(rows);
+    const yaml = exportYaml(rows, { schema });
 
     expect(yaml).toContain('resources:');
     expect(yaml).toContain('id: "site-1"');

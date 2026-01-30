@@ -19,10 +19,21 @@ This document defines the minimal mapping from CSV rows to RDF instances based o
 | `point` | `sbco:Point` |
 | (other/empty) | `sbco:Resource` |
 
-## 3) Property mapping
-- `id` → `sbco:id` (xsd:string)
-- `name` → `sbco:name` (xsd:string)
-- `parentId` → `sbco:isPartOf` (object property to parent IRI)
+## 3) Property mapping (hierarchy semantics)
+- Required (from schema / SHACL):
+  - `id` → `sbco:id` (xsd:string)
+  - `name` → `sbco:name` (xsd:string)
+  - `pointType` → `sbco:pointType` (for `PointExt` only)
+  - Missing required values are auto-filled at export time (UI can override before export).
+- Space hierarchy (Site/Building/Level/Room/Zone/OutdoorSpace):
+  - child → parent: `sbco:isPartOf`
+  - parent → child: `sbco:hasPart`
+- Equipment ↔ Space:
+  - equipment → space: `sbco:locatedIn`
+  - space → equipment: `sbco:isLocationOf`
+- Point ↔ Equipment:
+  - point → equipment: `sbco:isPointOf`
+  - equipment → point: `sbco:hasPoint`
 
 ## 4) ID/Name resolution
 The core parser normalizes ID/Name as follows:
@@ -40,4 +51,5 @@ The core parser normalizes ID/Name as follows:
   - `xsd:` → `http://www.w3.org/2001/XMLSchema#`
 - YAML is emitted as a list of resources derived from the RDF mapping:
   - Top-level: `resources:`
-  - Fields: `id`, `name`, `class`, `isPartOf` (optional)
+  - Fields: `id`, `name`, `class`, `iri`
+  - Relationships: `isPartOf`, `hasPart`, `locatedIn`, `isLocationOf`, `hasPoint`, `isPointOf`

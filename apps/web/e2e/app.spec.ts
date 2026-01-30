@@ -11,8 +11,17 @@ test('upload csv, filter tree, edit and export', async ({ page }) => {
   const fixturePath = path.resolve(__dirname, '../../../packages/fixtures/valid.csv');
   await page.getByTestId('csv-input').setInputFiles(fixturePath);
 
-  await expect(page.getByTestId('tree-item-bldg-1')).toBeVisible();
-  await page.getByTestId('tree-item-bldg-1').click();
+  const siteItem = page.getByTestId('tree-item-site-1');
+  await expect(siteItem).toBeVisible();
+  const siteTreeItem = siteItem.locator('xpath=ancestor::*[@role="treeitem"][1]');
+  const siteToggle = siteTreeItem.locator(
+    ':scope > .MuiTreeItem-content > .MuiTreeItem-iconContainer',
+  );
+  await siteToggle.click();
+
+  const buildingItem = page.getByTestId('tree-item-bldg-1');
+  await expect(buildingItem).toBeVisible();
+  await buildingItem.click();
 
   const gridRows = page.getByTestId('grid').locator('.MuiDataGrid-row');
   await expect(gridRows).toHaveCount(4);
@@ -47,6 +56,39 @@ test('upload csv, filter tree, edit and export', async ({ page }) => {
   await yamlDownload.saveAs(yamlPath);
   const yamlText = await fs.readFile(yamlPath, 'utf-8');
   await expect(yamlText).toContain('Room 101A');
+});
+
+test('can expand and collapse tree items', async ({ page }) => {
+  await page.goto('/');
+
+  const fixturePath = path.resolve(__dirname, '../../../packages/fixtures/valid.csv');
+  await page.getByTestId('csv-input').setInputFiles(fixturePath);
+
+  const siteItem = page.getByTestId('tree-item-site-1');
+  await expect(siteItem).toBeVisible();
+
+  const floorItem = page.getByTestId('tree-item-floor-1');
+  await expect(floorItem).toHaveCount(0);
+
+  await siteItem.click();
+  await page.keyboard.press('ArrowRight');
+  const buildingItem = page.getByTestId('tree-item-bldg-1');
+  await expect(buildingItem).toBeVisible();
+
+  const buildingTreeItem = buildingItem.locator(
+    'xpath=ancestor::*[@role="treeitem"][1]',
+  );
+  const buildingToggle = buildingTreeItem.locator(
+    ':scope > .MuiTreeItem-content > .MuiTreeItem-iconContainer',
+  );
+  await buildingToggle.click();
+  await expect(floorItem).toHaveCount(1);
+
+  await expect(buildingTreeItem).toHaveAttribute('aria-expanded', 'true');
+
+  await buildingToggle.click();
+  await expect(buildingTreeItem).toHaveAttribute('aria-expanded', 'false');
+  await expect(floorItem).toHaveCount(0);
 });
 
 test('shows validation summary for invalid csv', async ({ page }) => {
