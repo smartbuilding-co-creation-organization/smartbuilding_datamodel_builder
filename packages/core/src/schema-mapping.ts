@@ -1,3 +1,4 @@
+import { inferRowKind } from './row-utils';
 import { RowRecord } from './types';
 
 export type SchemaRoot = {
@@ -123,11 +124,41 @@ function parseCustomProperties(value: string | undefined): Record<string, string
   return { __raw: trimmed };
 }
 
+type CustomTagEntry = { key: string; flag: boolean };
+
+function parseCustomTags(value: string | undefined): CustomTagEntry[] {
+  if (!value) return [];
+  const trimmed = value.trim();
+  if (!trimmed) return [];
+  try {
+    const parsed = JSON.parse(trimmed);
+    if (Array.isArray(parsed)) {
+      return parsed
+        .filter((entry) => entry && typeof entry === 'object')
+        .map((entry) => {
+          const key = (entry as { key?: unknown }).key;
+          const flag = (entry as { flag?: unknown }).flag;
+          if (!key) return null;
+          return { key: String(key), flag: Boolean(flag) };
+        })
+        .filter((entry): entry is CustomTagEntry => entry !== null);
+    }
+  } catch {
+    // fall through to store raw value
+  }
+  return trimmed
+    .split('&&')
+    .map((entry) => entry.trim())
+    .filter((entry) => entry.length > 0)
+    .map((entry) => ({ key: entry, flag: true }));
+}
+
 export function mapRowsToSchema(rows: RowRecord[], schema: SchemaRoot): RowRecord[] {
   const cache = buildSchemaCache(schema);
 
   return rows.map((row) => {
-    const kind = row.kind ? row.kind.trim().toLowerCase() : undefined;
+    const inferredKind = inferRowKind(row);
+    const kind = row.kind ? row.kind.trim().toLowerCase() : inferredKind;
     const propSet = getSchemaProps(cache, kind);
     const mapped: RowRecord = {};
 
@@ -147,9 +178,10 @@ export function mapRowsToSchema(rows: RowRecord[], schema: SchemaRoot): RowRecor
       if (propSet.has(key)) {
         mapped[key] = value ?? '';
       } else {
-        unknown[key] = value ?? '';
         // Keep original columns for CSV round-trip while still capturing them.
         mapped[key] = value ?? '';
+        if (key === 'tags') continue;
+        unknown[key] = value ?? '';
       }
     }
 
@@ -159,6 +191,23 @@ export function mapRowsToSchema(rows: RowRecord[], schema: SchemaRoot): RowRecor
       mapped.customProperties = JSON.stringify(merged);
     } else if (propSet.has('customProperties') && !mapped.customProperties) {
       mapped.customProperties = '';
+    }
+
+    if (propSet.has('customTags')) {
+      const tagSource = row.customTags || row.tags;
+      const existingTags = parseCustomTags(mapped.customTags);
+      const parsedTags = parseCustomTags(tagSource);
+      const mergedTags = [...existingTags, ...parsedTags].reduce<CustomTagEntry[]>((acc, entry) => {
+        if (!acc.some((item) => item.key === entry.key)) {
+          acc.push(entry);
+        }
+        return acc;
+      }, []);
+      if (mergedTags.length > 0) {
+        mapped.customTags = JSON.stringify(mergedTags);
+      } else if (!mapped.customTags) {
+        mapped.customTags = '';
+      }
     }
 
     if (mapped.parentId && propSet.has('isPartOf') && !mapped.isPartOf) {

@@ -2,14 +2,7 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import {
-  buildTree,
-  exportCsv,
-  exportRdf,
-  exportYaml,
-  parseCsv,
-  validate,
-} from '../src/index';
+import { buildTree, exportCsv, exportRdf, exportYaml, parseCsv, validate } from '../src/index';
 import schema from '../../../schema/building_model.schema.json';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -25,15 +18,18 @@ function loadSampleCsv() {
 }
 
 describe('buildTree', () => {
-  it('creates parent-child relationships', () => {
+  it('creates hierarchy from pointlist rows', () => {
     const rows = parseCsv(loadCsv('valid.csv'), { schema });
     const tree = buildTree(rows);
 
-    const site = tree.find((node) => node.id === 'site-1');
-    expect(site?.children.some((node) => node.id === 'bldg-1')).toBe(true);
+    const site = tree.find((node) => node.name === 'TokyoSite1');
+    expect(site?.kind).toBe('Site');
 
-    const building = site?.children.find((node) => node.id === 'bldg-1');
-    expect(building?.children.some((node) => node.id === 'floor-1')).toBe(true);
+    const building = site?.children.find((node) => node.name === 'MainBldg');
+    expect(building?.kind).toBe('Building');
+
+    const level = building?.children.find((node) => node.name === '3F');
+    expect(level?.kind).toBe('Level');
   });
 });
 
@@ -54,9 +50,7 @@ describe('buildTree (hierarchy csv)', () => {
     const room = level?.children.find((node) => node.name === 'Room101');
     expect(room?.kind).toBe('Room');
 
-    const equipment = room?.children.find(
-      (node) => node.name === 'Temperature Sensor 01',
-    );
+    const equipment = room?.children.find((node) => node.name === 'Temperature Sensor 01');
     expect(equipment?.kind).toBe('EquipmentExt');
 
     const point = equipment?.children.find((node) => node.id === 'PT001');
@@ -116,9 +110,13 @@ describe('validate', () => {
     const { issues } = validate(rows);
     expect(issues.length).toBeGreaterThan(0);
     expect(issues.some((issue) => issue.code === 'id_duplicate')).toBe(true);
-    expect(issues.some((issue) => issue.code === 'parent_missing')).toBe(true);
-    expect(issues.some((issue) => issue.code === 'cycle')).toBe(true);
     expect(issues.some((issue) => issue.code === 'schema')).toBe(true);
+    expect(issues.some((issue) => issue.code === 'schema' && issue.field === 'gatewayId')).toBe(
+      true,
+    );
+    expect(issues.some((issue) => issue.code === 'schema' && issue.field === 'pointType')).toBe(
+      true,
+    );
   });
 });
 
@@ -128,8 +126,12 @@ describe('exportCsv', () => {
     const csv = exportCsv(rows);
     const [headerLine, firstRowLine] = csv.split(/\r?\n/);
 
-    expect(headerLine).toBe('id,name,parentId,kind,extra');
-    expect(firstRowLine).toContain('site-1,Site A,,site,alpha');
+    expect(headerLine).toBe(
+      'gatewayId,deviceId,deviceName,deviceType,site,building,floor,installationArea,targetArea,panel,pointType,pointSpecification,pointId,pointName,writable,interval,unit,maxPresValue,minPresValue,labels,scale,tags,supplier,owner,description,localId,deviceIdBacnet,instanceNoBacnet,objectTypeBacnet,extra',
+    );
+    expect(firstRowLine).toContain(
+      'GW001,DEV001,Temperature Sensor 01,Sensor,TokyoSite1,MainBldg,3F,Room101',
+    );
   });
 });
 
@@ -139,10 +141,10 @@ describe('exportRdf', () => {
     const rdf = exportRdf(rows, { schema });
 
     expect(rdf).toContain('@prefix sbco: <https://www.sbco.or.jp/ont/> .');
-    expect(rdf).toContain('<https://www.sbco.or.jp/ont/resource/site-1> a sbco:Site ;');
-    expect(rdf).toContain(
-      'sbco:isPartOf <https://www.sbco.or.jp/ont/resource/site-1>',
-    );
+    expect(rdf).toContain('<https://www.sbco.or.jp/ont/resource/DEV001> a sbco:EquipmentExt ;');
+    expect(rdf).toContain('<https://www.sbco.or.jp/ont/resource/PT001> a sbco:PointExt ;');
+    expect(rdf).toContain('sbco:pointType "Temperature"');
+    expect(rdf).toContain('sbco:isPointOf <https://www.sbco.or.jp/ont/resource/DEV001>');
   });
 });
 
@@ -152,27 +154,79 @@ describe('exportYaml', () => {
     const yaml = exportYaml(rows, { schema });
 
     expect(yaml).toContain('resources:');
-    expect(yaml).toContain('id: "site-1"');
-    expect(yaml).toContain('class: "sbco:Site"');
-    expect(yaml).toContain('isPartOf: "https://www.sbco.or.jp/ont/resource/site-1"');
+    expect(yaml).toContain('id: "DEV001"');
+    expect(yaml).toContain('class: "sbco:EquipmentExt"');
+    expect(yaml).toContain('id: "PT001"');
+    expect(yaml).toContain('class: "sbco:PointExt"');
+    expect(yaml).toContain('isPointOf: "https://www.sbco.or.jp/ont/resource/DEV001"');
   });
 });
 
 describe('schema mapping', () => {
-  it('fills schema properties and stores unknown columns in customProperties', () => {
+  it('maps pointlist fields into schema props and custom tags/properties', () => {
     const rows = parseCsv(loadCsv('valid.csv'), { schema });
-    const site = rows.find((row) => row.id === 'site-1');
-    expect(site).toBeDefined();
-    expect(site?.address).toBeDefined();
+    const point = rows.find((row) => row.id === 'PT001');
+    expect(point).toBeDefined();
 
-    const custom = site?.customProperties ? JSON.parse(site.customProperties) : {};
+    expect(point?.pointType).toBe('Temperature');
+    expect(point?.pointSpecification).toBe('Measurement');
+    expect(point?.unit).toBe('C');
+    expect(point?.maxPresValue).toBe('50');
+    expect(point?.minPresValue).toBe('-10');
+    expect(point?.scale).toBe('1.0');
+
+    const tags = point?.customTags ? JSON.parse(point.customTags) : [];
+    expect(tags).toEqual(
+      expect.arrayContaining([
+        { key: 'temperature', flag: true },
+        { key: 'room101', flag: true },
+      ]),
+    );
+
+    const custom = point?.customProperties ? JSON.parse(point.customProperties) : {};
+    expect(custom.gatewayId).toBe('GW001');
+    expect(point?.deviceId).toBe('DEV001');
+    expect(point?.deviceName).toBe('Temperature Sensor 01');
+    expect(custom.deviceType).toBe('Sensor');
+    expect(custom.writable).toBe('false');
+    expect(custom.interval).toBe('60');
+    expect(custom.description).toBe('Room 101 temperature sensor');
     expect(custom.extra).toBe('alpha');
+    expect(custom.deviceId).toBeUndefined();
+    expect(custom.deviceName).toBeUndefined();
+    expect(custom.tags).toBeUndefined();
   });
+});
 
-  it('maps parentId into isPartOf when available in the schema', () => {
-    const rows = parseCsv(loadCsv('valid.csv'), { schema });
-    const building = rows.find((row) => row.id === 'bldg-1');
-    expect(building?.isPartOf).toBe('site-1');
+describe('schema mapping (pointlist)', () => {
+  it('maps pointlist fields into schema props and custom tags/properties', () => {
+    const rows = parseCsv(loadSampleCsv(), { schema });
+    const point = rows.find((row) => row.id === 'PT001');
+    expect(point).toBeDefined();
+
+    expect(point?.pointType).toBe('Temperature');
+    expect(point?.pointSpecification).toBe('Measurement');
+    expect(point?.unit).toBe('℃');
+    expect(point?.maxPresValue).toBe('50');
+    expect(point?.minPresValue).toBe('-10');
+    expect(point?.scale).toBe('1.0');
+
+    const tags = point?.customTags ? JSON.parse(point.customTags) : [];
+    expect(tags).toEqual(
+      expect.arrayContaining([
+        { key: 'temperature', flag: true },
+        { key: 'room101', flag: true },
+      ]),
+    );
+
+    const custom = point?.customProperties ? JSON.parse(point.customProperties) : {};
+    expect(custom.gatewayId).toBe('GW001');
+    expect(point?.deviceId).toBe('DEV001');
+    expect(point?.deviceName).toBe('Temperature Sensor 01');
+    expect(custom.deviceType).toBe('Sensor');
+    expect(custom.writable).toBe('false');
+    expect(custom.interval).toBe('60');
+    expect(custom.description).toBe('Room 101 temperature sensor');
   });
 });
 
@@ -183,7 +237,13 @@ describe('large fixture', () => {
 
     const tree = buildTree(rows);
     expect(tree).toHaveLength(1);
-    expect(tree[0]?.children.some((node) => node.id === 'bldg-1')).toBe(true);
+    expect(tree[0]?.name).toBe('LargeSite');
+    const building = tree[0]?.children[0];
+    const level = building?.children[0];
+    const room = level?.children[0];
+    const equipment = room?.children[0];
+    expect(equipment?.id).toBe('DEV-L');
+    expect(equipment?.children).toHaveLength(1000);
 
     const { issues } = validate(rows);
     expect(issues).toHaveLength(0);

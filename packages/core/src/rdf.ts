@@ -1,9 +1,5 @@
 import { buildResourceGraph } from './resource-graph';
-import {
-  buildSchemaCache,
-  getRequiredPropsFromCache,
-  SchemaRoot,
-} from './schema-mapping';
+import { buildSchemaCache, getRequiredPropsFromCache, SchemaRoot } from './schema-mapping';
 import { RowRecord } from './types';
 import { normalizeValue } from './row-utils';
 

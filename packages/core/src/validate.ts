@@ -5,6 +5,23 @@ import { Issue, RowRecord } from './types';
 
 const KindSchema = z.enum(['site', 'building', 'floor', 'space', 'device', 'point']);
 
+const POINTLIST_REQUIRED_FIELDS = [
+  'gatewayId',
+  'pointId',
+  'pointName',
+  'pointType',
+  'pointSpecification',
+  'writable',
+  'deviceId',
+  'deviceName',
+  'deviceType',
+  'site',
+  'building',
+  'floor',
+  'installationArea',
+  'localId',
+];
+
 const RowSchema = z
   .object({
     id: z.string().min(1, 'Required'),
@@ -58,10 +75,17 @@ type ValidateOptions = {
   schema?: SchemaRoot;
 };
 
-export function validate(
-  rows: RowRecord[],
-  options: ValidateOptions = {},
-): { issues: Issue[] } {
+function isPointlistRow(row: RowRecord): boolean {
+  return (
+    hasKey(row, 'pointId') ||
+    hasKey(row, 'pointName') ||
+    hasKey(row, 'pointType') ||
+    hasKey(row, 'pointSpecification') ||
+    hasKey(row, 'gatewayId')
+  );
+}
+
+export function validate(rows: RowRecord[], options: ValidateOptions = {}): { issues: Issue[] } {
   const issues: Issue[] = [];
   const issueKeys = new Set<string>();
   const addIssue = (issue: Issue) => {
@@ -114,12 +138,21 @@ export function validate(
       const required = getRequiredPropsFromCache(schemaCache, kind);
       for (const field of required) {
         if (field === 'id' || field === 'name') continue;
-        const value =
-          field === 'id'
-            ? row.id
-            : field === 'name'
-              ? row.name
-              : row[field];
+        const value = field === 'id' ? row.id : field === 'name' ? row.name : row[field];
+        if (!normalizeValue(value)) {
+          addIssue({
+            code: 'schema',
+            message: 'Required',
+            rowId: rowIdForIssue(row),
+            field,
+          });
+        }
+      }
+    }
+
+    if (isPointlistRow(row)) {
+      for (const field of POINTLIST_REQUIRED_FIELDS) {
+        const value = row[field];
         if (!normalizeValue(value)) {
           addIssue({
             code: 'schema',
