@@ -74,6 +74,31 @@ body {
   margin-bottom: 12px;
 }
 
+.mode-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.mode-alert {
+  margin-bottom: 12px;
+}
+
+.property-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.property-name-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .grid-wrapper {
   flex: 1;
 }

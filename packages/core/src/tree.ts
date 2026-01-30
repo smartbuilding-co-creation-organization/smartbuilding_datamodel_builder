@@ -28,18 +28,12 @@ function resolveKind(kind?: string): string | undefined {
 }
 
 function resolveId(row: RowRecord): string {
-  return (
-    normalizeValue(row.id) ||
-    normalizeValue(row.pointId) ||
-    normalizeValue(row.deviceId)
-  );
+  return normalizeValue(row.id) || normalizeValue(row.pointId) || normalizeValue(row.deviceId);
 }
 
 function resolveName(row: RowRecord): string {
   return (
-    normalizeValue(row.name) ||
-    normalizeValue(row.pointName) ||
-    normalizeValue(row.deviceName)
+    normalizeValue(row.name) || normalizeValue(row.pointName) || normalizeValue(row.deviceName)
   );
 }
 
@@ -57,7 +51,7 @@ function makeSlug(value: string): string {
 function buildParentChildTree(rows: RowRecord[]): Node[] {
   const nodes = new Map<string, Node>();
 
-  for (const [rowIndex, row] of rows.entries()) {
+  for (const row of rows) {
     const id = resolveId(row);
     if (!id) continue;
 
@@ -212,16 +206,11 @@ function buildHierarchyTree(rows: RowRecord[]): Node[] {
     }
   };
 
-  for (const row of rows) {
+  for (const [rowIndex, row] of rows.entries()) {
     const signals = resolveHierarchySignals(row);
     const siteName = signals.site || 'Unknown Site';
     const siteKey = `site:${siteName}`;
-    const siteNode = ensureNode(
-      siteKey,
-      `site:${makeSlug(siteName)}`,
-      siteName,
-      'Site',
-    );
+    const siteNode = ensureNode(siteKey, `site:${makeSlug(siteName)}`, siteName, 'Site');
 
     const buildingName = signals.building || 'Unknown Building';
     const buildingKey = `building:${siteNode.id}:${buildingName}`;
