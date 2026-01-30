@@ -1,0 +1,8 @@
+﻿id,name,parent_id,kind
+site-1,Site A,,site
+bldg-1,Building A,site-1,building
+bldg-1,Building A Duplicate,site-1,building
+floor-1,,bldg-1,floor
+space-1,Room 101,missing-parent,space
+cycle-1,Cycle 1,cycle-2,space
+cycle-2,Cycle 2,cycle-1,space

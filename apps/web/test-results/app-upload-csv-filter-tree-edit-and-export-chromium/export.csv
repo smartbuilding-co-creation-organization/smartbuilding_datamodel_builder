@@ -1,0 +1,9 @@
+id,name,parentId,kind,extra
+site-1,Site A,,site,alpha
+bldg-1,Building A,site-1,building,beta
+floor-1,Floor 1,bldg-1,floor,gamma
+space-1,Room 101A,floor-1,space,delta
+space-2,Room 102,floor-1,space,epsilon
+bldg-2,Building B,site-1,building,zeta
+floor-2,Floor 2,bldg-2,floor,eta
+space-3,Room 201,floor-2,space,"theta"

@@ -1,0 +1,102 @@
+﻿@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600&display=swap');
+
+:root {
+  font-family: 'Space Grotesk', 'Segoe UI', sans-serif;
+  color: #1b1b1b;
+  background: radial-gradient(circle at top left, #f6f2ff 0%, #eef4ff 40%, #f7fbff 100%);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  height: 100vh;
+}
+
+#root {
+  height: 100vh;
+}
+
+.app-shell {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 24px;
+  gap: 16px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(12px);
+}
+
+.main {
+  display: flex;
+  flex: 1;
+  gap: 16px;
+  padding: 16px 24px;
+  overflow: hidden;
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  padding: 16px;
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+  overflow: hidden;
+}
+
+.panel-title {
+  margin-bottom: 12px;
+}
+
+.tree-panel {
+  width: 30%;
+  min-width: 260px;
+}
+
+.grid-panel {
+  flex: 1;
+}
+
+.search-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.grid-wrapper {
+  flex: 1;
+}
+
+.cell-error {
+  background-color: rgba(244, 67, 54, 0.15);
+}
+
+.row-error .MuiDataGrid-cell {
+  background-color: rgba(244, 67, 54, 0.08);
+}
+
+.issue-list {
+  margin: 8px 0 0;
+  padding-left: 18px;
+}
+
+@media (max-width: 960px) {
+  .main {
+    flex-direction: column;
+  }
+
+  .tree-panel {
+    width: 100%;
+  }
+}

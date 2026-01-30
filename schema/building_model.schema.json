@@ -1,0 +1,4372 @@
+﻿{
+    "$defs": {
+        "Agent": {
+            "additionalProperties": false,
+            "description": "An entity that can act or be acted upon",
+            "properties": {
+                "customProperties": {
+                    "description": "map(string -> map(string -> string))",
+                    "items": {
+                        "$ref": "#/$defs/KeyMapOfStringMapEntry"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "customTags": {
+                    "description": "map(string -> boolean)",
+                    "items": {
+                        "$ref": "#/$defs/KeyBoolMapEntry"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "id": {
+                    "description": "Unique identifier within the schema. Must start with a letter and contain only letters, digits, underscores, hyphens, colons, semicolons, or periods. DTMI is one acceptable example.",
+                    "type": "string"
+                },
+                "identifiers": {
+                    "description": "map(string -> string)",
+                    "items": {
+                        "$ref": "#/$defs/KeyStringMapEntry"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "memberOf": {
+                    "description": "Indicates membership in an organization. Note that componency (e.g., departments of a corporation) are expressed using the more generic Organization.isPartOf property.",
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "name": {
+                    "description": "Machine or Human-readable name",
+                    "type": "string"
+                },
+                "owns": {
+                    "description": " Indicates ownership of some thing, e.g., a building, an asset, an organization, etc.",
+                    "items": {
+                        "$ref": "#/$defs/Resource"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                }
+            },
+            "required": [
+                "id",
+                "name"
+            ],
+            "title": "Agent",
+            "type": "object"
+        },
+        "AggregateEnum": {
+            "description": "Aggregation functions for point data processing",
+            "enum": [
+                "average",
+                "sum",
+                "minimum",
+                "maximum",
+                "count",
+                "first",
+                "last",
+                "median",
+                "standardDeviation"
+            ],
+            "title": "AggregateEnum",
+            "type": "string"
+        },
+        "ArchitectureArea": {
+            "additionalProperties": false,
+            "description": "Describes business-relevant area measurements typically associated with architected spaces",
+            "properties": {
+                "customProperties": {
+                    "description": "map(string -> map(string -> string))",
+                    "items": {
+                        "$ref": "#/$defs/KeyMapOfStringMapEntry"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "customTags": {
+                    "description": "map(string -> boolean)",
+                    "items": {
+                        "$ref": "#/$defs/KeyBoolMapEntry"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "id": {
+                    "description": "Unique identifier within the schema. Must start with a letter and contain only letters, digits, underscores, hyphens, colons, semicolons, or periods. DTMI is one acceptable example.",
+                    "type": "string"
+                },
+                "identifiers": {
+                    "description": "map(string -> string)",
+                    "items": {
+                        "$ref": "#/$defs/KeyStringMapEntry"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "name": {
+                    "description": "Machine or Human-readable name",
+                    "type": "string"
+                }
+            },
+            "required": [
+                "id",
+                "name"
+            ],
+            "title": "ArchitectureArea",
+            "type": "object"
+        },
+        "ArchitectureCapacity": {
+            "additionalProperties": false,
+            "description": "Describes business-relevant capacity measurements typically associated with architected spaces",
+            "properties": {
+                "customProperties": {
+                    "description": "map(string -> map(string -> string))",
+                    "items": {
+                        "$ref": "#/$defs/KeyMapOfStringMapEntry"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "customTags": {
+                    "description": "map(string -> boolean)",
+                    "items": {
+                        "$ref": "#/$defs/KeyBoolMapEntry"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "id": {
+                    "description": "Unique identifier within the schema. Must start with a letter and contain only letters, digits, underscores, hyphens, colons, semicolons, or periods. DTMI is one acceptable example.",
+                    "type": "string"
+                },
+                "identifiers": {
+                    "description": "map(string -> string)",
+                    "items": {
+                        "$ref": "#/$defs/KeyStringMapEntry"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "name": {
+                    "description": "Machine or Human-readable name",
+                    "type": "string"
+                }
+            },
+            "required": [
+                "id",
+                "name"
+            ],
+            "title": "ArchitectureCapacity",
+            "type": "object"
+        },
+        "Building": {
+            "additionalProperties": false,
+            "description": "A building which is part of a site.",
+            "properties": {
+                "address": {
+                    "description": "Address of the architecture",
+                    "items": {
+                        "$ref": "#/$defs/PostalAddress"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "adjacentElement": {
+                    "description": "Building element adjacent to this architecture",
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "architectedBy": {
+                    "description": "Agent or resource that architected this structure",
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "area": {
+                    "description": "Area of the architecture",
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "capacity": {
+                    "description": "Capacity of the architecture",
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "constructedBy": {
+                    "description": "Agent or resource that constructed this architecture",
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "containsElement": {
+                    "description": "Building element contained within this architecture",
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "customProperties": {
+                    "description": "map(string -> map(string -> string))",
+                    "items": {
+                        "$ref": "#/$defs/KeyMapOfStringMapEntry"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "customTags": {
+                    "description": "map(string -> boolean)",
+                    "items": {
+                        "$ref": "#/$defs/KeyBoolMapEntry"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "description": {
+                    "description": "A textual description of the resource",
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "documentation": {
+                    "description": "Documentation related to this asset",
+                    "items": {
+                        "$ref": "#/$defs/Document"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "geometry": {
+                    "anyOf": [
+                        {
+                            "$ref": "#/$defs/Geometry"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ],
+                    "description": "Polygon representing the spatial extent of this Space."
+                },
+                "georeference": {
+                    "anyOf": [
+                        {
+                            "$ref": "#/$defs/Georeference"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ],
+                    "description": "A georeference creates a relationship between the local coordinate system used within a building (e.g., measured in meters) and a geographic coordinate system (e.g., lat, long, alt), such that locally placed Spaces can be resolved and rendered in that geographic coordinate system (e.g., for mapping purposes)."
+                },
+                "hasPart": {
+                    "description": "The subject is composed in part of the entity given by the object.",
+                    "items": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "string"
+                            }
+                        ],
+                        "type": "string"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "hasPoint": {
+                    "description": "Point associated with this architecture",
+                    "items": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "string"
+                            }
+                        ],
+                        "type": "string"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "id": {
+                    "description": "Unique identifier within the schema. Must start with a letter and contain only letters, digits, underscores, hyphens, colons, semicolons, or periods. DTMI is one acceptable example.",
+                    "type": "string"
+                },
+                "identifiers": {
+                    "description": "map(string -> string)",
+                    "items": {
+                        "$ref": "#/$defs/KeyStringMapEntry"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "intersectingElement": {
+                    "description": "Building element intersecting with this architecture",
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "isFedBy": {
+                    "description": "Resource that feeds this architecture",
+                    "items": {
+                        "$ref": "#/$defs/Resource"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "isLocationOf": {
+                    "description": "Subject is the physical location encapsulating the object.",
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "isPartOf": {
+                    "anyOf": [
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ],
+                    "type": "string"
+                },
+                "name": {
+                    "description": "Machine or Human-readable name",
+                    "type": "string"
+                },
+                "operatedBy": {
+                    "description": "Agent or resource that operates this architecture",
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "ownedBy": {
+                    "description": "Agent or resource that owns this architecture",
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                }
+            },
+            "required": [
+                "id",
+                "name"
+            ],
+            "title": "Building",
+            "type": "object"
+        },
+        "BuildingElement": {
+            "additionalProperties": false,
+            "description": "A part of the building structure",
+            "properties": {
+                "customProperties": {
+                    "description": "map(string -> map(string -> string))",
+                    "items": {
+                        "$ref": "#/$defs/KeyMapOfStringMapEntry"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "customTags": {
+                    "description": "map(string -> boolean)",
+                    "items": {
+                        "$ref": "#/$defs/KeyBoolMapEntry"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "id": {
+                    "description": "Unique identifier within the schema. Must start with a letter and contain only letters, digits, underscores, hyphens, colons, semicolons, or periods. DTMI is one acceptable example.",
+                    "type": "string"
+                },
+                "identifiers": {
+                    "description": "map(string -> string)",
+                    "items": {
+                        "$ref": "#/$defs/KeyStringMapEntry"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "name": {
+                    "description": "Machine or Human-readable name",
+                    "type": "string"
+                }
+            },
+            "required": [
+                "id",
+                "name"
+            ],
+            "title": "BuildingElement",
+            "type": "object"
+        },
+        "Document": {
+            "additionalProperties": false,
+            "description": "A document providing information about a building element or asset",
+            "properties": {
+                "checksum": {
+                    "description": "Checksum or hash of the information content",
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "customProperties": {
+                    "description": "map(string -> map(string -> string))",
+                    "items": {
+                        "$ref": "#/$defs/KeyMapOfStringMapEntry"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "customTags": {
+                    "description": "map(string -> boolean)",
+                    "items": {
+                        "$ref": "#/$defs/KeyBoolMapEntry"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "description": {
+                    "description": "A textual description of the resource",
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "format": {
+                    "description": "MIME type or format identifier for the information",
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "identifiers": {
+                    "description": "map(string -> string)",
+                    "items": {
+                        "$ref": "#/$defs/KeyStringMapEntry"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "language": {
+                    "description": "Language code (ISO 639-1) of the information content",
+                    "pattern": "^[a-z]{2}(-[A-Z]{2})?$",
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "name": {
+                    "description": "Machine or Human-readable name",
+                    "type": "string"
+                },
+                "size": {
+                    "description": "Size of the information resource in bytes",
+                    "type": [
+                        "integer",
+                        "null"
+                    ]
+                },
+                "url": {
+                    "description": "URL or URI pointing to the information resource",
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "version": {
+                    "description": "Version identifier for the information",
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                }
+            },
+            "required": [
+                "name"
+            ],
+            "title": "Document",
+            "type": "object"
+        },
+        "Equipment": {
+            "additionalProperties": false,
+            "description": "An equipment asset installed in a space.",
+            "properties": {
+                "IPAddress": {
+                    "description": "IP address of the asset",
+                    "items": {
+                        "pattern": "^((25[0-5]|2[0-4]\\d|1?\\d?\\d)\\.){3}(25[0-5]|2[0-4]\\d|1?\\d?\\d)$",
+                        "type": "string"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "MACAddress": {
+                    "description": "MAC address of the asset",
+                    "items": {
+                        "pattern": "^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$",
+                        "type": "string"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "assetTag": {
+                    "description": "Asset identification tag",
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "commissionedBy": {
+                    "description": "Agent or resource that commissioned this asset",
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "commissioningDate": {
+                    "description": "Date when the asset was commissioned",
+                    "format": "date",
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "customProperties": {
+                    "description": "map(string -> map(string -> string))",
+                    "items": {
+                        "$ref": "#/$defs/KeyMapOfStringMapEntry"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "customTags": {
+                    "description": "map(string -> boolean)",
+                    "items": {
+                        "$ref": "#/$defs/KeyBoolMapEntry"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "description": {
+                    "description": "A textual description of the resource",
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "documentation": {
+                    "description": "Documentation related to this asset",
+                    "items": {
+                        "$ref": "#/$defs/Document"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "feeds": {
+                    "description": "Equipment or system that this equipment feeds",
+                    "items": {
+                        "$ref": "#/$defs/Resource"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "geometry": {
+                    "anyOf": [
+                        {
+                            "$ref": "#/$defs/Geometry"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ],
+                    "description": "Polygon representing the spatial extent of this Space."
+                },
+                "hasPart": {
+                    "description": "The subject is composed in part of the entity given by the object.",
+                    "items": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "string"
+                            }
+                        ],
+                        "type": "string"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "hasPoint": {
+                    "description": "Point associated with this architecture",
+                    "items": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "string"
+                            }
+                        ],
+                        "type": "string"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "id": {
+                    "description": "Unique identifier within the schema. Must start with a letter and contain only letters, digits, underscores, hyphens, colons, semicolons, or periods. DTMI is one acceptable example.",
+                    "type": "string"
+                },
+                "identifiers": {
+                    "description": "map(string -> string)",
+                    "items": {
+                        "$ref": "#/$defs/KeyStringMapEntry"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "initialCost": {
+                    "description": "Initial cost of the asset",
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "installationDate": {
+                    "description": "Date when the asset was installed",
+                    "format": "date",
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "installedBy": {
+                    "description": "Agent or resource that installed this asset",
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "isFedBy": {
+                    "description": "Resource that feeds this architecture",
+                    "items": {
+                        "$ref": "#/$defs/Resource"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "isPartOf": {
+                    "anyOf": [
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ],
+                    "type": "string"
+                },
+                "locatedIn": {
+                    "description": "Space where this asset is located",
+                    "items": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "string"
+                            }
+                        ],
+                        "type": "string"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "maintenanceInterval": {
+                    "description": "Maintenance interval duration",
+                    "items": {
+                        "pattern": "^P(?:\\d+Y)?(?:\\d+M)?(?:\\d+D)?(?:T(?:\\d+H)?(?:\\d+M)?(?:\\d+(?:\\.\\d+)?S)?)?$",
+                        "type": "string"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "manufacturedBy": {
+                    "description": "Agent or resource that manufactured this asset",
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "modelNumber": {
+                    "description": "Model number of the asset",
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "mountedOn": {
+                    "description": "Building element on which this asset is mounted",
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "name": {
+                    "description": "Machine or Human-readable name",
+                    "type": "string"
+                },
+                "operationalStageCount": {
+                    "description": "The number of operational stages supported by this equipment",
+                    "type": [
+                        "integer",
+                        "null"
+                    ]
+                },
+                "serialNumber": {
+                    "description": "Serial number of the asset",
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "servicedBy": {
+                    "description": "Agent or resource that services this asset",
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "turnoverDate": {
+                    "description": "Date when the asset was turned over",
+                    "format": "date",
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "weight": {
+                    "description": "Weight of the asset",
+                    "type": [
+                        "number",
+                        "null"
+                    ]
+                }
+            },
+            "required": [
+                "id",
+                "name"
+            ],
+            "title": "Equipment",
+            "type": "object"
+        },
+        "EquipmentExt": {
+            "additionalProperties": false,
+            "description": "An equipment asset installed in a space.",
+            "properties": {
+                "IPAddress": {
+                    "description": "IP address of the asset",
+                    "items": {
+                        "pattern": "^((25[0-5]|2[0-4]\\d|1?\\d?\\d)\\.){3}(25[0-5]|2[0-4]\\d|1?\\d?\\d)$",
+                        "type": "string"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "MACAddress": {
+                    "description": "MAC address of the asset",
+                    "items": {
+                        "pattern": "^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$",
+                        "type": "string"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "assetTag": {
+                    "description": "Asset identification tag",
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "commissionedBy": {
+                    "description": "Agent or resource that commissioned this asset",
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "commissioningDate": {
+                    "description": "Date when the asset was commissioned",
+                    "format": "date",
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "customProperties": {
+                    "description": "map(string -> map(string -> string))",
+                    "items": {
+                        "$ref": "#/$defs/KeyMapOfStringMapEntry"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "customTags": {
+                    "description": "map(string -> boolean)",
+                    "items": {
+                        "$ref": "#/$defs/KeyBoolMapEntry"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "description": {
+                    "description": "A textual description of the resource",
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "deviceType": {
+                    "description": "Device Type",
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "documentation": {
+                    "description": "Documentation related to this asset",
+                    "items": {
+                        "$ref": "#/$defs/Document"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "feeds": {
+                    "description": "Equipment or system that this equipment feeds",
+                    "items": {
+                        "$ref": "#/$defs/Resource"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "geometry": {
+                    "anyOf": [
+                        {
+                            "$ref": "#/$defs/Geometry"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ],
+                    "description": "Polygon representing the spatial extent of this Space."
+                },
+                "hasPart": {
+                    "description": "The subject is composed in part of the entity given by the object.",
+                    "items": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "string"
+                            }
+                        ],
+                        "type": "string"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "hasPoint": {
+                    "description": "Point associated with this architecture",
+                    "items": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "string"
+                            }
+                        ],
+                        "type": "string"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "id": {
+                    "description": "Unique identifier within the schema. Must start with a letter and contain only letters, digits, underscores, hyphens, colons, semicolons, or periods. DTMI is one acceptable example.",
+                    "type": "string"
+                },
+                "identifiers": {
+                    "description": "map(string -> string)",
+                    "items": {
+                        "$ref": "#/$defs/KeyStringMapEntry"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "initialCost": {
+                    "description": "Initial cost of the asset",
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "installationArea": {
+                    "description": "Parent installation area",
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "installationDate": {
+                    "description": "Date when the asset was installed",
+                    "format": "date",
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "installedBy": {
+                    "description": "Agent or resource that installed this asset",
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "isFedBy": {
+                    "description": "Resource that feeds this architecture",
+                    "items": {
+                        "$ref": "#/$defs/Resource"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "isPartOf": {
+                    "anyOf": [
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ],
+                    "type": "string"
+                },
+                "locatedIn": {
+                    "description": "Space where this asset is located",
+                    "items": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "string"
+                            }
+                        ],
+                        "type": "string"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "maintenanceInterval": {
+                    "description": "Maintenance interval duration",
+                    "items": {
+                        "pattern": "^P(?:\\d+Y)?(?:\\d+M)?(?:\\d+D)?(?:T(?:\\d+H)?(?:\\d+M)?(?:\\d+(?:\\.\\d+)?S)?)?$",
+                        "type": "string"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "manufacturedBy": {
+                    "description": "Agent or resource that manufactured this asset",
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "modelNumber": {
+                    "description": "Model number of the asset",
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "mountedOn": {
+                    "description": "Building element on which this asset is mounted",
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "name": {
+                    "description": "Machine or Human-readable name",
+                    "type": "string"
+                },
+                "operationalStageCount": {
+                    "description": "The number of operational stages supported by this equipment",
+                    "type": [
+                        "integer",
+                        "null"
+                    ]
+                },
+                "panel": {
+                    "description": "Parent panel",
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "serialNumber": {
+                    "description": "Serial number of the asset",
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "servicedBy": {
+                    "description": "Agent or resource that services this asset",
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "targetArea": {
+                    "description": "Target area for this resource",
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "turnoverDate": {
+                    "description": "Date when the asset was turned over",
+                    "format": "date",
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "weight": {
+                    "description": "Weight of the asset",
+                    "type": [
+                        "number",
+                        "null"
+                    ]
+                }
+            },
+            "required": [
+                "id",
+                "name"
+            ],
+            "title": "EquipmentExt",
+            "type": "object"
+        },
+        "Geometry": {
+            "additionalProperties": false,
+            "description": "REC Geometry \u306e\u30d7\u30ec\u30fc\u30b9\u30db\u30eb\u30c0\uff08\u8a73\u7d30\u306f\u5225\u9014\u62e1\u5f35\uff09",
+            "properties": {
+                "checksum": {
+                    "description": "Checksum or hash of the information content",
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "customProperties": {
+                    "description": "map(string -> map(string -> string))",
+                    "items": {
+                        "$ref": "#/$defs/KeyMapOfStringMapEntry"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "customTags": {
+                    "description": "map(string -> boolean)",
+                    "items": {
+                        "$ref": "#/$defs/KeyBoolMapEntry"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "description": {
+                    "description": "A textual description of the resource",
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "format": {
+                    "description": "MIME type or format identifier for the information",
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "identifiers": {
+                    "description": "map(string -> string)",
+                    "items": {
+                        "$ref": "#/$defs/KeyStringMapEntry"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "language": {
+                    "description": "Language code (ISO 639-1) of the information content",
+                    "pattern": "^[a-z]{2}(-[A-Z]{2})?$",
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "name": {
+                    "description": "Machine or Human-readable name",
+                    "type": "string"
+                },
+                "size": {
+                    "description": "Size of the information resource in bytes",
+                    "type": [
+                        "integer",
+                        "null"
+                    ]
+                },
+                "url": {
+                    "description": "URL or URI pointing to the information resource",
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "version": {
+                    "description": "Version identifier for the information",
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                }
+            },
+            "required": [
+                "name"
+            ],
+            "title": "Geometry",
+            "type": "object"
+        },
+        "Georeference": {
+            "additionalProperties": false,
+            "description": "REC Georeference \u306e\u30d7\u30ec\u30fc\u30b9\u30db\u30eb\u30c0\uff08\u8a73\u7d30\u306f\u5225\u9014\u62e1\u5f35\uff09",
+            "properties": {
+                "checksum": {
+                    "description": "Checksum or hash of the information content",
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "customProperties": {
+                    "description": "map(string -> map(string -> string))",
+                    "items": {
+                        "$ref": "#/$defs/KeyMapOfStringMapEntry"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "customTags": {
+                    "description": "map(string -> boolean)",
+                    "items": {
+                        "$ref": "#/$defs/KeyBoolMapEntry"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "description": {
+                    "description": "A textual description of the resource",
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "format": {
+                    "description": "MIME type or format identifier for the information",
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "identifiers": {
+                    "description": "map(string -> string)",
+                    "items": {
+                        "$ref": "#/$defs/KeyStringMapEntry"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "language": {
+                    "description": "Language code (ISO 639-1) of the information content",
+                    "pattern": "^[a-z]{2}(-[A-Z]{2})?$",
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "name": {
+                    "description": "Machine or Human-readable name",
+                    "type": "string"
+                },
+                "size": {
+                    "description": "Size of the information resource in bytes",
+                    "type": [
+                        "integer",
+                        "null"
+                    ]
+                },
+                "url": {
+                    "description": "URL or URI pointing to the information resource",
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "version": {
+                    "description": "Version identifier for the information",
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                }
+            },
+            "required": [
+                "name"
+            ],
+            "title": "Georeference",
+            "type": "object"
+        },
+        "Image": {
+            "additionalProperties": false,
+            "description": "An image file containing visual information",
+            "properties": {
+                "checksum": {
+                    "description": "Checksum or hash of the information content",
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "customProperties": {
+                    "description": "map(string -> map(string -> string))",
+                    "items": {
+                        "$ref": "#/$defs/KeyMapOfStringMapEntry"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "customTags": {
+                    "description": "map(string -> boolean)",
+                    "items": {
+                        "$ref": "#/$defs/KeyBoolMapEntry"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "description": {
+                    "description": "A textual description of the resource",
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "format": {
+                    "description": "MIME type or format identifier for the information",
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "identifiers": {
+                    "description": "map(string -> string)",
+                    "items": {
+                        "$ref": "#/$defs/KeyStringMapEntry"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "language": {
+                    "description": "Language code (ISO 639-1) of the information content",
+                    "pattern": "^[a-z]{2}(-[A-Z]{2})?$",
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "name": {
+                    "description": "Machine or Human-readable name",
+                    "type": "string"
+                },
+                "size": {
+                    "description": "Size of the information resource in bytes",
+                    "type": [
+                        "integer",
+                        "null"
+                    ]
+                },
+                "url": {
+                    "description": "URL or URI pointing to the information resource",
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "version": {
+                    "description": "Version identifier for the information",
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                }
+            },
+            "required": [
+                "name"
+            ],
+            "title": "Image",
+            "type": "object"
+        },
+        "Information": {
+            "additionalProperties": false,
+            "description": "Abstract base class for information resources such as documents, images, media files, etc.",
+            "properties": {
+                "checksum": {
+                    "description": "Checksum or hash of the information content",
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "customProperties": {
+                    "description": "map(string -> map(string -> string))",
+                    "items": {
+                        "$ref": "#/$defs/KeyMapOfStringMapEntry"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "customTags": {
+                    "description": "map(string -> boolean)",
+                    "items": {
+                        "$ref": "#/$defs/KeyBoolMapEntry"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "description": {
+                    "description": "A textual description of the resource",
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "format": {
+                    "description": "MIME type or format identifier for the information",
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "identifiers": {
+                    "description": "map(string -> string)",
+                    "items": {
+                        "$ref": "#/$defs/KeyStringMapEntry"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "language": {
+                    "description": "Language code (ISO 639-1) of the information content",
+                    "pattern": "^[a-z]{2}(-[A-Z]{2})?$",
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "name": {
+                    "description": "Machine or Human-readable name",
+                    "type": "string"
+                },
+                "size": {
+                    "description": "Size of the information resource in bytes",
+                    "type": [
+                        "integer",
+                        "null"
+                    ]
+                },
+                "url": {
+                    "description": "URL or URI pointing to the information resource",
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "version": {
+                    "description": "Version identifier for the information",
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                }
+            },
+            "required": [
+                "name"
+            ],
+            "title": "Information",
+            "type": "object"
+        },
+        "KeyBoolMapEntry": {
+            "additionalProperties": false,
+            "description": "map(string -> boolean) \u306e1\u30a8\u30f3\u30c8\u30ea",
+            "properties": {
+                "flag": {
+                    "description": "Boolean flag value",
+                    "type": "boolean"
+                },
+                "key": {
+                    "description": "Key of the map entry",
+                    "type": "string"
+                }
+            },
+            "required": [
+                "key",
+                "flag"
+            ],
+            "title": "KeyBoolMapEntry",
+            "type": "object"
+        },
+        "KeyMapOfStringMapEntry": {
+            "additionalProperties": false,
+            "description": "map(string -> map(string -> string)) \u306e1\u30a8\u30f3\u30c8\u30ea",
+            "properties": {
+                "entries": {
+                    "description": "Nested map entries",
+                    "items": {
+                        "$ref": "#/$defs/KeyStringMapEntry"
+                    },
+                    "type": "array"
+                },
+                "key": {
+                    "description": "Key of the map entry",
+                    "type": "string"
+                }
+            },
+            "required": [
+                "key",
+                "entries"
+            ],
+            "title": "KeyMapOfStringMapEntry",
+            "type": "object"
+        },
+        "KeyStringMapEntry": {
+            "additionalProperties": false,
+            "description": "map(string -> string) \u306e1\u30a8\u30f3\u30c8\u30ea",
+            "properties": {
+                "key": {
+                    "description": "Key of the map entry",
+                    "type": "string"
+                },
+                "value": {
+                    "description": "Value of the map entry",
+                    "type": "string"
+                }
+            },
+            "required": [
+                "key",
+                "value"
+            ],
+            "title": "KeyStringMapEntry",
+            "type": "object"
+        },
+        "Level": {
+            "additionalProperties": false,
+            "description": "A building storey. Levels can also be treated as a kind of space.",
+            "properties": {
+                "address": {
+                    "description": "Address of the architecture",
+                    "items": {
+                        "$ref": "#/$defs/PostalAddress"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "adjacentElement": {
+                    "description": "Building element adjacent to this architecture",
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "architectedBy": {
+                    "description": "Agent or resource that architected this structure",
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "area": {
+                    "description": "Area of the architecture",
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "capacity": {
+                    "description": "Capacity of the architecture",
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "constructedBy": {
+                    "description": "Agent or resource that constructed this architecture",
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "containsElement": {
+                    "description": "Building element contained within this architecture",
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "customProperties": {
+                    "description": "map(string -> map(string -> string))",
+                    "items": {
+                        "$ref": "#/$defs/KeyMapOfStringMapEntry"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "customTags": {
+                    "description": "map(string -> boolean)",
+                    "items": {
+                        "$ref": "#/$defs/KeyBoolMapEntry"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "description": {
+                    "description": "A textual description of the resource",
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "documentation": {
+                    "description": "Documentation related to this asset",
+                    "items": {
+                        "$ref": "#/$defs/Document"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "geometry": {
+                    "anyOf": [
+                        {
+                            "$ref": "#/$defs/Geometry"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ],
+                    "description": "Polygon representing the spatial extent of this Space."
+                },
+                "georeference": {
+                    "anyOf": [
+                        {
+                            "$ref": "#/$defs/Georeference"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ],
+                    "description": "A georeference creates a relationship between the local coordinate system used within a building (e.g., measured in meters) and a geographic coordinate system (e.g., lat, long, alt), such that locally placed Spaces can be resolved and rendered in that geographic coordinate system (e.g., for mapping purposes)."
+                },
+                "hasPart": {
+                    "description": "The subject is composed in part of the entity given by the object.",
+                    "items": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "string"
+                            }
+                        ],
+                        "type": "string"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "hasPoint": {
+                    "description": "Point associated with this architecture",
+                    "items": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "string"
+                            }
+                        ],
+                        "type": "string"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "id": {
+                    "description": "Unique identifier within the schema. Must start with a letter and contain only letters, digits, underscores, hyphens, colons, semicolons, or periods. DTMI is one acceptable example.",
+                    "type": "string"
+                },
+                "identifiers": {
+                    "description": "map(string -> string)",
+                    "items": {
+                        "$ref": "#/$defs/KeyStringMapEntry"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "intersectingElement": {
+                    "description": "Building element intersecting with this architecture",
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "isFedBy": {
+                    "description": "Resource that feeds this architecture",
+                    "items": {
+                        "$ref": "#/$defs/Resource"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "isLocationOf": {
+                    "description": "Subject is the physical location encapsulating the object.",
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "isPartOf": {
+                    "anyOf": [
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ],
+                    "type": "string"
+                },
+                "levelNumber": {
+                    "description": "Floor or level number within a building",
+                    "type": [
+                        "integer",
+                        "null"
+                    ]
+                },
+                "name": {
+                    "description": "Machine or Human-readable name",
+                    "type": "string"
+                },
+                "operatedBy": {
+                    "description": "Agent or resource that operates this architecture",
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "ownedBy": {
+                    "description": "Agent or resource that owns this architecture",
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                }
+            },
+            "required": [
+                "id",
+                "name"
+            ],
+            "title": "Level",
+            "type": "object"
+        },
+        "Media": {
+            "additionalProperties": false,
+            "description": "A media file such as audio or video content",
+            "properties": {
+                "checksum": {
+                    "description": "Checksum or hash of the information content",
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "customProperties": {
+                    "description": "map(string -> map(string -> string))",
+                    "items": {
+                        "$ref": "#/$defs/KeyMapOfStringMapEntry"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "customTags": {
+                    "description": "map(string -> boolean)",
+                    "items": {
+                        "$ref": "#/$defs/KeyBoolMapEntry"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "description": {
+                    "description": "A textual description of the resource",
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "format": {
+                    "description": "MIME type or format identifier for the information",
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "identifiers": {
+                    "description": "map(string -> string)",
+                    "items": {
+                        "$ref": "#/$defs/KeyStringMapEntry"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "language": {
+                    "description": "Language code (ISO 639-1) of the information content",
+                    "pattern": "^[a-z]{2}(-[A-Z]{2})?$",
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "name": {
+                    "description": "Machine or Human-readable name",
+                    "type": "string"
+                },
+                "size": {
+                    "description": "Size of the information resource in bytes",
+                    "type": [
+                        "integer",
+                        "null"
+                    ]
+                },
+                "url": {
+                    "description": "URL or URI pointing to the information resource",
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "version": {
+                    "description": "Version identifier for the information",
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                }
+            },
+            "required": [
+                "name"
+            ],
+            "title": "Media",
+            "type": "object"
+        },
+        "Organization": {
+            "additionalProperties": false,
+            "description": "An organization such as a company, institution, or association",
+            "properties": {
+                "customProperties": {
+                    "description": "map(string -> map(string -> string))",
+                    "items": {
+                        "$ref": "#/$defs/KeyMapOfStringMapEntry"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "customTags": {
+                    "description": "map(string -> boolean)",
+                    "items": {
+                        "$ref": "#/$defs/KeyBoolMapEntry"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "id": {
+                    "description": "Unique identifier within the schema. Must start with a letter and contain only letters, digits, underscores, hyphens, colons, semicolons, or periods. DTMI is one acceptable example.",
+                    "type": "string"
+                },
+                "identifiers": {
+                    "description": "map(string -> string)",
+                    "items": {
+                        "$ref": "#/$defs/KeyStringMapEntry"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "memberOf": {
+                    "description": "Indicates membership in an organization. Note that componency (e.g., departments of a corporation) are expressed using the more generic Organization.isPartOf property.",
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "name": {
+                    "description": "Machine or Human-readable name",
+                    "type": "string"
+                },
+                "owns": {
+                    "description": " Indicates ownership of some thing, e.g., a building, an asset, an organization, etc.",
+                    "items": {
+                        "$ref": "#/$defs/Resource"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                }
+            },
+            "required": [
+                "id",
+                "name"
+            ],
+            "title": "Organization",
+            "type": "object"
+        },
+        "OutdoorSpace": {
+            "additionalProperties": false,
+            "description": "An outdoor space associated with a site or building.",
+            "properties": {
+                "address": {
+                    "description": "Address of the architecture",
+                    "items": {
+                        "$ref": "#/$defs/PostalAddress"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "adjacentElement": {
+                    "description": "Building element adjacent to this architecture",
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "architectedBy": {
+                    "description": "Agent or resource that architected this structure",
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "area": {
+                    "description": "Area of the architecture",
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "capacity": {
+                    "description": "Capacity of the architecture",
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "constructedBy": {
+                    "description": "Agent or resource that constructed this architecture",
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "containsElement": {
+                    "description": "Building element contained within this architecture",
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "customProperties": {
+                    "description": "map(string -> map(string -> string))",
+                    "items": {
+                        "$ref": "#/$defs/KeyMapOfStringMapEntry"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "customTags": {
+                    "description": "map(string -> boolean)",
+                    "items": {
+                        "$ref": "#/$defs/KeyBoolMapEntry"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "description": {
+                    "description": "A textual description of the resource",
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "documentation": {
+                    "description": "Documentation related to this asset",
+                    "items": {
+                        "$ref": "#/$defs/Document"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "geometry": {
+                    "anyOf": [
+                        {
+                            "$ref": "#/$defs/Geometry"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ],
+                    "description": "Polygon representing the spatial extent of this Space."
+                },
+                "georeference": {
+                    "anyOf": [
+                        {
+                            "$ref": "#/$defs/Georeference"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ],
+                    "description": "A georeference creates a relationship between the local coordinate system used within a building (e.g., measured in meters) and a geographic coordinate system (e.g., lat, long, alt), such that locally placed Spaces can be resolved and rendered in that geographic coordinate system (e.g., for mapping purposes)."
+                },
+                "hasPart": {
+                    "description": "The subject is composed in part of the entity given by the object.",
+                    "items": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "string"
+                            }
+                        ],
+                        "type": "string"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "hasPoint": {
+                    "description": "Point associated with this architecture",
+                    "items": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "string"
+                            }
+                        ],
+                        "type": "string"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "id": {
+                    "description": "Unique identifier within the schema. Must start with a letter and contain only letters, digits, underscores, hyphens, colons, semicolons, or periods. DTMI is one acceptable example.",
+                    "type": "string"
+                },
+                "identifiers": {
+                    "description": "map(string -> string)",
+                    "items": {
+                        "$ref": "#/$defs/KeyStringMapEntry"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "intersectingElement": {
+                    "description": "Building element intersecting with this architecture",
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "isFedBy": {
+                    "description": "Resource that feeds this architecture",
+                    "items": {
+                        "$ref": "#/$defs/Resource"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "isLocationOf": {
+                    "description": "Subject is the physical location encapsulating the object.",
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "isPartOf": {
+                    "anyOf": [
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ],
+                    "type": "string"
+                },
+                "name": {
+                    "description": "Machine or Human-readable name",
+                    "type": "string"
+                },
+                "operatedBy": {
+                    "description": "Agent or resource that operates this architecture",
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "ownedBy": {
+                    "description": "Agent or resource that owns this architecture",
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                }
+            },
+            "required": [
+                "id",
+                "name"
+            ],
+            "title": "OutdoorSpace",
+            "type": "object"
+        },
+        "Point": {
+            "additionalProperties": false,
+            "description": "A sensor, actuator, or data point associated with equipment.",
+            "properties": {
+                "aggregate": {
+                    "$ref": "#/$defs/AggregateEnum",
+                    "description": "Aggregation function or method for point data processing"
+                },
+                "customProperties": {
+                    "description": "map(string -> map(string -> string))",
+                    "items": {
+                        "$ref": "#/$defs/KeyMapOfStringMapEntry"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "customTags": {
+                    "description": "map(string -> boolean)",
+                    "items": {
+                        "$ref": "#/$defs/KeyBoolMapEntry"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "hasQuantity": {
+                    "$ref": "#/$defs/QuantityEnum",
+                    "description": "Physical quantity measured by this point"
+                },
+                "hasSubstance": {
+                    "$ref": "#/$defs/SubstanceEnum",
+                    "description": "Substance associated with this point"
+                },
+                "id": {
+                    "description": "Unique identifier within the schema. Must start with a letter and contain only letters, digits, underscores, hyphens, colons, semicolons, or periods. DTMI is one acceptable example.",
+                    "type": "string"
+                },
+                "identifiers": {
+                    "description": "map(string -> string)",
+                    "items": {
+                        "$ref": "#/$defs/KeyStringMapEntry"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "isPointOf": {
+                    "description": "Equipment that this point belongs to",
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "name": {
+                    "description": "Machine or Human-readable name",
+                    "type": "string"
+                }
+            },
+            "required": [
+                "id",
+                "name"
+            ],
+            "title": "Point",
+            "type": "object"
+        },
+        "PointExt": {
+            "additionalProperties": false,
+            "description": "A point (sensor/actuator) in a smart building context.",
+            "properties": {
+                "aggregate": {
+                    "$ref": "#/$defs/AggregateEnum",
+                    "description": "Aggregation function or method for point data processing"
+                },
+                "customProperties": {
+                    "description": "map(string -> map(string -> string))",
+                    "items": {
+                        "$ref": "#/$defs/KeyMapOfStringMapEntry"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "customTags": {
+                    "description": "map(string -> boolean)",
+                    "items": {
+                        "$ref": "#/$defs/KeyBoolMapEntry"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "hasQuantity": {
+                    "$ref": "#/$defs/QuantityEnum",
+                    "description": "Physical quantity measured by this point"
+                },
+                "hasSubstance": {
+                    "$ref": "#/$defs/SubstanceEnum",
+                    "description": "Substance associated with this point"
+                },
+                "id": {
+                    "description": "Unique identifier within the schema. Must start with a letter and contain only letters, digits, underscores, hyphens, colons, semicolons, or periods. DTMI is one acceptable example.",
+                    "type": "string"
+                },
+                "identifiers": {
+                    "description": "map(string -> string)",
+                    "items": {
+                        "$ref": "#/$defs/KeyStringMapEntry"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "isPointOf": {
+                    "anyOf": [
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ],
+                    "description": "Equipment that this point belongs to",
+                    "type": "string"
+                },
+                "maxPresValue": {
+                    "description": "Maximum plausible reading",
+                    "type": [
+                        "number",
+                        "null"
+                    ]
+                },
+                "minPresValue": {
+                    "description": "Minimum plausible reading",
+                    "type": [
+                        "number",
+                        "null"
+                    ]
+                },
+                "name": {
+                    "description": "Machine or Human-readable name",
+                    "type": "string"
+                },
+                "pointSpecification": {
+                    "$ref": "#/$defs/PointSpecificationEnum",
+                    "description": "Point specification category as shown in equipment point list. English is recommended."
+                },
+                "pointType": {
+                    "description": "Point type - a profile or template name used to refer to the telemetry format obtainable from the device or point. Specific definitions are provided separately in schema files.",
+                    "type": "string"
+                },
+                "scale": {
+                    "description": "Scale factor for raw value conversion",
+                    "type": [
+                        "number",
+                        "null"
+                    ]
+                },
+                "unit": {
+                    "$ref": "#/$defs/UnitEnum",
+                    "description": "Measurement unit (enum key; symbol can be taken from annotations)"
+                }
+            },
+            "required": [
+                "pointType",
+                "id",
+                "name"
+            ],
+            "title": "PointExt",
+            "type": "object"
+        },
+        "PointSpecificationEnum": {
+            "description": "Point specification categories for equipment point lists",
+            "enum": [
+                "Alarm",
+                "Command",
+                "Setpoint",
+                "Measurement",
+                "Metering",
+                "Status"
+            ],
+            "title": "PointSpecificationEnum",
+            "type": "string"
+        },
+        "PostalAddress": {
+            "additionalProperties": false,
+            "description": "A postal address",
+            "properties": {
+                "checksum": {
+                    "description": "Checksum or hash of the information content",
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "customProperties": {
+                    "description": "map(string -> map(string -> string))",
+                    "items": {
+                        "$ref": "#/$defs/KeyMapOfStringMapEntry"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "customTags": {
+                    "description": "map(string -> boolean)",
+                    "items": {
+                        "$ref": "#/$defs/KeyBoolMapEntry"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "description": {
+                    "description": "A textual description of the resource",
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "format": {
+                    "description": "MIME type or format identifier for the information",
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "identifiers": {
+                    "description": "map(string -> string)",
+                    "items": {
+                        "$ref": "#/$defs/KeyStringMapEntry"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "language": {
+                    "description": "Language code (ISO 639-1) of the information content",
+                    "pattern": "^[a-z]{2}(-[A-Z]{2})?$",
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "name": {
+                    "description": "Machine or Human-readable name",
+                    "type": "string"
+                },
+                "size": {
+                    "description": "Size of the information resource in bytes",
+                    "type": [
+                        "integer",
+                        "null"
+                    ]
+                },
+                "url": {
+                    "description": "URL or URI pointing to the information resource",
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "version": {
+                    "description": "Version identifier for the information",
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                }
+            },
+            "required": [
+                "name"
+            ],
+            "title": "PostalAddress",
+            "type": "object"
+        },
+        "QuantityEnum": {
+            "description": "Physical quantities that can be measured or monitored by points",
+            "enum": [
+                "Absolute_Humidity",
+                "Acceleration_Time",
+                "Active_Energy",
+                "Active_Power",
+                "Air_Quality",
+                "Alternating_Current_Frequency",
+                "Ammonia_Concentration",
+                "Angle",
+                "Apparent_Energy",
+                "Apparent_Power",
+                "Atmospheric_Pressure",
+                "CO2_Concentration",
+                "CO_Concentration",
+                "Capacity",
+                "Cloudage",
+                "Complex_Power",
+                "Conductivity",
+                "Current_Angle",
+                "Current_Imbalance",
+                "Current_Total_Harmonic_Distortion",
+                "Deceleration_Time",
+                "Dewpoint",
+                "Differential_CO2_Concentration",
+                "Differential_CO_Concentration",
+                "Differential_Dry_Bulb_Temperature",
+                "Differential_Dynamic_Pressure",
+                "Differential_Pressure",
+                "Differential_Static_Pressure",
+                "Differential_Temperature",
+                "Direction",
+                "Dry_Bulb_Temperature",
+                "Dynamic_Pressure",
+                "Electric_Current",
+                "Electric_Energy",
+                "Electric_Power",
+                "Energy",
+                "Enthalpy",
+                "Flow",
+                "Flow_Loss",
+                "Formaldehyde_Concentration",
+                "Frequency",
+                "GrainsOfMoisture",
+                "Humidity",
+                "Illuminance",
+                "Irradiance",
+                "Level",
+                "Linear_Speed",
+                "Luminance",
+                "Luminous_Flux",
+                "Luminous_Intensity",
+                "Mass",
+                "Methane_Concentration",
+                "NO2_Concentration",
+                "Occupancy",
+                "Occupancy_Count",
+                "Occupancy_Percentage",
+                "Operative_Temperature",
+                "Ozone_Concentration",
+                "PM10_Concentration",
+                "PM1_Concentration",
+                "PM2_5_Concentration",
+                "Peak_Power",
+                "Phasor",
+                "Phasor_Angle",
+                "Phasor_Magnitude",
+                "Position",
+                "Power",
+                "Power_Factor",
+                "Precipitation",
+                "Pressure",
+                "Radiance",
+                "Radiant_Temperature",
+                "Radioactivity_Concentration",
+                "Radon_Concentration",
+                "Reactive_Energy",
+                "Reactive_Power",
+                "Real_Power",
+                "Relative_Humidity",
+                "Rotational_Speed",
+                "Solar_Irradiance",
+                "Solar_Radiance",
+                "Speed",
+                "Static_Pressure",
+                "TVOC_Concentration",
+                "Temperature",
+                "Thermal_Energy",
+                "Thermal_Power",
+                "Time",
+                "Torque",
+                "Velocity_Pressure",
+                "Voltage",
+                "Voltage_Angle",
+                "Voltage_Imbalance",
+                "Weather_Condition",
+                "Wet_Bulb_Temperature",
+                "Wind_Direction"
+            ],
+            "title": "QuantityEnum",
+            "type": "string"
+        },
+        "Room": {
+            "additionalProperties": false,
+            "description": "A room within a building.",
+            "properties": {
+                "address": {
+                    "description": "Address of the architecture",
+                    "items": {
+                        "$ref": "#/$defs/PostalAddress"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "adjacentElement": {
+                    "description": "Building element adjacent to this architecture",
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "architectedBy": {
+                    "description": "Agent or resource that architected this structure",
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "area": {
+                    "description": "Area of the architecture",
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "capacity": {
+                    "description": "Capacity of the architecture",
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "constructedBy": {
+                    "description": "Agent or resource that constructed this architecture",
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "containsElement": {
+                    "description": "Building element contained within this architecture",
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "customProperties": {
+                    "description": "map(string -> map(string -> string))",
+                    "items": {
+                        "$ref": "#/$defs/KeyMapOfStringMapEntry"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "customTags": {
+                    "description": "map(string -> boolean)",
+                    "items": {
+                        "$ref": "#/$defs/KeyBoolMapEntry"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "description": {
+                    "description": "A textual description of the resource",
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "documentation": {
+                    "description": "Documentation related to this asset",
+                    "items": {
+                        "$ref": "#/$defs/Document"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "geometry": {
+                    "anyOf": [
+                        {
+                            "$ref": "#/$defs/Geometry"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ],
+                    "description": "Polygon representing the spatial extent of this Space."
+                },
+                "georeference": {
+                    "anyOf": [
+                        {
+                            "$ref": "#/$defs/Georeference"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ],
+                    "description": "A georeference creates a relationship between the local coordinate system used within a building (e.g., measured in meters) and a geographic coordinate system (e.g., lat, long, alt), such that locally placed Spaces can be resolved and rendered in that geographic coordinate system (e.g., for mapping purposes)."
+                },
+                "hasPart": {
+                    "description": "The subject is composed in part of the entity given by the object.",
+                    "items": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "string"
+                            }
+                        ],
+                        "type": "string"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "hasPoint": {
+                    "description": "Point associated with this architecture",
+                    "items": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "string"
+                            }
+                        ],
+                        "type": "string"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "id": {
+                    "description": "Unique identifier within the schema. Must start with a letter and contain only letters, digits, underscores, hyphens, colons, semicolons, or periods. DTMI is one acceptable example.",
+                    "type": "string"
+                },
+                "identifiers": {
+                    "description": "map(string -> string)",
+                    "items": {
+                        "$ref": "#/$defs/KeyStringMapEntry"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "intersectingElement": {
+                    "description": "Building element intersecting with this architecture",
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "isFedBy": {
+                    "description": "Resource that feeds this architecture",
+                    "items": {
+                        "$ref": "#/$defs/Resource"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "isLocationOf": {
+                    "description": "Subject is the physical location encapsulating the object.",
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "isPartOf": {
+                    "anyOf": [
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ],
+                    "type": "string"
+                },
+                "name": {
+                    "description": "Machine or Human-readable name",
+                    "type": "string"
+                },
+                "operatedBy": {
+                    "description": "Agent or resource that operates this architecture",
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "ownedBy": {
+                    "description": "Agent or resource that owns this architecture",
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                }
+            },
+            "required": [
+                "id",
+                "name"
+            ],
+            "title": "Room",
+            "type": "object"
+        },
+        "Schema": {
+            "additionalProperties": false,
+            "description": "A schema definition file",
+            "properties": {
+                "checksum": {
+                    "description": "Checksum or hash of the information content",
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "customProperties": {
+                    "description": "map(string -> map(string -> string))",
+                    "items": {
+                        "$ref": "#/$defs/KeyMapOfStringMapEntry"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "customTags": {
+                    "description": "map(string -> boolean)",
+                    "items": {
+                        "$ref": "#/$defs/KeyBoolMapEntry"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "description": {
+                    "description": "A textual description of the resource",
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "format": {
+                    "description": "MIME type or format identifier for the information",
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "identifiers": {
+                    "description": "map(string -> string)",
+                    "items": {
+                        "$ref": "#/$defs/KeyStringMapEntry"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "language": {
+                    "description": "Language code (ISO 639-1) of the information content",
+                    "pattern": "^[a-z]{2}(-[A-Z]{2})?$",
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "name": {
+                    "description": "Machine or Human-readable name",
+                    "type": "string"
+                },
+                "size": {
+                    "description": "Size of the information resource in bytes",
+                    "type": [
+                        "integer",
+                        "null"
+                    ]
+                },
+                "url": {
+                    "description": "URL or URI pointing to the information resource",
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "version": {
+                    "description": "Version identifier for the information",
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                }
+            },
+            "required": [
+                "name"
+            ],
+            "title": "Schema",
+            "type": "object"
+        },
+        "Site": {
+            "additionalProperties": false,
+            "description": "A piece of land upon which zero or more buildings may be situated.",
+            "properties": {
+                "address": {
+                    "description": "Address of the architecture",
+                    "items": {
+                        "$ref": "#/$defs/PostalAddress"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "adjacentElement": {
+                    "description": "Building element adjacent to this architecture",
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "architectedBy": {
+                    "description": "Agent or resource that architected this structure",
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "area": {
+                    "description": "Area of the architecture",
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "capacity": {
+                    "description": "Capacity of the architecture",
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "constructedBy": {
+                    "description": "Agent or resource that constructed this architecture",
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "containsElement": {
+                    "description": "Building element contained within this architecture",
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "customProperties": {
+                    "description": "map(string -> map(string -> string))",
+                    "items": {
+                        "$ref": "#/$defs/KeyMapOfStringMapEntry"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "customTags": {
+                    "description": "map(string -> boolean)",
+                    "items": {
+                        "$ref": "#/$defs/KeyBoolMapEntry"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "description": {
+                    "description": "A textual description of the resource",
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "documentation": {
+                    "description": "Documentation related to this asset",
+                    "items": {
+                        "$ref": "#/$defs/Document"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "geometry": {
+                    "anyOf": [
+                        {
+                            "$ref": "#/$defs/Geometry"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ],
+                    "description": "Polygon representing the spatial extent of this Space."
+                },
+                "georeference": {
+                    "anyOf": [
+                        {
+                            "$ref": "#/$defs/Georeference"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ],
+                    "description": "A georeference creates a relationship between the local coordinate system used within a building (e.g., measured in meters) and a geographic coordinate system (e.g., lat, long, alt), such that locally placed Spaces can be resolved and rendered in that geographic coordinate system (e.g., for mapping purposes)."
+                },
+                "hasPart": {
+                    "description": "The subject is composed in part of the entity given by the object.",
+                    "items": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "string"
+                            }
+                        ],
+                        "type": "string"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "hasPoint": {
+                    "description": "Point associated with this architecture",
+                    "items": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "string"
+                            }
+                        ],
+                        "type": "string"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "id": {
+                    "description": "Unique identifier within the schema. Must start with a letter and contain only letters, digits, underscores, hyphens, colons, semicolons, or periods. DTMI is one acceptable example.",
+                    "type": "string"
+                },
+                "identifiers": {
+                    "description": "map(string -> string)",
+                    "items": {
+                        "$ref": "#/$defs/KeyStringMapEntry"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "intersectingElement": {
+                    "description": "Building element intersecting with this architecture",
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "isFedBy": {
+                    "description": "Resource that feeds this architecture",
+                    "items": {
+                        "$ref": "#/$defs/Resource"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "isLocationOf": {
+                    "description": "Subject is the physical location encapsulating the object.",
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "isPartOf": {
+                    "anyOf": [
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ],
+                    "type": "string"
+                },
+                "name": {
+                    "description": "Machine or Human-readable name",
+                    "type": "string"
+                },
+                "operatedBy": {
+                    "description": "Agent or resource that operates this architecture",
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "ownedBy": {
+                    "description": "Agent or resource that owns this architecture",
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                }
+            },
+            "required": [
+                "id",
+                "name"
+            ],
+            "title": "Site",
+            "type": "object"
+        },
+        "Space": {
+            "additionalProperties": false,
+            "description": "A contiguous part of the physical world that contains or can contain sub-spaces. E.g., a Region can contain many Sites, which in turn can contain many Buildings.",
+            "properties": {
+                "customProperties": {
+                    "description": "map(string -> map(string -> string))",
+                    "items": {
+                        "$ref": "#/$defs/KeyMapOfStringMapEntry"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "customTags": {
+                    "description": "map(string -> boolean)",
+                    "items": {
+                        "$ref": "#/$defs/KeyBoolMapEntry"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "description": {
+                    "description": "A textual description of the resource",
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "geometry": {
+                    "anyOf": [
+                        {
+                            "$ref": "#/$defs/Geometry"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ],
+                    "description": "Polygon representing the spatial extent of this Space."
+                },
+                "georeference": {
+                    "anyOf": [
+                        {
+                            "$ref": "#/$defs/Georeference"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ],
+                    "description": "A georeference creates a relationship between the local coordinate system used within a building (e.g., measured in meters) and a geographic coordinate system (e.g., lat, long, alt), such that locally placed Spaces can be resolved and rendered in that geographic coordinate system (e.g., for mapping purposes)."
+                },
+                "hasPart": {
+                    "description": "The subject is composed in part of the entity given by the object.",
+                    "items": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "string"
+                            }
+                        ],
+                        "type": "string"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "id": {
+                    "description": "Unique identifier within the schema. Must start with a letter and contain only letters, digits, underscores, hyphens, colons, semicolons, or periods. DTMI is one acceptable example.",
+                    "type": "string"
+                },
+                "identifiers": {
+                    "description": "map(string -> string)",
+                    "items": {
+                        "$ref": "#/$defs/KeyStringMapEntry"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "isLocationOf": {
+                    "description": "Subject is the physical location encapsulating the object.",
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "isPartOf": {
+                    "anyOf": [
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ],
+                    "type": "string"
+                },
+                "name": {
+                    "description": "Machine or Human-readable name",
+                    "type": "string"
+                }
+            },
+            "required": [
+                "id",
+                "name"
+            ],
+            "title": "Space",
+            "type": "object"
+        },
+        "SubstanceEnum": {
+            "description": "Types of substances that can be fed between equipment",
+            "enum": [
+                "ACElec",
+                "Air",
+                "BlowdownWater",
+                "ChilledWater",
+                "ColdDomesticWater",
+                "Condensate",
+                "CondenserWater",
+                "DCElec",
+                "Diesel",
+                "DriveElec",
+                "Ethernet",
+                "ExhaustAir",
+                "Freight",
+                "FuelOil",
+                "Gasoline",
+                "GreaseExhaustAir",
+                "HotDomesticWater",
+                "HotWater",
+                "IrrigationWater",
+                "Light",
+                "MakeupWater",
+                "NaturalGas",
+                "NonPotableDomesticWater",
+                "OutsideAir",
+                "People",
+                "Propane",
+                "RecircHotDomesticWater",
+                "Refrig",
+                "ReturnAir",
+                "SprinklerWater",
+                "Steam",
+                "StormDrainage",
+                "SupplyAir",
+                "TransferAir",
+                "WasteVentDrainage",
+                "Water"
+            ],
+            "title": "SubstanceEnum",
+            "type": "string"
+        },
+        "UnitEnum": {
+            "description": "Allowed measurement units",
+            "enum": [
+                "celsius",
+                "percent",
+                "ppm"
+            ],
+            "title": "UnitEnum",
+            "type": "string"
+        },
+        "Zone": {
+            "additionalProperties": false,
+            "description": "A sub-zone within or outside of a building defined to support some technology and/or use.",
+            "properties": {
+                "address": {
+                    "description": "Address of the architecture",
+                    "items": {
+                        "$ref": "#/$defs/PostalAddress"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "adjacentElement": {
+                    "description": "Building element adjacent to this architecture",
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "architectedBy": {
+                    "description": "Agent or resource that architected this structure",
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "area": {
+                    "description": "Area of the architecture",
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "capacity": {
+                    "description": "Capacity of the architecture",
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "constructedBy": {
+                    "description": "Agent or resource that constructed this architecture",
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "containsElement": {
+                    "description": "Building element contained within this architecture",
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "customProperties": {
+                    "description": "map(string -> map(string -> string))",
+                    "items": {
+                        "$ref": "#/$defs/KeyMapOfStringMapEntry"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "customTags": {
+                    "description": "map(string -> boolean)",
+                    "items": {
+                        "$ref": "#/$defs/KeyBoolMapEntry"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "description": {
+                    "description": "A textual description of the resource",
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "documentation": {
+                    "description": "Documentation related to this asset",
+                    "items": {
+                        "$ref": "#/$defs/Document"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "geometry": {
+                    "anyOf": [
+                        {
+                            "$ref": "#/$defs/Geometry"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ],
+                    "description": "Polygon representing the spatial extent of this Space."
+                },
+                "georeference": {
+                    "anyOf": [
+                        {
+                            "$ref": "#/$defs/Georeference"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ],
+                    "description": "A georeference creates a relationship between the local coordinate system used within a building (e.g., measured in meters) and a geographic coordinate system (e.g., lat, long, alt), such that locally placed Spaces can be resolved and rendered in that geographic coordinate system (e.g., for mapping purposes)."
+                },
+                "hasPart": {
+                    "description": "The subject is composed in part of the entity given by the object.",
+                    "items": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "string"
+                            }
+                        ],
+                        "type": "string"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "hasPoint": {
+                    "description": "Point associated with this architecture",
+                    "items": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "string"
+                            }
+                        ],
+                        "type": "string"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "id": {
+                    "description": "Unique identifier within the schema. Must start with a letter and contain only letters, digits, underscores, hyphens, colons, semicolons, or periods. DTMI is one acceptable example.",
+                    "type": "string"
+                },
+                "identifiers": {
+                    "description": "map(string -> string)",
+                    "items": {
+                        "$ref": "#/$defs/KeyStringMapEntry"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "intersectingElement": {
+                    "description": "Building element intersecting with this architecture",
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "isFedBy": {
+                    "description": "Resource that feeds this architecture",
+                    "items": {
+                        "$ref": "#/$defs/Resource"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "isLocationOf": {
+                    "description": "Subject is the physical location encapsulating the object.",
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "isPartOf": {
+                    "anyOf": [
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ],
+                    "type": "string"
+                },
+                "name": {
+                    "description": "Machine or Human-readable name",
+                    "type": "string"
+                },
+                "operatedBy": {
+                    "description": "Agent or resource that operates this architecture",
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                },
+                "ownedBy": {
+                    "description": "Agent or resource that owns this architecture",
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": [
+                        "array",
+                        "null"
+                    ]
+                }
+            },
+            "required": [
+                "id",
+                "name"
+            ],
+            "title": "Zone",
+            "type": "object"
+        }
+    },
+    "$id": "https://www.sbco.or.jp/ont/schema",
+    "$schema": "https://json-schema.org/draft/2019-09/schema",
+    "additionalProperties": true,
+    "description": "A piece of land upon which zero or more buildings may be situated.",
+    "metamodel_version": "1.7.0",
+    "properties": {
+        "address": {
+            "description": "Address of the architecture",
+            "items": {
+                "$ref": "#/$defs/PostalAddress"
+            },
+            "type": [
+                "array",
+                "null"
+            ]
+        },
+        "adjacentElement": {
+            "description": "Building element adjacent to this architecture",
+            "items": {
+                "type": "string"
+            },
+            "type": [
+                "array",
+                "null"
+            ]
+        },
+        "architectedBy": {
+            "description": "Agent or resource that architected this structure",
+            "items": {
+                "type": "string"
+            },
+            "type": [
+                "array",
+                "null"
+            ]
+        },
+        "area": {
+            "description": "Area of the architecture",
+            "type": [
+                "string",
+                "null"
+            ]
+        },
+        "capacity": {
+            "description": "Capacity of the architecture",
+            "type": [
+                "string",
+                "null"
+            ]
+        },
+        "constructedBy": {
+            "description": "Agent or resource that constructed this architecture",
+            "items": {
+                "type": "string"
+            },
+            "type": [
+                "array",
+                "null"
+            ]
+        },
+        "containsElement": {
+            "description": "Building element contained within this architecture",
+            "items": {
+                "type": "string"
+            },
+            "type": [
+                "array",
+                "null"
+            ]
+        },
+        "customProperties": {
+            "description": "map(string -> map(string -> string))",
+            "items": {
+                "$ref": "#/$defs/KeyMapOfStringMapEntry"
+            },
+            "type": [
+                "array",
+                "null"
+            ]
+        },
+        "customTags": {
+            "description": "map(string -> boolean)",
+            "items": {
+                "$ref": "#/$defs/KeyBoolMapEntry"
+            },
+            "type": [
+                "array",
+                "null"
+            ]
+        },
+        "description": {
+            "description": "A textual description of the resource",
+            "type": [
+                "string",
+                "null"
+            ]
+        },
+        "documentation": {
+            "description": "Documentation related to this asset",
+            "items": {
+                "$ref": "#/$defs/Document"
+            },
+            "type": [
+                "array",
+                "null"
+            ]
+        },
+        "geometry": {
+            "anyOf": [
+                {
+                    "$ref": "#/$defs/Geometry"
+                },
+                {
+                    "type": "null"
+                }
+            ],
+            "description": "Polygon representing the spatial extent of this Space."
+        },
+        "georeference": {
+            "anyOf": [
+                {
+                    "$ref": "#/$defs/Georeference"
+                },
+                {
+                    "type": "null"
+                }
+            ],
+            "description": "A georeference creates a relationship between the local coordinate system used within a building (e.g., measured in meters) and a geographic coordinate system (e.g., lat, long, alt), such that locally placed Spaces can be resolved and rendered in that geographic coordinate system (e.g., for mapping purposes)."
+        },
+        "hasPart": {
+            "description": "The subject is composed in part of the entity given by the object.",
+            "items": {
+                "anyOf": [
+                    {
+                        "type": "string"
+                    },
+                    {
+                        "type": "string"
+                    },
+                    {
+                        "type": "string"
+                    },
+                    {
+                        "type": "string"
+                    },
+                    {
+                        "type": "string"
+                    },
+                    {
+                        "type": "string"
+                    },
+                    {
+                        "type": "string"
+                    }
+                ],
+                "type": "string"
+            },
+            "type": [
+                "array",
+                "null"
+            ]
+        },
+        "hasPoint": {
+            "description": "Point associated with this architecture",
+            "items": {
+                "anyOf": [
+                    {
+                        "type": "string"
+                    },
+                    {
+                        "type": "string"
+                    }
+                ],
+                "type": "string"
+            },
+            "type": [
+                "array",
+                "null"
+            ]
+        },
+        "id": {
+            "description": "Unique identifier within the schema. Must start with a letter and contain only letters, digits, underscores, hyphens, colons, semicolons, or periods. DTMI is one acceptable example.",
+            "type": "string"
+        },
+        "identifiers": {
+            "description": "map(string -> string)",
+            "items": {
+                "$ref": "#/$defs/KeyStringMapEntry"
+            },
+            "type": [
+                "array",
+                "null"
+            ]
+        },
+        "intersectingElement": {
+            "description": "Building element intersecting with this architecture",
+            "items": {
+                "type": "string"
+            },
+            "type": [
+                "array",
+                "null"
+            ]
+        },
+        "isFedBy": {
+            "description": "Resource that feeds this architecture",
+            "items": {
+                "$ref": "#/$defs/Resource"
+            },
+            "type": [
+                "array",
+                "null"
+            ]
+        },
+        "isLocationOf": {
+            "description": "Subject is the physical location encapsulating the object.",
+            "items": {
+                "type": "string"
+            },
+            "type": [
+                "array",
+                "null"
+            ]
+        },
+        "isPartOf": {
+            "anyOf": [
+                {
+                    "type": "string"
+                },
+                {
+                    "type": "string"
+                },
+                {
+                    "type": "string"
+                },
+                {
+                    "type": "string"
+                },
+                {
+                    "type": "string"
+                },
+                {
+                    "type": "string"
+                },
+                {
+                    "type": "string"
+                },
+                {
+                    "type": "null"
+                }
+            ],
+            "type": "string"
+        },
+        "name": {
+            "description": "Machine or Human-readable name",
+            "type": "string"
+        },
+        "operatedBy": {
+            "description": "Agent or resource that operates this architecture",
+            "items": {
+                "type": "string"
+            },
+            "type": [
+                "array",
+                "null"
+            ]
+        },
+        "ownedBy": {
+            "description": "Agent or resource that owns this architecture",
+            "items": {
+                "type": "string"
+            },
+            "type": [
+                "array",
+                "null"
+            ]
+        }
+    },
+    "required": [
+        "id",
+        "name"
+    ],
+    "title": "building_model",
+    "type": "object",
+    "version": null
+}
+

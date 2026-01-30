@@ -1,0 +1,12 @@
+﻿{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "baseUrl": ".",
+    "types": ["node"],
+    "paths": {
+      "@repo/core": ["../../packages/core/src/index.ts"]
+    }
+  },
+  "include": ["src", "vite.config.ts", "playwright.config.ts", "e2e"]
+}
