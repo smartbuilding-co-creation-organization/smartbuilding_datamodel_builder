@@ -274,6 +274,16 @@
   - [ ] `locator/expect` ベースで安定している
 - 実行すべきコマンド（最低限）: `pnpm test:e2e`
 
+31) CSV 読み込み → データモデル生成（JSON Schema 構造）ユニットテスト
+- 目的: CSV 読み込み後に期待する階層構造/プロパティが正しくマッピングされることを担保する
+- 変更対象（パス）: `packages/core/src`, `packages/core/test`
+- 受入基準:
+  - [ ] `schema/building_model.schema.json` の定義に沿った階層構造が生成される
+  - [ ] CSV 列が期待プロパティにマッピングされる
+  - [ ] snake_case は lowerCamel に変換される
+  - [ ] 既に lowerCamel の列名はそのままマッピングされる
+- 実行すべきコマンド（最低限）: `pnpm test`
+
 ## 5. リスクと軽減策
 - DataGrid 編集の罠
   - [ ] `processRowUpdate` と編集イベントの差分を把握する

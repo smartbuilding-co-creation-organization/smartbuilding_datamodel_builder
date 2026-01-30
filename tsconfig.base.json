@@ -6,6 +6,7 @@
     "lib": ["ES2020", "DOM", "DOM.Iterable"],
     "skipLibCheck": true,
     "strict": true,
+    "resolveJsonModule": true,
     "noEmit": true,
     "isolatedModules": true,
     "noUnusedLocals": true,

@@ -4,7 +4,7 @@ Core logic for the building model editor. This package is framework-agnostic and
 provides CSV parsing, tree construction, and validation.
 
 ## Exports
-- `parseCsv(text: string): RowRecord[]` - CSV parser with header normalization.
+- `parseCsv(text: string, options?: { schema?: SchemaRoot }): RowRecord[]` - CSV parser with header normalization and optional schema mapping.
 - `getLastHeader(): string[]` - Returns the most recent CSV header list.
 - `exportCsv(rows: RowRecord[]): string` - CSV serializer using the last header when available.
 - `exportRdf(rows: RowRecord[], options?): string` - Turtle RDF export using the OWL mapping.

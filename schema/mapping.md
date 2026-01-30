@@ -30,8 +30,8 @@ The core parser normalizes ID/Name as follows:
 - `name`: `name` → `pointName` → `deviceName` (first non-empty)
 
 ## 5) Unknown columns
-- MVP output ignores unknown CSV columns.
-- Preservation of unknown columns remains in CSV handling only.
+- Unknown CSV columns are captured into `customProperties` during schema mapping.
+- CSV round-trip still preserves the original columns in `exportCsv`.
 
 ## 6) Output format
 - RDF is emitted as Turtle with prefixes:

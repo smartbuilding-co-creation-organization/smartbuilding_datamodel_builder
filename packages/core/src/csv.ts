@@ -1,9 +1,14 @@
-﻿import Papa from 'papaparse';
+import Papa from 'papaparse';
+import { mapRowsToSchema, SchemaRoot } from './schema-mapping';
 import { RowRecord } from './types';
 
 let lastHeader: string[] = [];
 
-export function parseCsv(text: string): RowRecord[] {
+type ParseCsvOptions = {
+  schema?: SchemaRoot;
+};
+
+export function parseCsv(text: string, options: ParseCsvOptions = {}): RowRecord[] {
   const result = Papa.parse<RowRecord>(text, {
     header: true,
     skipEmptyLines: true,
@@ -27,7 +32,7 @@ export function parseCsv(text: string): RowRecord[] {
     lastHeader = result.meta.fields.filter((field) => field && field.trim().length > 0);
   }
 
-  return (result.data ?? [])
+  const rows = (result.data ?? [])
     .map((row) => {
       const record: RowRecord = {};
       for (const [key, value] of Object.entries(row)) {
@@ -43,6 +48,12 @@ export function parseCsv(text: string): RowRecord[] {
       return record;
     })
     .filter((record) => Object.values(record).some((value) => String(value).trim() !== ''));
+
+  if (options.schema) {
+    return mapRowsToSchema(rows, options.schema);
+  }
+
+  return rows;
 }
 
 export function getLastHeader(): string[] {

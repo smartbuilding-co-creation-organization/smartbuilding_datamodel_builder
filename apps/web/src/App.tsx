@@ -13,6 +13,7 @@ import {
   Node,
 } from '@repo/core';
 import { useAppStore } from './state/store';
+import schema from '../../../schema/building_model.schema.json';
 
 function buildColumns(rows: RowRecord[]): string[] {
   const header = getLastHeader();
@@ -120,7 +121,7 @@ export default function App() {
 
   const handleFile = async (file: File) => {
     const text = await file.text();
-    const parsed = parseCsv(text).map((row, index) => ({
+    const parsed = parseCsv(text, { schema }).map((row, index) => ({
       ...row,
       __rowId: row.id ? `${row.id}__${index}` : `row__${index}`,
     }));
