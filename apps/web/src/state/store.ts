@@ -26,6 +26,7 @@ type AppState = {
   ) => void;
   setSelectedId: (id: string) => void;
   updateRow: (oldRowId: string, row: RowRecord) => void;
+  setRows: (rows: RowRecord[]) => void;
 };
 
 function recompute(rows: RowRecord[], schema?: SchemaRoot) {
@@ -65,5 +66,9 @@ export const useAppStore = create<AppState>((set, get) => ({
       }
     }
     set({ rows: nextRows, tree, issues, selectedId: nextSelectedId });
+  },
+  setRows: (rows) => {
+    const { tree, issues } = recompute(rows, get().schema);
+    set({ rows, tree, issues });
   },
 }));

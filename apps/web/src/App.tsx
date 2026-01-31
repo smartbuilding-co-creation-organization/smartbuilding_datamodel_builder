@@ -4,6 +4,11 @@
   Button,
   ButtonGroup,
   Chip,
+  Divider,
+  List,
+  ListItemButton,
+  ListItemText,
+  MenuItem,
   Stack,
   TextField,
   Tooltip,
@@ -15,7 +20,12 @@ import { SimpleTreeView, TreeItem } from '@mui/x-tree-view';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   buildSchemaCache,
+  buildDeviceTemplatesFromCsv,
+  buildTemplatesZip,
+  applyTemplateToRows,
   computeDescendants,
+  DeviceTemplate,
+  DeviceTemplateDiff,
   exportCsv,
   exportRdf,
   exportYaml,
@@ -23,8 +33,11 @@ import {
   getRequiredPropsFromCache,
   inferRowKind,
   parseCsv,
+  parseDeviceTemplateYaml,
   RowRecord,
   Node,
+  serializeDeviceTemplate,
+  diffDeviceTemplate,
 } from '@repo/core';
 import { useAppStore } from './state/store';
 import schema from '../../../schema/building_model.schema.json';
@@ -35,6 +48,7 @@ type SchemaDefinition = {
 };
 
 type EditMode = 'csv' | 'model';
+type ViewMode = 'data' | 'templates';
 
 const KIND_TO_DEF: Record<string, string> = {
   site: 'Site',
@@ -110,6 +124,10 @@ function collectTreeIds(nodes: Node[]): string[] {
   return ids;
 }
 
+function templateKey(template: DeviceTemplate): string {
+  return `${template.namespace}:${template.deviceType}`;
+}
+
 function TreeLabel({ node }: { node: Node }) {
   return (
     <Stack direction="row" spacing={1} alignItems="center">
@@ -151,12 +169,24 @@ type UiScaleKey = keyof typeof uiScales;
 
 export default function App() {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const { csvRows, csvColumns, rows, tree, selectedId, issues, setData, setSelectedId, updateRow } =
-    useAppStore();
+  const templateInputRef = useRef<HTMLInputElement | null>(null);
+  const {
+    csvRows,
+    csvColumns,
+    rows,
+    tree,
+    selectedId,
+    issues,
+    setData,
+    setSelectedId,
+    updateRow,
+    setRows,
+  } = useAppStore();
   const [search, setSearch] = useState('');
   const [expandedItems, setExpandedItems] = useState<string[]>(['root']);
   const schemaCache = useMemo(() => buildSchemaCache(schema), []);
   const [uiScale, setUiScale] = useState<UiScaleKey>('compact');
+  const [activeView, setActiveView] = useState<ViewMode>('data');
   const [editMode, setEditMode] = useState<EditMode>('csv');
   const [newProperty, setNewProperty] = useState('');
   const [newPropertyValue, setNewPropertyValue] = useState('');
@@ -164,6 +194,22 @@ export default function App() {
   const [customPropertyDescriptions, setCustomPropertyDescriptions] = useState<
     Record<string, string>
   >({});
+  const [selectedTemplateKey, setSelectedTemplateKey] = useState('');
+  const [templateDrafts, setTemplateDrafts] = useState<Record<string, DeviceTemplate>>({});
+  const [templateLoadError, setTemplateLoadError] = useState('');
+  const [newTemplateProperty, setNewTemplateProperty] = useState<{
+    name: string;
+    pointType: string;
+    access: 'read' | 'readWrite';
+    description: string;
+    default: string;
+  }>({
+    name: '',
+    pointType: '',
+    access: 'read',
+    description: '',
+    default: '',
+  });
   const scale = uiScales[uiScale];
 
   const theme = useMemo(
@@ -222,6 +268,45 @@ export default function App() {
     });
     return map;
   }, [rows]);
+
+  const generatedTemplates = useMemo(() => buildDeviceTemplatesFromCsv(rows), [rows]);
+
+  const generatedTemplateMap = useMemo(
+    () => new Map(generatedTemplates.map((template) => [templateKey(template), template])),
+    [generatedTemplates],
+  );
+
+  const selectedGeneratedTemplate = useMemo(
+    () => (selectedTemplateKey ? generatedTemplateMap.get(selectedTemplateKey) : undefined),
+    [generatedTemplateMap, selectedTemplateKey],
+  );
+
+  const selectedTemplate = useMemo(
+    () => (selectedTemplateKey ? templateDrafts[selectedTemplateKey] : undefined),
+    [selectedTemplateKey, templateDrafts],
+  );
+
+  const activeTemplate = selectedTemplate ?? selectedGeneratedTemplate;
+
+  const templateDiff = useMemo<DeviceTemplateDiff | undefined>(() => {
+    if (!selectedGeneratedTemplate || !selectedTemplate) return undefined;
+    return diffDeviceTemplate(selectedGeneratedTemplate, selectedTemplate);
+  }, [selectedGeneratedTemplate, selectedTemplate]);
+
+  const templateDiffSets = useMemo(() => {
+    if (!templateDiff) {
+      return {
+        missing: new Set<string>(),
+        extra: new Set<string>(),
+        mismatched: new Set<string>(),
+      };
+    }
+    return {
+      missing: new Set(templateDiff.missing.map((prop) => prop.name)),
+      extra: new Set(templateDiff.extra.map((prop) => prop.name)),
+      mismatched: new Set(templateDiff.mismatched.map((prop) => prop.name)),
+    };
+  }, [templateDiff]);
 
   const filteredCsvRows = useMemo(() => {
     if (!selectedId || selectedId === 'root') return csvRows;
@@ -314,6 +399,16 @@ export default function App() {
     });
   }, [tree]);
 
+  useEffect(() => {
+    if (generatedTemplates.length === 0) {
+      if (selectedTemplateKey) setSelectedTemplateKey('');
+      return;
+    }
+    if (!selectedTemplateKey || !generatedTemplateMap.has(selectedTemplateKey)) {
+      setSelectedTemplateKey(templateKey(generatedTemplates[0]));
+    }
+  }, [generatedTemplateMap, generatedTemplates, selectedTemplateKey]);
+
   const csvGridColumns = useMemo<GridColDef[]>(
     () =>
       csvColumns.map((field) => ({
@@ -362,6 +457,54 @@ export default function App() {
     [],
   );
 
+  const templatePropertyColumns = useMemo<GridColDef[]>(
+    () => [
+      { field: 'name', headerName: 'プロパティ', flex: 1, minWidth: 160 },
+      {
+        field: 'pointType',
+        headerName: 'pointType',
+        flex: 1,
+        minWidth: 160,
+        editable: true,
+      },
+      {
+        field: 'access',
+        headerName: 'アクセス',
+        flex: 0.6,
+        minWidth: 120,
+        editable: true,
+      },
+      {
+        field: 'description',
+        headerName: '説明',
+        flex: 1.2,
+        minWidth: 200,
+        editable: true,
+      },
+      {
+        field: 'default',
+        headerName: 'デフォルト',
+        flex: 0.8,
+        minWidth: 140,
+        editable: true,
+      },
+    ],
+    [],
+  );
+
+  const templatePropertyRows = useMemo(
+    () =>
+      activeTemplate?.properties.map((prop) => ({
+        id: prop.name,
+        name: prop.name,
+        pointType: prop.pointType,
+        access: prop.access,
+        description: prop.description ?? '',
+        default: prop.default ?? '',
+      })) ?? [],
+    [activeTemplate],
+  );
+
   const handleFile = async (file: File) => {
     const text = await file.text();
     const rawRows = addRowIds(parseCsv(text));
@@ -399,6 +542,137 @@ export default function App() {
       [property]: value,
     } as RowRecord;
     updateRow(rowKey, nextRow);
+  };
+
+  const updateTemplateDraft = (
+    key: string,
+    updater: (current: DeviceTemplate) => DeviceTemplate,
+  ) => {
+    if (!key) return;
+    setTemplateDrafts((prev) => {
+      const base = prev[key] ?? generatedTemplateMap.get(key);
+      if (!base) return prev;
+      const updated = updater(base);
+      return { ...prev, [key]: updated };
+    });
+  };
+
+  const handleTemplateFieldChange = (field: 'className' | 'description', value: string) => {
+    if (!selectedTemplateKey) return;
+    updateTemplateDraft(selectedTemplateKey, (template) => ({
+      ...template,
+      [field]: value,
+    }));
+  };
+
+  const handleTemplatePropertyUpdate = (updated: {
+    name: string;
+    description?: string;
+    access: string;
+    default?: string;
+    pointType: string;
+  }) => {
+    if (!selectedTemplateKey) return;
+    updateTemplateDraft(selectedTemplateKey, (template) => ({
+      ...template,
+      properties: template.properties.map((prop) =>
+        prop.name === updated.name
+          ? {
+              ...prop,
+              description: updated.description,
+              access: updated.access === 'readWrite' ? 'readWrite' : 'read',
+              default: updated.default,
+              pointType: updated.pointType,
+            }
+          : prop,
+      ),
+    }));
+  };
+
+  const handleAddTemplateProperty = () => {
+    if (!selectedTemplateKey) return;
+    const name = newTemplateProperty.name.trim();
+    if (!name) return;
+    updateTemplateDraft(selectedTemplateKey, (template) => {
+      if (template.properties.some((prop) => prop.name === name)) return template;
+      return {
+        ...template,
+        properties: [
+          ...template.properties,
+          {
+            name,
+            description: newTemplateProperty.description.trim() || undefined,
+            access: newTemplateProperty.access,
+            default: newTemplateProperty.default.trim() || undefined,
+            pointType: newTemplateProperty.pointType.trim() || name,
+          },
+        ].sort((a, b) => a.name.localeCompare(b.name)),
+      };
+    });
+    setNewTemplateProperty({
+      name: '',
+      pointType: '',
+      access: 'read',
+      description: '',
+      default: '',
+    });
+  };
+
+  const handleLoadTemplateFile = async (file: File) => {
+    if (!selectedTemplateKey) return;
+    const text = await file.text();
+    try {
+      const parsed = parseDeviceTemplateYaml(text, {
+        namespace: selectedGeneratedTemplate?.namespace ?? 'default',
+        deviceType: selectedGeneratedTemplate?.deviceType ?? '',
+      });
+      updateTemplateDraft(selectedTemplateKey, () => parsed);
+      setTemplateLoadError('');
+    } catch (error) {
+      setTemplateLoadError(
+        error instanceof Error ? error.message : 'テンプレートの読み込みに失敗しました。',
+      );
+    }
+  };
+
+  const handleGenerateTemplate = () => {
+    if (!selectedTemplateKey || !selectedGeneratedTemplate) return;
+    updateTemplateDraft(selectedTemplateKey, () => selectedGeneratedTemplate);
+  };
+
+  const handleDownloadTemplateYaml = () => {
+    if (!activeTemplate) return;
+    const yamlText = serializeDeviceTemplate(activeTemplate);
+    const blob = new Blob([yamlText], { type: 'text/yaml;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${activeTemplate.deviceType || 'template'}.yaml`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleDownloadTemplateZip = async () => {
+    const templates = generatedTemplates.map(
+      (template) => templateDrafts[templateKey(template)] ?? template,
+    );
+    if (templates.length === 0) return;
+    const zipBytes = await buildTemplatesZip(templates);
+    const zipBuffer = new ArrayBuffer(zipBytes.byteLength);
+    new Uint8Array(zipBuffer).set(zipBytes);
+    const blob = new Blob([zipBuffer], { type: 'application/zip' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'device-templates.zip';
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleApplyTemplateToCsv = () => {
+    if (!activeTemplate) return;
+    const updatedRows = applyTemplateToRows(rows, activeTemplate);
+    setRows(updatedRows);
   };
 
   const handleExport = () => {
@@ -503,6 +777,27 @@ export default function App() {
           <Stack direction="row" spacing={2} alignItems="center">
             <Stack direction="row" spacing={1} alignItems="center">
               <Typography variant="caption" color="text.secondary">
+                ビュー
+              </Typography>
+              <ButtonGroup size="small" aria-label="view mode">
+                <Button
+                  variant={activeView === 'data' ? 'contained' : 'outlined'}
+                  onClick={() => setActiveView('data')}
+                  data-testid="view-data"
+                >
+                  データ
+                </Button>
+                <Button
+                  variant={activeView === 'templates' ? 'contained' : 'outlined'}
+                  onClick={() => setActiveView('templates')}
+                  data-testid="view-templates"
+                >
+                  デバイステンプレート
+                </Button>
+              </ButtonGroup>
+            </Stack>
+            <Stack direction="row" spacing={1} alignItems="center">
+              <Typography variant="caption" color="text.secondary">
                 表示サイズ
               </Typography>
               <ButtonGroup size="small" aria-label="UI scale">
@@ -547,170 +842,415 @@ export default function App() {
         </Box>
 
         <Box className="main">
-          <Box className="panel tree-panel">
-            <Typography className="panel-title" variant="subtitle1">
-              階層ツリー
-            </Typography>
-            <SimpleTreeView
-              selectedItems={selectedId ?? ''}
-              expandedItems={expandedItems}
-              onExpandedItemsChange={(_, itemIds) => {
-                const next = Array.isArray(itemIds) ? itemIds : [itemIds];
-                setExpandedItems(next.filter(Boolean));
-              }}
-              onSelectedItemsChange={(_, itemIds) => {
-                const id = Array.isArray(itemIds) ? itemIds[0] : itemIds;
-                if (id) setSelectedId(id);
-              }}
-              data-testid="tree"
-              sx={{ fontSize: scale.fontSize, lineHeight: scale.lineHeight }}
-            >
-              <TreeItem itemId="root" label={<Box data-testid="tree-item-root">All</Box>}>
-                {tree.map(renderTree)}
-              </TreeItem>
-            </SimpleTreeView>
-          </Box>
-
-          <Box className="panel grid-panel">
-            <Typography className="panel-title" variant="subtitle1">
-              データ表示
-            </Typography>
-            <Stack direction="row" spacing={2} alignItems="center" className="mode-row">
-              <Typography variant="caption" color="text.secondary">
-                表示モード
-              </Typography>
-              <ButtonGroup size="small" aria-label="data-view-mode">
-                <Button
-                  variant={editMode === 'csv' ? 'contained' : 'outlined'}
-                  onClick={() => setEditMode('csv')}
-                  data-testid="mode-csv"
-                >
-                  CSV表示
-                </Button>
-                <Button
-                  variant={editMode === 'model' ? 'contained' : 'outlined'}
-                  onClick={() => setEditMode('model')}
-                  data-testid="mode-model"
-                >
-                  データモデル編集
-                </Button>
-              </ButtonGroup>
-              {editMode === 'model' && (
-                <Typography variant="caption" color="text.secondary">
-                  {selectedRow
-                    ? `選択: ${selectedRow.name || selectedRow.id || '未設定'}`
-                    : 'Treeから対象を選択してください'}
+          {activeView === 'data' ? (
+            <>
+              <Box className="panel tree-panel">
+                <Typography className="panel-title" variant="subtitle1">
+                  階層ツリー
                 </Typography>
-              )}
-            </Stack>
-            {editMode === 'csv' ? (
-              <>
-                <Alert severity="info" variant="outlined" className="mode-alert">
-                  CSV 表示モードは参照専用です。編集は「データモデル編集」モードで行います。
-                </Alert>
-                <Box className="search-row">
-                  <TextField
-                    size="small"
-                    placeholder="検索（ID/名称/任意列）"
-                    value={search}
-                    onChange={(event) => setSearch(event.target.value)}
-                    inputProps={{ 'data-testid': 'grid-search' }}
-                  />
-                  {search && (
+                <SimpleTreeView
+                  selectedItems={selectedId ?? ''}
+                  expandedItems={expandedItems}
+                  onExpandedItemsChange={(_, itemIds) => {
+                    const next = Array.isArray(itemIds) ? itemIds : [itemIds];
+                    setExpandedItems(next.filter(Boolean));
+                  }}
+                  onSelectedItemsChange={(_, itemIds) => {
+                    const id = Array.isArray(itemIds) ? itemIds[0] : itemIds;
+                    if (id) setSelectedId(id);
+                  }}
+                  data-testid="tree"
+                  sx={{ fontSize: scale.fontSize, lineHeight: scale.lineHeight }}
+                >
+                  <TreeItem itemId="root" label={<Box data-testid="tree-item-root">All</Box>}>
+                    {tree.map(renderTree)}
+                  </TreeItem>
+                </SimpleTreeView>
+              </Box>
+
+              <Box className="panel grid-panel">
+                <Typography className="panel-title" variant="subtitle1">
+                  データ表示
+                </Typography>
+                <Stack direction="row" spacing={2} alignItems="center" className="mode-row">
+                  <Typography variant="caption" color="text.secondary">
+                    表示モード
+                  </Typography>
+                  <ButtonGroup size="small" aria-label="data-view-mode">
                     <Button
-                      size="small"
-                      variant="text"
-                      onClick={() => setSearch('')}
-                      data-testid="grid-search-clear"
+                      variant={editMode === 'csv' ? 'contained' : 'outlined'}
+                      onClick={() => setEditMode('csv')}
+                      data-testid="mode-csv"
                     >
-                      クリア
+                      CSV表示
                     </Button>
+                    <Button
+                      variant={editMode === 'model' ? 'contained' : 'outlined'}
+                      onClick={() => setEditMode('model')}
+                      data-testid="mode-model"
+                    >
+                      データモデル編集
+                    </Button>
+                  </ButtonGroup>
+                  {editMode === 'model' && (
+                    <Typography variant="caption" color="text.secondary">
+                      {selectedRow
+                        ? `選択: ${selectedRow.name || selectedRow.id || '未設定'}`
+                        : 'Treeから対象を選択してください'}
+                    </Typography>
                   )}
-                </Box>
-                <Box className="grid-wrapper" data-testid="grid-csv">
-                  <DataGrid
-                    rows={searchedRows}
-                    columns={csvGridColumns}
-                    getRowId={(row) => row.__rowId ?? row.id}
-                    rowHeight={scale.gridRowHeight}
-                    columnHeaderHeight={scale.gridHeaderHeight}
-                    disableRowSelectionOnClick
-                    getRowClassName={(params) => {
-                      const rowKey = params.row['__rowId'] ? String(params.row['__rowId']) : '';
-                      const rowId = params.row.id ? String(params.row.id) : '';
-                      return (rowKey && issueRows.has(rowKey)) || (rowId && issueRows.has(rowId))
-                        ? 'row-error'
-                        : '';
-                    }}
-                    getCellClassName={(params) => {
-                      const rowKey = params.row['__rowId'] ? String(params.row['__rowId']) : '';
-                      const rowId = params.row.id ? String(params.row.id) : '';
-                      const fields = rowKey
-                        ? issueMap.get(rowKey)
-                        : rowId
-                          ? issueMap.get(rowId)
-                          : undefined;
-                      return fields?.has(params.field) ? 'cell-error' : '';
-                    }}
-                    sx={{ fontSize: scale.fontSize, lineHeight: scale.lineHeight }}
-                  />
-                </Box>
-              </>
-            ) : (
-              <>
-                <Box className="property-form" data-testid="property-form">
-                  <TextField
-                    size="small"
-                    label="プロパティ名"
-                    value={newProperty}
-                    onChange={(event) => setNewProperty(event.target.value)}
-                  />
-                  <TextField
-                    size="small"
-                    label="値"
-                    value={newPropertyValue}
-                    onChange={(event) => setNewPropertyValue(event.target.value)}
-                  />
-                  <TextField
-                    size="small"
-                    label="説明（任意）"
-                    value={newPropertyDescription}
-                    onChange={(event) => setNewPropertyDescription(event.target.value)}
-                  />
+                </Stack>
+                {editMode === 'csv' ? (
+                  <>
+                    <Alert severity="info" variant="outlined" className="mode-alert">
+                      CSV 表示モードは参照専用です。編集は「データモデル編集」モードで行います。
+                    </Alert>
+                    <Box className="search-row">
+                      <TextField
+                        size="small"
+                        placeholder="検索（ID/名称/任意列）"
+                        value={search}
+                        onChange={(event) => setSearch(event.target.value)}
+                        inputProps={{ 'data-testid': 'grid-search' }}
+                      />
+                      {search && (
+                        <Button
+                          size="small"
+                          variant="text"
+                          onClick={() => setSearch('')}
+                          data-testid="grid-search-clear"
+                        >
+                          クリア
+                        </Button>
+                      )}
+                    </Box>
+                    <Box className="grid-wrapper" data-testid="grid-csv">
+                      <DataGrid
+                        rows={searchedRows}
+                        columns={csvGridColumns}
+                        getRowId={(row) => row.__rowId ?? row.id}
+                        rowHeight={scale.gridRowHeight}
+                        columnHeaderHeight={scale.gridHeaderHeight}
+                        disableRowSelectionOnClick
+                        getRowClassName={(params) => {
+                          const rowKey = params.row['__rowId'] ? String(params.row['__rowId']) : '';
+                          const rowId = params.row.id ? String(params.row.id) : '';
+                          return (rowKey && issueRows.has(rowKey)) ||
+                            (rowId && issueRows.has(rowId))
+                            ? 'row-error'
+                            : '';
+                        }}
+                        getCellClassName={(params) => {
+                          const rowKey = params.row['__rowId'] ? String(params.row['__rowId']) : '';
+                          const rowId = params.row.id ? String(params.row.id) : '';
+                          const fields = rowKey
+                            ? issueMap.get(rowKey)
+                            : rowId
+                              ? issueMap.get(rowId)
+                              : undefined;
+                          return fields?.has(params.field) ? 'cell-error' : '';
+                        }}
+                        sx={{ fontSize: scale.fontSize, lineHeight: scale.lineHeight }}
+                      />
+                    </Box>
+                  </>
+                ) : (
+                  <>
+                    <Box className="property-form" data-testid="property-form">
+                      <TextField
+                        size="small"
+                        label="プロパティ名"
+                        value={newProperty}
+                        onChange={(event) => setNewProperty(event.target.value)}
+                      />
+                      <TextField
+                        size="small"
+                        label="値"
+                        value={newPropertyValue}
+                        onChange={(event) => setNewPropertyValue(event.target.value)}
+                      />
+                      <TextField
+                        size="small"
+                        label="説明（任意）"
+                        value={newPropertyDescription}
+                        onChange={(event) => setNewPropertyDescription(event.target.value)}
+                      />
+                      <Button
+                        variant="contained"
+                        onClick={handleAddProperty}
+                        disabled={!selectedRow || !newProperty.trim()}
+                        data-testid="property-add-button"
+                      >
+                        追加
+                      </Button>
+                    </Box>
+                    <Box className="grid-wrapper" data-testid="grid-model">
+                      <DataGrid
+                        rows={propertyRows}
+                        columns={propertyColumns}
+                        getRowId={(row) => row.id}
+                        editMode="cell"
+                        rowHeight={scale.gridRowHeight}
+                        columnHeaderHeight={scale.gridHeaderHeight}
+                        disableRowSelectionOnClick
+                        processRowUpdate={(newRow) => {
+                          handlePropertyValueChange(newRow.property, newRow.value);
+                          return newRow;
+                        }}
+                        onProcessRowUpdateError={(error) => console.error(error)}
+                        getCellClassName={(params) =>
+                          params.field === 'value' && selectedIssueFields.has(params.row.property)
+                            ? 'cell-error'
+                            : ''
+                        }
+                        sx={{ fontSize: scale.fontSize, lineHeight: scale.lineHeight }}
+                      />
+                    </Box>
+                  </>
+                )}
+              </Box>
+            </>
+          ) : (
+            <Box className="panel templates-panel" data-testid="templates-view">
+              <Box className="templates-sidebar">
+                <Typography className="panel-title" variant="subtitle1">
+                  デバイス種別
+                </Typography>
+                <Divider />
+                {generatedTemplates.length > 0 ? (
+                  <List className="template-list" data-testid="template-list">
+                    {generatedTemplates.map((template) => {
+                      const key = templateKey(template);
+                      return (
+                        <ListItemButton
+                          key={key}
+                          selected={selectedTemplateKey === key}
+                          onClick={() => setSelectedTemplateKey(key)}
+                          data-testid={`template-item-${template.deviceType}`}
+                        >
+                          <ListItemText
+                            primary={template.deviceType}
+                            secondary={`namespace: ${template.namespace}`}
+                          />
+                        </ListItemButton>
+                      );
+                    })}
+                  </List>
+                ) : (
+                  <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+                    CSV を読み込むとデバイス種別が表示されます。
+                  </Typography>
+                )}
+              </Box>
+              <Divider orientation="vertical" flexItem />
+              <Box className="templates-editor">
+                <Stack direction="row" spacing={2} alignItems="center" className="template-actions">
+                  <Button
+                    variant="outlined"
+                    onClick={handleGenerateTemplate}
+                    disabled={!selectedGeneratedTemplate}
+                    data-testid="template-generate"
+                  >
+                    CSVから生成
+                  </Button>
+                  <Button
+                    variant="outlined"
+                    onClick={() => templateInputRef.current?.click()}
+                    disabled={!selectedGeneratedTemplate}
+                    data-testid="template-load"
+                  >
+                    YAMLを読み込む
+                  </Button>
+                  <Button
+                    variant="outlined"
+                    onClick={handleDownloadTemplateYaml}
+                    disabled={!activeTemplate}
+                    data-testid="template-download"
+                  >
+                    YAMLを保存
+                  </Button>
+                  <Button
+                    variant="outlined"
+                    onClick={handleApplyTemplateToCsv}
+                    disabled={!activeTemplate}
+                    data-testid="template-apply"
+                  >
+                    CSVへ反映
+                  </Button>
                   <Button
                     variant="contained"
-                    onClick={handleAddProperty}
-                    disabled={!selectedRow || !newProperty.trim()}
-                    data-testid="property-add-button"
+                    onClick={handleDownloadTemplateZip}
+                    disabled={generatedTemplates.length === 0}
+                    data-testid="template-zip"
                   >
-                    追加
+                    ZIP出力
                   </Button>
-                </Box>
-                <Box className="grid-wrapper" data-testid="grid-model">
-                  <DataGrid
-                    rows={propertyRows}
-                    columns={propertyColumns}
-                    getRowId={(row) => row.id}
-                    editMode="cell"
-                    rowHeight={scale.gridRowHeight}
-                    columnHeaderHeight={scale.gridHeaderHeight}
-                    disableRowSelectionOnClick
-                    processRowUpdate={(newRow) => {
-                      handlePropertyValueChange(newRow.property, newRow.value);
-                      return newRow;
+                  <input
+                    ref={templateInputRef}
+                    type="file"
+                    accept=".yaml,.yml,text/yaml"
+                    style={{ display: 'none' }}
+                    data-testid="template-input"
+                    onChange={(event) => {
+                      const file = event.target.files?.[0];
+                      if (file) {
+                        void handleLoadTemplateFile(file);
+                      }
+                      event.target.value = '';
                     }}
-                    onProcessRowUpdateError={(error) => console.error(error)}
-                    getCellClassName={(params) =>
-                      params.field === 'value' && selectedIssueFields.has(params.row.property)
-                        ? 'cell-error'
-                        : ''
-                    }
-                    sx={{ fontSize: scale.fontSize, lineHeight: scale.lineHeight }}
                   />
-                </Box>
-              </>
-            )}
-          </Box>
+                </Stack>
+                {templateLoadError && (
+                  <Alert severity="error" variant="outlined">
+                    {templateLoadError}
+                  </Alert>
+                )}
+                {activeTemplate ? (
+                  <>
+                    <Box className="template-header">
+                      <TextField
+                        size="small"
+                        label="className"
+                        value={activeTemplate.className}
+                        onChange={(event) =>
+                          handleTemplateFieldChange('className', event.target.value)
+                        }
+                      />
+                      <TextField
+                        size="small"
+                        label="説明"
+                        value={activeTemplate.description ?? ''}
+                        onChange={(event) =>
+                          handleTemplateFieldChange('description', event.target.value)
+                        }
+                      />
+                    </Box>
+                    {templateDiff ? (
+                      <Alert severity="warning" variant="outlined" data-testid="template-diff">
+                        <Typography variant="subtitle2">CSV との差分</Typography>
+                        <ul className="template-diff-list">
+                          {templateDiff.missing.map((prop) => (
+                            <li key={`missing-${prop.name}`}>不足: {prop.name}</li>
+                          ))}
+                          {templateDiff.extra.map((prop) => (
+                            <li key={`extra-${prop.name}`}>過剰: {prop.name}</li>
+                          ))}
+                          {templateDiff.mismatched.map((prop) => (
+                            <li key={`mismatch-${prop.name}`}>
+                              不一致: {prop.name}（{prop.differences.join(', ')}）
+                            </li>
+                          ))}
+                        </ul>
+                      </Alert>
+                    ) : (
+                      <Alert severity="success" variant="outlined" data-testid="template-no-diff">
+                        CSV 推定値と一致しています。
+                      </Alert>
+                    )}
+                    <Box className="template-property-form" data-testid="template-property-form">
+                      <TextField
+                        size="small"
+                        label="プロパティ名"
+                        value={newTemplateProperty.name}
+                        onChange={(event) =>
+                          setNewTemplateProperty((prev) => ({
+                            ...prev,
+                            name: event.target.value,
+                          }))
+                        }
+                      />
+                      <TextField
+                        size="small"
+                        label="pointType"
+                        value={newTemplateProperty.pointType}
+                        onChange={(event) =>
+                          setNewTemplateProperty((prev) => ({
+                            ...prev,
+                            pointType: event.target.value,
+                          }))
+                        }
+                      />
+                      <TextField
+                        size="small"
+                        select
+                        label="アクセス"
+                        value={newTemplateProperty.access}
+                        onChange={(event) =>
+                          setNewTemplateProperty((prev) => ({
+                            ...prev,
+                            access: event.target.value as 'read' | 'readWrite',
+                          }))
+                        }
+                      >
+                        <MenuItem value="read">read</MenuItem>
+                        <MenuItem value="readWrite">readWrite</MenuItem>
+                      </TextField>
+                      <TextField
+                        size="small"
+                        label="説明"
+                        value={newTemplateProperty.description}
+                        onChange={(event) =>
+                          setNewTemplateProperty((prev) => ({
+                            ...prev,
+                            description: event.target.value,
+                          }))
+                        }
+                      />
+                      <TextField
+                        size="small"
+                        label="デフォルト"
+                        value={newTemplateProperty.default}
+                        onChange={(event) =>
+                          setNewTemplateProperty((prev) => ({
+                            ...prev,
+                            default: event.target.value,
+                          }))
+                        }
+                      />
+                      <Button
+                        variant="contained"
+                        onClick={handleAddTemplateProperty}
+                        disabled={!newTemplateProperty.name.trim()}
+                        data-testid="template-property-add"
+                      >
+                        追加
+                      </Button>
+                    </Box>
+                    <Box className="grid-wrapper" data-testid="template-properties-grid">
+                      <DataGrid
+                        rows={templatePropertyRows}
+                        columns={templatePropertyColumns}
+                        getRowId={(row) => row.id}
+                        editMode="cell"
+                        rowHeight={scale.gridRowHeight}
+                        columnHeaderHeight={scale.gridHeaderHeight}
+                        disableRowSelectionOnClick
+                        processRowUpdate={(newRow) => {
+                          handleTemplatePropertyUpdate(newRow);
+                          return newRow;
+                        }}
+                        onProcessRowUpdateError={(error) => console.error(error)}
+                        getRowClassName={(params) => {
+                          if (templateDiffSets.extra.has(params.row.name)) {
+                            return 'template-row-extra';
+                          }
+                          if (templateDiffSets.mismatched.has(params.row.name)) {
+                            return 'template-row-mismatch';
+                          }
+                          return '';
+                        }}
+                        sx={{ fontSize: scale.fontSize, lineHeight: scale.lineHeight }}
+                      />
+                    </Box>
+                  </>
+                ) : (
+                  <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+                    左のリストからテンプレートを選択してください。
+                  </Typography>
+                )}
+              </Box>
+            </Box>
+          )}
         </Box>
       </Box>
     </ThemeProvider>

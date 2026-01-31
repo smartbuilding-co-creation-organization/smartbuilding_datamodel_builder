@@ -1,5 +1,6 @@
 ﻿export * from './types';
 export * from './csv';
+export * from './device-templates';
 export * from './row-utils';
 export * from './rdf';
 export * from './resource-graph';

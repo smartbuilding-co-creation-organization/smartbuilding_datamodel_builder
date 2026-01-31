@@ -3,14 +3,20 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import {
+  applyTemplateToRows,
   buildTree,
+  buildTemplatesZip,
+  buildDeviceTemplatesFromCsv,
+  diffDeviceTemplate,
   exportCsv,
   exportRdf,
   exportYaml,
   getSchemaPropertyDescription,
   hasHierarchySignalChange,
   parseCsv,
+  parseDeviceTemplateYaml,
   resolveHierarchySignals,
+  serializeDeviceTemplate,
   validate,
 } from '../src/index';
 import schema from '../../../schema/building_model.schema.json';
@@ -235,5 +241,67 @@ describe('large fixture', () => {
 
     const { issues } = validate(rows);
     expect(issues).toHaveLength(0);
+  });
+});
+
+describe('device templates', () => {
+  it('builds device templates from csv with point types', () => {
+    const rows = parseCsv(loadSampleCsv(), { schema });
+    const templates = buildDeviceTemplatesFromCsv(rows);
+    const sensor = templates.find((template) => template.deviceType === 'Sensor');
+    expect(sensor).toBeDefined();
+    expect(sensor?.properties.some((prop) => prop.pointType === 'Temperature')).toBe(true);
+  });
+
+  it('detects template diffs between csv and yaml', () => {
+    const rows = parseCsv(loadSampleCsv(), { schema });
+    const templates = buildDeviceTemplatesFromCsv(rows);
+    const sensor = templates.find((template) => template.deviceType === 'Sensor');
+    expect(sensor).toBeDefined();
+    if (!sensor) return;
+
+    const altered = {
+      ...sensor,
+      properties: sensor.properties.map((prop) =>
+        prop.name === sensor.properties[0]?.name ? { ...prop, access: 'readWrite' as const } : prop,
+      ),
+    };
+
+    const diff = diffDeviceTemplate(sensor, altered);
+    expect(diff.mismatched.length).toBeGreaterThan(0);
+  });
+
+  it('serializes and parses device template yaml', () => {
+    const rows = parseCsv(loadSampleCsv(), { schema });
+    const templates = buildDeviceTemplatesFromCsv(rows);
+    const template = templates[0];
+    expect(template).toBeDefined();
+    if (!template) return;
+
+    const yamlText = serializeDeviceTemplate(template);
+    const parsed = parseDeviceTemplateYaml(yamlText, {
+      namespace: template.namespace,
+      deviceType: template.deviceType,
+    });
+    expect(parsed.className).toBe(template.className);
+    expect(parsed.properties.length).toBeGreaterThan(0);
+  });
+
+  it('applies template point types back to rows', () => {
+    const rows = parseCsv(loadSampleCsv(), { schema });
+    const templates = buildDeviceTemplatesFromCsv(rows);
+    const template = templates[0];
+    expect(template).toBeDefined();
+    if (!template) return;
+
+    const updated = applyTemplateToRows(rows, template);
+    expect(updated.some((row) => row.pointType)).toBe(true);
+  });
+
+  it('builds a zip output for templates', async () => {
+    const rows = parseCsv(loadSampleCsv(), { schema });
+    const templates = buildDeviceTemplatesFromCsv(rows);
+    const zipBytes = await buildTemplatesZip(templates.slice(0, 1));
+    expect(zipBytes.byteLength).toBeGreaterThan(0);
   });
 });
