@@ -23,15 +23,40 @@ test('upload csv, filter tree, edit and export', async ({ page }) => {
   await expect(buildingItem).toBeVisible();
   await buildingItem.click();
 
-  const gridRows = page.getByTestId('grid').locator('.MuiDataGrid-row');
+  const gridRows = page.getByTestId('grid-csv').locator('.MuiDataGrid-row');
   await expect(gridRows).toHaveCount(4);
 
-  const cell = page.getByRole('gridcell', { name: 'Room 101' }).first();
+  const buildingTreeItem = buildingItem.locator('xpath=ancestor::*[@role="treeitem"][1]');
+  const buildingToggle = buildingTreeItem.locator(
+    ':scope > .MuiTreeItem-content > .MuiTreeItem-iconContainer',
+  );
+  await buildingToggle.click();
+
+  const floorItem = page.getByTestId('tree-item-floor-1');
+  await expect(floorItem).toBeVisible();
+  const floorTreeItem = floorItem.locator('xpath=ancestor::*[@role="treeitem"][1]');
+  const floorToggle = floorTreeItem.locator(
+    ':scope > .MuiTreeItem-content > .MuiTreeItem-iconContainer',
+  );
+  await floorToggle.click();
+
+  const spaceItem = page.getByTestId('tree-item-space-1');
+  await expect(spaceItem).toBeVisible();
+  await spaceItem.click();
+
+  await page.getByTestId('mode-model').click();
+  const modelGrid = page.getByTestId('grid-model');
+  await expect(modelGrid).toBeVisible();
+  await expect(
+    modelGrid.getByRole('gridcell', { name: 'Machine or Human-readable name' }),
+  ).toBeVisible();
+
+  const cell = modelGrid.getByRole('gridcell', { name: 'Room 101' }).first();
   await cell.dblclick();
   await page.keyboard.press('Control+A');
   await page.keyboard.type('Room 101A');
   await page.keyboard.press('Enter');
-  await expect(page.getByRole('gridcell', { name: 'Room 101A' }).first()).toBeVisible();
+  await expect(modelGrid.getByRole('gridcell', { name: 'Room 101A' }).first()).toBeVisible();
 
   const downloadPromise = page.waitForEvent('download');
   await page.getByTestId('csv-export-button').click();
@@ -58,6 +83,103 @@ test('upload csv, filter tree, edit and export', async ({ page }) => {
   await expect(yamlText).toContain('Room 101A');
 });
 
+test('rebuilds tree when hierarchy signal edits are committed', async ({ page }) => {
+  await page.goto('/');
+
+  const fixturePath = path.resolve(__dirname, '../../../sample/debug-sample.csv');
+  await page.getByTestId('csv-input').setInputFiles(fixturePath);
+
+  const tree = page.getByTestId('tree');
+  const siteItem = tree.getByText('TokyoSite1');
+  await expect(siteItem).toBeVisible();
+  await siteItem.click();
+  await page.keyboard.press('ArrowRight');
+
+  const buildingItem = tree.getByText('MainBldg');
+  await expect(buildingItem).toBeVisible();
+  await buildingItem.click();
+  await page.keyboard.press('ArrowRight');
+
+  const levelItem = tree.getByText('3F');
+  await expect(levelItem).toBeVisible();
+  await levelItem.click();
+  await page.keyboard.press('ArrowRight');
+
+  const roomItem = tree.getByText('Room101');
+  await expect(roomItem).toBeVisible();
+  await roomItem.click();
+  await page.keyboard.press('ArrowRight');
+
+  const deviceItem = tree.getByText('Temperature Sensor 01');
+  await expect(deviceItem).toBeVisible();
+  await deviceItem.click();
+  await page.keyboard.press('ArrowRight');
+
+  const pointItem = tree.getByText('Room Temperature');
+  await expect(pointItem).toBeVisible();
+  await pointItem.click();
+
+  await page.getByTestId('mode-model').click();
+  const modelGrid = page.getByTestId('grid-model');
+  await expect(modelGrid).toBeVisible();
+
+  const buildingRow = modelGrid.locator('[role="row"]').filter({ hasText: 'building' });
+  const buildingCell = buildingRow.getByRole('gridcell', { name: 'MainBldg' }).first();
+  await buildingCell.dblclick();
+  await page.keyboard.press('Control+A');
+  await page.keyboard.type('MainBldg-2');
+  await page.keyboard.press('Enter');
+
+  await expect(tree.getByText('MainBldg-2')).toBeVisible();
+  await expect(page.getByText('選択: Room Temperature')).toBeVisible();
+});
+
+test('shows hierarchy validation errors when parent signals are missing', async ({ page }) => {
+  await page.goto('/');
+
+  const fixturePath = path.resolve(__dirname, '../../../sample/debug-sample.csv');
+  await page.getByTestId('csv-input').setInputFiles(fixturePath);
+
+  const tree = page.getByTestId('tree');
+  const siteItem = tree.getByText('TokyoSite1');
+  await expect(siteItem).toBeVisible();
+  await siteItem.click();
+  await page.keyboard.press('ArrowRight');
+  const buildingItem = tree.getByText('MainBldg');
+  await expect(buildingItem).toBeVisible();
+  await buildingItem.click();
+  await page.keyboard.press('ArrowRight');
+  const levelItem = tree.getByText('3F');
+  await expect(levelItem).toBeVisible();
+  await levelItem.click();
+  await page.keyboard.press('ArrowRight');
+  const roomItem = tree.getByText('Room101');
+  await expect(roomItem).toBeVisible();
+  await roomItem.click();
+  await page.keyboard.press('ArrowRight');
+  const deviceItem = tree.getByText('Temperature Sensor 01');
+  await expect(deviceItem).toBeVisible();
+  await deviceItem.click();
+  await page.keyboard.press('ArrowRight');
+  const pointItem = tree.getByText('Room Temperature');
+  await expect(pointItem).toBeVisible();
+  await pointItem.click();
+
+  await page.getByTestId('mode-model').click();
+  const modelGrid = page.getByTestId('grid-model');
+  await expect(modelGrid).toBeVisible();
+
+  const buildingRow = modelGrid.locator('[role="row"]').filter({ hasText: 'building' });
+  const buildingCell = buildingRow.getByRole('gridcell', { name: 'MainBldg' }).first();
+  await buildingCell.dblclick();
+  await page.keyboard.press('Control+A');
+  await page.keyboard.type('');
+  await page.keyboard.press('Enter');
+
+  const summary = page.getByTestId('validation-summary');
+  await expect(summary).toContainText('Hierarchy parent missing: building');
+});
+
 test('can expand and collapse tree items', async ({ page }) => {
   await page.goto('/');
 
@@ -75,9 +197,7 @@ test('can expand and collapse tree items', async ({ page }) => {
   const buildingItem = page.getByTestId('tree-item-bldg-1');
   await expect(buildingItem).toBeVisible();
 
-  const buildingTreeItem = buildingItem.locator(
-    'xpath=ancestor::*[@role="treeitem"][1]',
-  );
+  const buildingTreeItem = buildingItem.locator('xpath=ancestor::*[@role="treeitem"][1]');
   const buildingToggle = buildingTreeItem.locator(
     ':scope > .MuiTreeItem-content > .MuiTreeItem-iconContainer',
   );
@@ -101,7 +221,7 @@ test('shows validation summary for invalid csv', async ({ page }) => {
   await expect(summary).toContainText('バリデーションエラー');
   await expect(summary).toContainText('Duplicate id');
 
-  const errorRows = page.getByTestId('grid').locator('.row-error');
+  const errorRows = page.getByTestId('grid-csv').locator('.row-error');
   expect(await errorRows.count()).toBeGreaterThan(0);
 });
 
@@ -114,6 +234,6 @@ test('filters grid rows by search term', async ({ page }) => {
   const searchInput = page.getByTestId('grid-search');
   await searchInput.fill('Room 201');
 
-  const gridRows = page.getByTestId('grid').locator('.MuiDataGrid-row');
+  const gridRows = page.getByTestId('grid-csv').locator('.MuiDataGrid-row');
   await expect(gridRows).toHaveCount(1);
 });

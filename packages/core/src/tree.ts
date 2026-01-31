@@ -1,10 +1,7 @@
 import { Node, RowRecord } from './types';
+import { hasHierarchySignals, normalizeValue, resolveHierarchySignals } from './row-utils';
 
 let lastIndex = new Map<string, Node>();
-
-function normalizeValue(value: string | undefined): string {
-  return (value ?? '').trim();
-}
 
 const KIND_LABEL_MAP: Record<string, string> = {
   site: 'Site',
@@ -78,82 +75,6 @@ function buildParentChildTree(rows: RowRecord[]): Node[] {
   return roots;
 }
 
-type HierarchySignals = {
-  site?: string;
-  building?: string;
-  level?: string;
-  room?: string;
-  roomKind?: string;
-  deviceId?: string;
-  deviceName?: string;
-  pointId?: string;
-  pointName?: string;
-};
-
-const INVALID_HIERARCHY_VALUES = new Set(['-', '－']);
-
-function normalizeHierarchyValue(value: string | undefined): string {
-  const trimmed = normalizeValue(value);
-  if (!trimmed) return '';
-  return INVALID_HIERARCHY_VALUES.has(trimmed) ? '' : trimmed;
-}
-
-function pickFirst(row: RowRecord, keys: string[]): string {
-  for (const key of keys) {
-    const value = normalizeHierarchyValue(row[key]);
-    if (value) return value;
-  }
-  return '';
-}
-
-function pickFirstWithKind(
-  row: RowRecord,
-  keys: Array<{ key: string; kind: string }>,
-): { value: string; kind: string } {
-  for (const entry of keys) {
-    const value = normalizeHierarchyValue(row[entry.key]);
-    if (value) return { value, kind: entry.kind };
-  }
-  return { value: '', kind: '' };
-}
-
-function resolveHierarchySignals(row: RowRecord): HierarchySignals {
-  const roomSignal = pickFirstWithKind(row, [
-    { key: 'installationArea', kind: 'Room' },
-    { key: 'room', kind: 'Room' },
-    { key: 'space', kind: 'Room' },
-    { key: 'targetArea', kind: 'Room' },
-    { key: 'zone', kind: 'Zone' },
-  ]);
-
-  return {
-    site: pickFirst(row, ['site', 'siteName', 'siteId']),
-    building: pickFirst(row, ['building', 'buildingName', 'buildingId']),
-    level: pickFirst(row, ['level', 'levelName', 'floor', 'floorName']),
-    room: roomSignal.value,
-    roomKind: roomSignal.kind,
-    deviceId: normalizeValue(row.deviceId),
-    deviceName: normalizeValue(row.deviceName),
-    pointId: normalizeValue(row.pointId),
-    pointName: normalizeValue(row.pointName),
-  };
-}
-
-function hasHierarchySignals(rows: RowRecord[]): boolean {
-  return rows.some((row) => {
-    const signals = resolveHierarchySignals(row);
-    return (
-      signals.site ||
-      signals.building ||
-      signals.level ||
-      signals.deviceId ||
-      signals.deviceName ||
-      signals.pointId ||
-      signals.pointName
-    );
-  });
-}
-
 function buildHierarchyTree(rows: RowRecord[]): Node[] {
   const nodes = new Map<string, Node>();
   const keyToId = new Map<string, string>();
@@ -208,11 +129,25 @@ function buildHierarchyTree(rows: RowRecord[]): Node[] {
 
   for (const [rowIndex, row] of rows.entries()) {
     const signals = resolveHierarchySignals(row);
+<<<<<<< HEAD
     const siteName = signals.site || 'Unknown Site';
     const siteKey = `site:${siteName}`;
     const siteNode = ensureNode(siteKey, `site:${makeSlug(siteName)}`, siteName, 'Site');
+=======
+    if (!signals.site || !signals.building || !signals.level) {
+      continue;
+    }
+>>>>>>> c44714c82581a25c8d594baef38c13571afdff96
 
-    const buildingName = signals.building || 'Unknown Building';
+    if ((signals.pointId || signals.pointName) && !(signals.deviceId || signals.deviceName)) {
+      continue;
+    }
+
+    const siteName = signals.site;
+    const siteKey = `site:${siteName}`;
+    const siteNode = ensureNode(siteKey, `site:${makeSlug(siteName)}`, siteName, 'Site');
+
+    const buildingName = signals.building;
     const buildingKey = `building:${siteNode.id}:${buildingName}`;
     const buildingNode = ensureNode(
       buildingKey,
@@ -223,7 +158,7 @@ function buildHierarchyTree(rows: RowRecord[]): Node[] {
     );
     ensureChild(siteNode, buildingNode);
 
-    const levelName = signals.level || 'Unknown Level';
+    const levelName = signals.level;
     const levelKey = `level:${buildingNode.id}:${levelName}`;
     const levelNode = ensureNode(
       levelKey,
@@ -234,9 +169,8 @@ function buildHierarchyTree(rows: RowRecord[]): Node[] {
     );
     ensureChild(buildingNode, levelNode);
 
-    const canUseRoom = Boolean(signals.level);
     let roomParent = levelNode;
-    if (canUseRoom && signals.room) {
+    if (signals.room) {
       const roomName = signals.room;
       const roomKind = signals.roomKind || 'Room';
       const roomKey = `room:${levelNode.id}:${roomName}`;
@@ -251,39 +185,39 @@ function buildHierarchyTree(rows: RowRecord[]): Node[] {
       roomParent = roomNode;
     }
 
-    const deviceKeyValue = signals.deviceId || signals.deviceName || '';
-    const deviceLogicalKey = deviceKeyValue
-      ? `equipment:${roomParent.id}:${deviceKeyValue}`
-      : `equipment:${roomParent.id}:row:${normalizeValue(row.__rowId) || rowIndex}`;
-    const deviceBaseId = signals.deviceId
-      ? signals.deviceId
-      : `equipment:${roomParent.id}/${makeSlug(signals.deviceName || 'equipment')}`;
-    const deviceName = signals.deviceName || signals.deviceId || 'Equipment';
-    const deviceNode = ensureNode(
-      deviceLogicalKey,
-      deviceBaseId,
-      deviceName,
-      'EquipmentExt',
-      roomParent.id,
-    );
-    ensureChild(roomParent, deviceNode);
+    if (signals.deviceId || signals.deviceName) {
+      const deviceKeyValue = signals.deviceId || signals.deviceName;
+      const deviceLogicalKey = `equipment:${roomParent.id}:${deviceKeyValue}`;
+      const deviceBaseId = signals.deviceId
+        ? signals.deviceId
+        : `equipment:${roomParent.id}/${makeSlug(signals.deviceName || 'equipment')}`;
+      const deviceName = signals.deviceName || signals.deviceId || 'Equipment';
+      const deviceNode = ensureNode(
+        deviceLogicalKey,
+        deviceBaseId,
+        deviceName,
+        'EquipmentExt',
+        roomParent.id,
+      );
+      ensureChild(roomParent, deviceNode);
 
-    const pointKeyValue = signals.pointId || signals.pointName || '';
-    const pointLogicalKey = pointKeyValue
-      ? `point:${deviceNode.id}:${pointKeyValue}`
-      : `point:${deviceNode.id}:row:${normalizeValue(row.__rowId) || rowIndex}`;
-    const pointBaseId = signals.pointId
-      ? signals.pointId
-      : `point:${deviceNode.id}/${makeSlug(signals.pointName || 'point')}`;
-    const pointName = signals.pointName || signals.pointId || 'Point';
-    const pointNode = ensureNode(
-      pointLogicalKey,
-      pointBaseId,
-      pointName,
-      'PointExt',
-      deviceNode.id,
-    );
-    ensureChild(deviceNode, pointNode);
+      if (signals.pointId || signals.pointName) {
+        const pointKeyValue = signals.pointId || signals.pointName;
+        const pointLogicalKey = `point:${deviceNode.id}:${pointKeyValue}`;
+        const pointBaseId = signals.pointId
+          ? signals.pointId
+          : `point:${deviceNode.id}/${makeSlug(signals.pointName || 'point')}`;
+        const pointName = signals.pointName || signals.pointId || 'Point';
+        const pointNode = ensureNode(
+          pointLogicalKey,
+          pointBaseId,
+          pointName,
+          'PointExt',
+          deviceNode.id,
+        );
+        ensureChild(deviceNode, pointNode);
+      }
+    }
 
     ensureRoot(siteNode);
   }

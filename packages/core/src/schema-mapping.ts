@@ -7,6 +7,11 @@ export type SchemaRoot = {
   $defs?: Record<string, unknown>;
 };
 
+type SchemaDefinition = {
+  properties?: Record<string, unknown>;
+  required?: string[];
+};
+
 export type SchemaCache = {
   byKind: Map<string, Set<string>>;
   root: Set<string>;
@@ -83,6 +88,36 @@ function normalizeKindKey(kind?: string): string | undefined {
   if (!trimmed) return undefined;
   const mapped = KIND_TO_DEF[trimmed.toLowerCase()] ?? trimmed;
   return mapped;
+}
+
+function resolveSchemaDefinition(
+  schemaRoot: SchemaRoot,
+  kind?: string,
+): SchemaDefinition | undefined {
+  const normalized = normalizeKindKey(kind);
+  if (!normalized) return schemaRoot;
+  if (!schemaRoot.$defs) return schemaRoot;
+  const def = schemaRoot.$defs[normalized];
+  return (def as SchemaDefinition) ?? schemaRoot;
+}
+
+export function getSchemaPropertyDescription(
+  schemaRoot: SchemaRoot,
+  kind: string | undefined,
+  property: string,
+): string | undefined {
+  const schemaDef = resolveSchemaDefinition(schemaRoot, kind);
+  const fromDef = schemaDef?.properties?.[property];
+  const fromRoot = schemaRoot.properties?.[property];
+  if (fromDef && typeof fromDef === 'object' && 'description' in fromDef) {
+    const value = (fromDef as Record<string, unknown>).description;
+    return typeof value === 'string' ? value : undefined;
+  }
+  if (fromRoot && typeof fromRoot === 'object' && 'description' in fromRoot) {
+    const value = (fromRoot as Record<string, unknown>).description;
+    return typeof value === 'string' ? value : undefined;
+  }
+  return undefined;
 }
 
 function getSchemaProps(cache: SchemaCache, kind?: string): Set<string> {

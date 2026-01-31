@@ -1,6 +1,6 @@
 ﻿import { z } from 'zod';
 import { getRequiredPropsFromCache, SchemaRoot, buildSchemaCache } from './schema-mapping';
-import { inferRowKind, normalizeValue } from './row-utils';
+import { inferRowKind, listMissingHierarchyParents, normalizeValue } from './row-utils';
 import { Issue, RowRecord } from './types';
 
 const KindSchema = z.enum(['site', 'building', 'floor', 'space', 'device', 'point']);
@@ -75,6 +75,7 @@ type ValidateOptions = {
   schema?: SchemaRoot;
 };
 
+<<<<<<< HEAD
 function isPointlistRow(row: RowRecord): boolean {
   return (
     hasKey(row, 'pointId') ||
@@ -85,6 +86,8 @@ function isPointlistRow(row: RowRecord): boolean {
   );
 }
 
+=======
+>>>>>>> c44714c82581a25c8d594baef38c13571afdff96
 export function validate(rows: RowRecord[], options: ValidateOptions = {}): { issues: Issue[] } {
   const issues: Issue[] = [];
   const issueKeys = new Set<string>();
@@ -139,6 +142,7 @@ export function validate(rows: RowRecord[], options: ValidateOptions = {}): { is
       for (const field of required) {
         if (field === 'id' || field === 'name') continue;
         const value = field === 'id' ? row.id : field === 'name' ? row.name : row[field];
+<<<<<<< HEAD
         if (!normalizeValue(value)) {
           addIssue({
             code: 'schema',
@@ -153,6 +157,8 @@ export function validate(rows: RowRecord[], options: ValidateOptions = {}): { is
     if (isPointlistRow(row)) {
       for (const field of POINTLIST_REQUIRED_FIELDS) {
         const value = row[field];
+=======
+>>>>>>> c44714c82581a25c8d594baef38c13571afdff96
         if (!normalizeValue(value)) {
           addIssue({
             code: 'schema',
@@ -161,6 +167,18 @@ export function validate(rows: RowRecord[], options: ValidateOptions = {}): { is
             field,
           });
         }
+      }
+    }
+
+    const hierarchyMissing = listMissingHierarchyParents(row);
+    if (hierarchyMissing.length > 0) {
+      for (const missingField of hierarchyMissing) {
+        addIssue({
+          code: 'hierarchy_missing',
+          message: `Hierarchy parent missing: ${missingField}`,
+          rowId: rowIdForIssue(row),
+          field: missingField,
+        });
       }
     }
   }

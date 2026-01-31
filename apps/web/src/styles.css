@@ -74,6 +74,31 @@ body {
   margin-bottom: 12px;
 }
 
+.mode-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.mode-alert {
+  margin-bottom: 12px;
+}
+
+.property-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.property-name-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .grid-wrapper {
   flex: 1;
 }
@@ -89,6 +114,62 @@ body {
 .issue-list {
   margin: 8px 0 0;
   padding-left: 18px;
+}
+
+.templates-panel {
+  flex: 1;
+  display: flex;
+  gap: 16px;
+}
+
+.templates-sidebar {
+  width: 260px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.template-list {
+  overflow: auto;
+  padding-right: 4px;
+}
+
+.templates-editor {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow: hidden;
+}
+
+.template-actions {
+  flex-wrap: wrap;
+}
+
+.template-header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.template-property-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.template-diff-list {
+  margin: 8px 0 0;
+  padding-left: 18px;
+}
+
+.template-row-extra .MuiDataGrid-cell {
+  background-color: rgba(255, 193, 7, 0.2);
+}
+
+.template-row-mismatch .MuiDataGrid-cell {
+  background-color: rgba(255, 152, 0, 0.2);
 }
 
 @media (max-width: 960px) {

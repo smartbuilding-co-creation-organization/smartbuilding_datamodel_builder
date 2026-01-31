@@ -1,17 +1,32 @@
 ﻿import { create } from 'zustand';
 import type { SchemaRoot } from '@repo/core';
-import { buildTree, Issue, Node, RowRecord, validate } from '@repo/core';
+import {
+  buildTree,
+  Issue,
+  Node,
+  resolveRowId,
+  RowRecord,
+  syncRowIdentifiers,
+  validate,
+} from '@repo/core';
 
 type AppState = {
+  csvRows: RowRecord[];
+  csvColumns: string[];
   rows: RowRecord[];
-  columns: string[];
   tree: Node[];
   selectedId: string;
   issues: Issue[];
   schema?: SchemaRoot;
-  setData: (rows: RowRecord[], columns: string[], schema?: SchemaRoot) => void;
+  setData: (
+    csvRows: RowRecord[],
+    csvColumns: string[],
+    rows: RowRecord[],
+    schema?: SchemaRoot,
+  ) => void;
   setSelectedId: (id: string) => void;
   updateRow: (oldRowId: string, row: RowRecord) => void;
+  setRows: (rows: RowRecord[]) => void;
 };
 
 function recompute(rows: RowRecord[], schema?: SchemaRoot) {
@@ -21,23 +36,39 @@ function recompute(rows: RowRecord[], schema?: SchemaRoot) {
 }
 
 export const useAppStore = create<AppState>((set, get) => ({
+  csvRows: [],
+  csvColumns: [],
   rows: [],
-  columns: [],
   tree: [],
   selectedId: 'root',
   issues: [],
   schema: undefined,
-  setData: (rows, columns, schema) => {
+  setData: (csvRows, csvColumns, rows, schema) => {
     const { tree, issues } = recompute(rows, schema);
-    set({ rows, columns, tree, issues, selectedId: 'root', schema });
+    set({ csvRows, csvColumns, rows, tree, issues, selectedId: 'root', schema });
   },
   setSelectedId: (id) => set({ selectedId: id }),
   updateRow: (oldRowId, row) => {
     const current = get().rows;
+    const oldRow = current.find((item) => (item.__rowId ?? item.id) === oldRowId);
+    const nextRow = oldRow ? syncRowIdentifiers(oldRow, row) : row;
     const nextRows = current.map((item) =>
-      (item.__rowId ?? item.id) === oldRowId ? row : item,
+      (item.__rowId ?? item.id) === oldRowId ? nextRow : item,
     );
     const { tree, issues } = recompute(nextRows, get().schema);
-    set({ rows: nextRows, tree, issues });
+    const selectedId = get().selectedId;
+    let nextSelectedId = selectedId;
+    if (oldRow) {
+      const prevFocusId = resolveRowId(oldRow);
+      const nextFocusId = resolveRowId(nextRow);
+      if (selectedId === prevFocusId && nextFocusId && prevFocusId !== nextFocusId) {
+        nextSelectedId = nextFocusId;
+      }
+    }
+    set({ rows: nextRows, tree, issues, selectedId: nextSelectedId });
+  },
+  setRows: (rows) => {
+    const { tree, issues } = recompute(rows, get().schema);
+    set({ rows, tree, issues });
   },
 }));
