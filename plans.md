@@ -541,7 +541,7 @@
   - [ ] 既存 RDF/YAML 出力がプラグイン経由で動作する
 - 実行すべきコマンド（最低限）: `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm test:e2e`
 
-37) 空間/機器リソースの編集対象拡張
+37) 空間/機器リソースの編集対象拡張 (Done)
 - 目的: Tree で空間/機器を選択してデータモデルを編集できるようにする
 - 変更対象（パス）: `packages/core/src`, `packages/core/test`, `apps/web/src`
 - 受入基準:

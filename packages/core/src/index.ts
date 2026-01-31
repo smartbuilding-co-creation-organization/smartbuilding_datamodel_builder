@@ -5,6 +5,7 @@ export * from './output-plugins';
 export * from './row-utils';
 export * from './rdf';
 export * from './resource-graph';
+export * from './resource-models';
 export * from './schema-mapping';
 export * from './tree';
 export * from './validate';
