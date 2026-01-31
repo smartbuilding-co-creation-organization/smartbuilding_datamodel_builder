@@ -89,10 +89,7 @@ export function buildResourceGraph(rows: RowRecord[]) {
     const row = rowById.get(node.id);
     const kind = node.kind ?? inferRowKind(row ?? {});
     const className = resolveClassName(kind);
-    const name =
-      normalizeValue(node.name) ||
-      resolveRowName(row ?? {}, node.id) ||
-      node.id;
+    const name = normalizeValue(node.name) || resolveRowName(row ?? {}, node.id) || node.id;
 
     const resource: ResourceNode = {
       id: node.id,

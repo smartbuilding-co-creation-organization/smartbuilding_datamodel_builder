@@ -1,9 +1,5 @@
 import { buildResourceGraph } from './resource-graph';
-import {
-  buildSchemaCache,
-  getRequiredPropsFromCache,
-  SchemaRoot,
-} from './schema-mapping';
+import { buildSchemaCache, getRequiredPropsFromCache, SchemaRoot } from './schema-mapping';
 import { RowRecord } from './types';
 import { normalizeValue } from './row-utils';
 
@@ -79,9 +75,7 @@ export function exportYaml(rows: RowRecord[], options: YamlOptions = {}): string
     if (predicateMap) {
       for (const [predicate, targets] of predicateMap.entries()) {
         if (targets.length === 1) {
-          lines.push(
-            `    ${predicate}: "${escapeYaml(iriFor(baseIri, targets[0]))}"`,
-          );
+          lines.push(`    ${predicate}: "${escapeYaml(iriFor(baseIri, targets[0]))}"`);
         } else if (targets.length > 1) {
           lines.push(`    ${predicate}:`);
           for (const target of targets) {
