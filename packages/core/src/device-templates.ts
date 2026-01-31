@@ -16,6 +16,7 @@ export type DeviceTemplate = {
   deviceType: string;
   className: string;
   description?: string;
+  extends?: string;
   properties: DeviceTemplateProperty[];
 };
 
@@ -43,6 +44,7 @@ type TemplateParseOptions = {
   deviceType?: string;
 };
 
+const BASE_TEMPLATE_NAME = 'Base';
 const READWRITE_HINTS = new Set(['readwrite', 'read-write', 'rw', 'write', 'true', '1', 'yes']);
 
 function resolveNamespace(row: RowRecord): string {
@@ -180,6 +182,27 @@ export function buildDeviceTemplatesFromCsv(
   return Array.from(templates.values()).map((entry) => entry.template);
 }
 
+export function buildBaseTemplatesFromRows(
+  rows: RowRecord[],
+  options: TemplateBuildOptions = {},
+): DeviceTemplate[] {
+  const namespaceResolver = options.namespaceResolver ?? resolveNamespace;
+  const namespaces = new Set<string>();
+
+  for (const row of rows) {
+    const namespace = namespaceResolver(row);
+    if (namespace) namespaces.add(namespace);
+  }
+
+  return Array.from(namespaces).map((namespace) => ({
+    namespace,
+    deviceType: BASE_TEMPLATE_NAME,
+    className: BASE_TEMPLATE_NAME,
+    description: 'Base template',
+    properties: [],
+  }));
+}
+
 export function diffDeviceTemplate(
   expected: DeviceTemplate,
   actual: DeviceTemplate,
@@ -254,6 +277,7 @@ export function parseDeviceTemplateYaml(
       if (!parsed) continue;
       if (parsed.key === 'className') template.className = parsed.value;
       if (parsed.key === 'description') template.description = parsed.value;
+      if (parsed.key === 'extends') template.extends = parsed.value;
       continue;
     }
 
@@ -302,6 +326,9 @@ export function serializeDeviceTemplate(template: DeviceTemplate): string {
   if (template.description) {
     push(`description: ${escape(template.description)}`);
   }
+  if (template.extends) {
+    push(`extends: ${escape(template.extends)}`);
+  }
   push('properties:');
   for (const property of template.properties) {
     push(`  - name: ${escape(property.name)}`);
@@ -315,6 +342,94 @@ export function serializeDeviceTemplate(template: DeviceTemplate): string {
     push(`    pointType: ${escape(property.pointType)}`);
   }
   return lines.join('\n') + '\n';
+}
+
+function templateNameMatches(template: DeviceTemplate, name: string): boolean {
+  const normalized = normalizeValue(name);
+  if (!normalized) return false;
+  return (
+    normalizeValue(template.deviceType) === normalized ||
+    normalizeValue(template.className) === normalized
+  );
+}
+
+function findTemplateByName(
+  templates: DeviceTemplate[],
+  namespace: string,
+  name: string,
+): DeviceTemplate | undefined {
+  const normalizedNamespace = normalizeValue(namespace);
+  return templates.find(
+    (template) =>
+      normalizeValue(template.namespace) === normalizedNamespace &&
+      templateNameMatches(template, name),
+  );
+}
+
+function mergeTemplateProperties(
+  baseProperties: DeviceTemplateProperty[],
+  derivedProperties: DeviceTemplateProperty[],
+): DeviceTemplateProperty[] {
+  const merged: DeviceTemplateProperty[] = [];
+  const indexMap = new Map<string, number>();
+
+  baseProperties.forEach((prop) => {
+    merged.push(prop);
+    indexMap.set(prop.name, merged.length - 1);
+  });
+
+  derivedProperties.forEach((prop) => {
+    const existingIndex = indexMap.get(prop.name);
+    if (existingIndex !== undefined) {
+      merged[existingIndex] = prop;
+    } else {
+      merged.push(prop);
+      indexMap.set(prop.name, merged.length - 1);
+    }
+  });
+
+  return merged;
+}
+
+export function resolveDeviceTemplateInheritance(
+  templates: DeviceTemplate[],
+  template: DeviceTemplate,
+): DeviceTemplate {
+  const visited = new Set<string>();
+
+  const resolve = (current: DeviceTemplate): DeviceTemplate => {
+    const namespace = normalizeValue(current.namespace);
+    const name = normalizeValue(current.deviceType || current.className);
+    const key = `${namespace}:${name}`;
+    if (visited.has(key)) {
+      throw new Error(`継承ループを検出しました: ${Array.from(visited).join(' -> ')}`);
+    }
+
+    if (!current.extends) {
+      return current;
+    }
+
+    const parentName = current.extends;
+    const parent = findTemplateByName(templates, current.namespace, parentName);
+    if (!parent) {
+      throw new Error(`継承元 ${parentName} が見つかりません。`);
+    }
+
+    visited.add(key);
+    const resolvedParent = resolve(parent);
+    visited.delete(key);
+
+    const mergedProperties = mergeTemplateProperties(resolvedParent.properties, current.properties);
+
+    return {
+      ...current,
+      className: current.className || resolvedParent.className,
+      description: current.description || resolvedParent.description,
+      properties: mergedProperties,
+    };
+  };
+
+  return resolve(template);
 }
 
 export async function buildTemplatesZip(templates: DeviceTemplate[]): Promise<Uint8Array> {

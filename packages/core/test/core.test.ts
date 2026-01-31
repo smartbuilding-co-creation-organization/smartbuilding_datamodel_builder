@@ -1,11 +1,11 @@
-﻿
-import { readFileSync } from 'node:fs';
+﻿import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import {
   applyTemplateToRows,
   buildTree,
+  buildBaseTemplatesFromRows,
   buildTemplatesZip,
   buildDeviceTemplatesFromCsv,
   diffDeviceTemplate,
@@ -16,6 +16,7 @@ import {
   hasHierarchySignalChange,
   parseCsv,
   parseDeviceTemplateYaml,
+  resolveDeviceTemplateInheritance,
   resolveHierarchySignals,
   serializeDeviceTemplate,
   validate,
@@ -357,6 +358,64 @@ describe('device templates', () => {
     });
     expect(parsed.className).toBe(template.className);
     expect(parsed.properties.length).toBeGreaterThan(0);
+  });
+
+  it('builds base templates per namespace', () => {
+    const rows = parseCsv(loadSampleCsv(), { schema });
+    const bases = buildBaseTemplatesFromRows(rows);
+    expect(bases.length).toBeGreaterThan(0);
+    const base = bases[0];
+    expect(base?.deviceType).toBe('Base');
+  });
+
+  it('resolves template inheritance and merges properties', () => {
+    const base = {
+      namespace: 'default',
+      deviceType: 'Base',
+      className: 'Base',
+      description: 'Base template',
+      properties: [
+        {
+          name: 'version',
+          access: 'read' as const,
+          pointType: 'version',
+        },
+      ],
+    };
+    const child = {
+      namespace: 'default',
+      deviceType: 'Sensor',
+      className: 'Sensor',
+      extends: 'Base',
+      properties: [
+        {
+          name: 'temperature',
+          access: 'read' as const,
+          pointType: 'Temperature',
+        },
+      ],
+    };
+    const resolved = resolveDeviceTemplateInheritance([base, child], child);
+    expect(resolved.properties.some((prop) => prop.name === 'version')).toBe(true);
+    expect(resolved.properties.some((prop) => prop.name === 'temperature')).toBe(true);
+  });
+
+  it('detects circular template inheritance', () => {
+    const first = {
+      namespace: 'default',
+      deviceType: 'A',
+      className: 'A',
+      extends: 'B',
+      properties: [],
+    };
+    const second = {
+      namespace: 'default',
+      deviceType: 'B',
+      className: 'B',
+      extends: 'A',
+      properties: [],
+    };
+    expect(() => resolveDeviceTemplateInheritance([first, second], first)).toThrow(/継承ループ/);
   });
 
   it('applies template point types back to rows', () => {

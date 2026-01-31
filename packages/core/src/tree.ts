@@ -127,7 +127,7 @@ function buildHierarchyTree(rows: RowRecord[]): Node[] {
     }
   };
 
-  for (const [rowIndex, row] of rows.entries()) {
+  for (const row of rows) {
     const signals = resolveHierarchySignals(row);
     if (!signals.site || !signals.building || !signals.level) {
       continue;

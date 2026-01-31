@@ -21,6 +21,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   buildSchemaCache,
   buildDeviceTemplatesFromCsv,
+  buildBaseTemplatesFromRows,
   buildTemplatesZip,
   applyTemplateToRows,
   computeDescendants,
@@ -36,6 +37,7 @@ import {
   parseDeviceTemplateYaml,
   RowRecord,
   Node,
+  resolveDeviceTemplateInheritance,
   serializeDeviceTemplate,
   diffDeviceTemplate,
 } from '@repo/core';
@@ -269,7 +271,11 @@ export default function App() {
     return map;
   }, [rows]);
 
-  const generatedTemplates = useMemo(() => buildDeviceTemplatesFromCsv(rows), [rows]);
+  const baseTemplates = useMemo(() => buildBaseTemplatesFromRows(rows), [rows]);
+  const generatedTemplates = useMemo(
+    () => [...baseTemplates, ...buildDeviceTemplatesFromCsv(rows)],
+    [baseTemplates, rows],
+  );
 
   const generatedTemplateMap = useMemo(
     () => new Map(generatedTemplates.map((template) => [templateKey(template), template])),
@@ -281,9 +287,19 @@ export default function App() {
     [generatedTemplateMap, selectedTemplateKey],
   );
 
+  const availableTemplates = useMemo(
+    () => generatedTemplates.map((template) => templateDrafts[templateKey(template)] ?? template),
+    [generatedTemplates, templateDrafts],
+  );
+
+  const availableTemplateMap = useMemo(
+    () => new Map(availableTemplates.map((template) => [templateKey(template), template])),
+    [availableTemplates],
+  );
+
   const selectedTemplate = useMemo(
-    () => (selectedTemplateKey ? templateDrafts[selectedTemplateKey] : undefined),
-    [selectedTemplateKey, templateDrafts],
+    () => (selectedTemplateKey ? availableTemplateMap.get(selectedTemplateKey) : undefined),
+    [availableTemplateMap, selectedTemplateKey],
   );
 
   const activeTemplate = selectedTemplate ?? selectedGeneratedTemplate;
@@ -492,9 +508,29 @@ export default function App() {
     [],
   );
 
+  const resolvedTemplateState = useMemo(() => {
+    if (!activeTemplate) {
+      return { template: undefined, error: '' };
+    }
+    try {
+      return {
+        template: resolveDeviceTemplateInheritance(availableTemplates, activeTemplate),
+        error: '',
+      };
+    } catch (error) {
+      return {
+        template: activeTemplate,
+        error: error instanceof Error ? error.message : '継承の解決に失敗しました。',
+      };
+    }
+  }, [activeTemplate, availableTemplates]);
+
+  const resolvedTemplate = resolvedTemplateState.template;
+  const templateResolveError = resolvedTemplateState.error;
+
   const templatePropertyRows = useMemo(
     () =>
-      activeTemplate?.properties.map((prop) => ({
+      resolvedTemplate?.properties.map((prop) => ({
         id: prop.name,
         name: prop.name,
         pointType: prop.pointType,
@@ -502,8 +538,21 @@ export default function App() {
         description: prop.description ?? '',
         default: prop.default ?? '',
       })) ?? [],
-    [activeTemplate],
+    [resolvedTemplate],
   );
+
+  const templateExtendOptions = useMemo(() => {
+    if (!activeTemplate) return [];
+    const names = new Set<string>();
+    for (const template of availableTemplates) {
+      if (template.namespace !== activeTemplate.namespace) continue;
+      const name = template.className || template.deviceType;
+      if (!name) continue;
+      if (name === activeTemplate.className || name === activeTemplate.deviceType) continue;
+      names.add(name);
+    }
+    return Array.from(names).sort((a, b) => a.localeCompare(b));
+  }, [activeTemplate, availableTemplates]);
 
   const handleFile = async (file: File) => {
     const text = await file.text();
@@ -557,11 +606,14 @@ export default function App() {
     });
   };
 
-  const handleTemplateFieldChange = (field: 'className' | 'description', value: string) => {
+  const handleTemplateFieldChange = (
+    field: 'className' | 'description' | 'extends',
+    value: string,
+  ) => {
     if (!selectedTemplateKey) return;
     updateTemplateDraft(selectedTemplateKey, (template) => ({
       ...template,
-      [field]: value,
+      [field]: field === 'extends' ? value || undefined : value,
     }));
   };
 
@@ -670,8 +722,8 @@ export default function App() {
   };
 
   const handleApplyTemplateToCsv = () => {
-    if (!activeTemplate) return;
-    const updatedRows = applyTemplateToRows(rows, activeTemplate);
+    if (!resolvedTemplate) return;
+    const updatedRows = applyTemplateToRows(rows, resolvedTemplate);
     setRows(updatedRows);
   };
 
@@ -1105,6 +1157,11 @@ export default function App() {
                     {templateLoadError}
                   </Alert>
                 )}
+                {templateResolveError && (
+                  <Alert severity="error" variant="outlined">
+                    {templateResolveError}
+                  </Alert>
+                )}
                 {activeTemplate ? (
                   <>
                     <Box className="template-header">
@@ -1124,6 +1181,22 @@ export default function App() {
                           handleTemplateFieldChange('description', event.target.value)
                         }
                       />
+                      <TextField
+                        size="small"
+                        select
+                        label="継承元"
+                        value={activeTemplate.extends ?? ''}
+                        onChange={(event) =>
+                          handleTemplateFieldChange('extends', event.target.value)
+                        }
+                      >
+                        <MenuItem value="">なし</MenuItem>
+                        {templateExtendOptions.map((name) => (
+                          <MenuItem key={name} value={name}>
+                            {name}
+                          </MenuItem>
+                        ))}
+                      </TextField>
                     </Box>
                     {templateDiff ? (
                       <Alert severity="warning" variant="outlined" data-testid="template-diff">
