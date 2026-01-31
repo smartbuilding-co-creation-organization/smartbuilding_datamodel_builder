@@ -129,15 +129,9 @@ function buildHierarchyTree(rows: RowRecord[]): Node[] {
 
   for (const [rowIndex, row] of rows.entries()) {
     const signals = resolveHierarchySignals(row);
-<<<<<<< HEAD
-    const siteName = signals.site || 'Unknown Site';
-    const siteKey = `site:${siteName}`;
-    const siteNode = ensureNode(siteKey, `site:${makeSlug(siteName)}`, siteName, 'Site');
-=======
     if (!signals.site || !signals.building || !signals.level) {
       continue;
     }
->>>>>>> c44714c82581a25c8d594baef38c13571afdff96
 
     if ((signals.pointId || signals.pointName) && !(signals.deviceId || signals.deviceName)) {
       continue;

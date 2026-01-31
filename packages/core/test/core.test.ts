@@ -1,10 +1,8 @@
-﻿import { readFileSync } from 'node:fs';
+﻿
+import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-<<<<<<< HEAD
-import { buildTree, exportCsv, exportRdf, exportYaml, parseCsv, validate } from '../src/index';
-=======
 import {
   applyTemplateToRows,
   buildTree,
@@ -22,7 +20,6 @@ import {
   serializeDeviceTemplate,
   validate,
 } from '../src/index';
->>>>>>> c44714c82581a25c8d594baef38c13571afdff96
 import schema from '../../../schema/building_model.schema.json';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -163,15 +160,10 @@ describe('exportRdf', () => {
     const rdf = exportRdf(rows, { schema });
 
     expect(rdf).toContain('@prefix sbco: <https://www.sbco.or.jp/ont/> .');
-<<<<<<< HEAD
     expect(rdf).toContain('<https://www.sbco.or.jp/ont/resource/DEV001> a sbco:EquipmentExt ;');
     expect(rdf).toContain('<https://www.sbco.or.jp/ont/resource/PT001> a sbco:PointExt ;');
     expect(rdf).toContain('sbco:pointType "Temperature"');
     expect(rdf).toContain('sbco:isPointOf <https://www.sbco.or.jp/ont/resource/DEV001>');
-=======
-    expect(rdf).toContain('<https://www.sbco.or.jp/ont/resource/site-1> a sbco:Site ;');
-    expect(rdf).toContain('sbco:isPartOf <https://www.sbco.or.jp/ont/resource/site-1>');
->>>>>>> c44714c82581a25c8d594baef38c13571afdff96
   });
 });
 
