@@ -66,16 +66,24 @@ test('upload csv, filter tree, edit and export', async ({ page }) => {
   const text = await fs.readFile(outputPath, 'utf-8');
   await expect(text).toContain('Room 101A');
 
+  await page.getByTestId('output-format-select').click();
+  await page.getByRole('option', { name: 'RDF' }).click();
+  await page.getByTestId('output-serializer-select').click();
+  await page.getByRole('option', { name: 'Turtle' }).click();
   const rdfDownloadPromise = page.waitForEvent('download');
-  await page.getByTestId('rdf-export-button').click();
+  await page.getByTestId('output-export-button').click();
   const rdfDownload = await rdfDownloadPromise;
   const rdfPath = test.info().outputPath('export.ttl');
   await rdfDownload.saveAs(rdfPath);
   const rdfText = await fs.readFile(rdfPath, 'utf-8');
   await expect(rdfText).toContain('Room 101A');
 
+  await page.getByTestId('output-format-select').click();
+  await page.getByRole('option', { name: 'YAML' }).click();
+  await page.getByTestId('output-serializer-select').click();
+  await page.getByRole('option', { name: 'YAML' }).click();
   const yamlDownloadPromise = page.waitForEvent('download');
-  await page.getByTestId('yaml-export-button').click();
+  await page.getByTestId('output-export-button').click();
   const yamlDownload = await yamlDownloadPromise;
   const yamlPath = test.info().outputPath('export.yaml');
   await yamlDownload.saveAs(yamlPath);

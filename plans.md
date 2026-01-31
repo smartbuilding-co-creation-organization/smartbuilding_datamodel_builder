@@ -532,7 +532,7 @@
   - [ ] 循環継承がエラーとして検出される
 - 実行すべきコマンド（最低限）: `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm test:e2e`
 
-36) 出力プラグイン化（フォーマット/シリアライズ選択）
+36) 出力プラグイン化（フォーマット/シリアライズ選択） (Done)
 - 目的: 出力形式をプラグイン化し、UI で選択・出力できるようにする
 - 変更対象（パス）: `packages/core/src`, `packages/core/test`, `apps/web/src`
 - 受入基準:
