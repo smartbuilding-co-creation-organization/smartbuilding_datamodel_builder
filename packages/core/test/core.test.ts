@@ -12,12 +12,14 @@ import {
   exportCsv,
   exportRdf,
   exportYaml,
+  getOutputPlugins,
   getSchemaPropertyDescription,
   hasHierarchySignalChange,
   parseCsv,
   parseDeviceTemplateYaml,
   resolveDeviceTemplateInheritance,
   resolveHierarchySignals,
+  runOutputPlugin,
   serializeDeviceTemplate,
   validate,
 } from '../src/index';
@@ -179,6 +181,21 @@ describe('exportYaml', () => {
     expect(yaml).toContain('id: "PT001"');
     expect(yaml).toContain('class: "sbco:PointExt"');
     expect(yaml).toContain('isPointOf: "https://www.sbco.or.jp/ont/resource/DEV001"');
+  });
+});
+
+describe('output plugins', () => {
+  it('lists available output plugins', () => {
+    const plugins = getOutputPlugins();
+    expect(plugins.some((plugin) => plugin.format === 'RDF')).toBe(true);
+    expect(plugins.some((plugin) => plugin.format === 'YAML')).toBe(true);
+  });
+
+  it('runs selected plugin with expected extension', () => {
+    const rows = parseCsv(loadCsv('valid.csv'), { schema });
+    const result = runOutputPlugin('RDF', 'Turtle', { rows, schema });
+    expect(result.extension).toBe('ttl');
+    expect(result.content).toContain('sbco:EquipmentExt');
   });
 });
 

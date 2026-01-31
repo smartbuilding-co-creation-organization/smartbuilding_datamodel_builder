@@ -28,8 +28,9 @@ import {
   DeviceTemplate,
   DeviceTemplateDiff,
   exportCsv,
-  exportRdf,
-  exportYaml,
+  findOutputPlugin,
+  getOutputPlugins,
+  runOutputPlugin,
   getLastHeader,
   getRequiredPropsFromCache,
   inferRowKind,
@@ -212,6 +213,24 @@ export default function App() {
     description: '',
     default: '',
   });
+  const outputPlugins = useMemo(() => getOutputPlugins(), []);
+  const outputFormats = useMemo(
+    () => Array.from(new Set(outputPlugins.map((plugin) => plugin.format))),
+    [outputPlugins],
+  );
+  const [selectedOutputFormat, setSelectedOutputFormat] = useState('');
+  const outputSerializers = useMemo(
+    () =>
+      outputPlugins
+        .filter((plugin) => plugin.format === selectedOutputFormat)
+        .map((plugin) => plugin.serializer),
+    [outputPlugins, selectedOutputFormat],
+  );
+  const [selectedOutputSerializer, setSelectedOutputSerializer] = useState('');
+  const selectedOutputPlugin = useMemo(
+    () => findOutputPlugin(selectedOutputFormat, selectedOutputSerializer),
+    [selectedOutputFormat, selectedOutputSerializer],
+  );
   const scale = uiScales[uiScale];
 
   const theme = useMemo(
@@ -424,6 +443,19 @@ export default function App() {
       setSelectedTemplateKey(templateKey(generatedTemplates[0]));
     }
   }, [generatedTemplateMap, generatedTemplates, selectedTemplateKey]);
+
+  useEffect(() => {
+    if (!selectedOutputFormat && outputFormats.length > 0) {
+      setSelectedOutputFormat(outputFormats[0]);
+    }
+  }, [outputFormats, selectedOutputFormat]);
+
+  useEffect(() => {
+    if (outputSerializers.length === 0) return;
+    if (!outputSerializers.includes(selectedOutputSerializer)) {
+      setSelectedOutputSerializer(outputSerializers[0]);
+    }
+  }, [outputSerializers, selectedOutputSerializer]);
 
   const csvGridColumns = useMemo<GridColDef[]>(
     () =>
@@ -738,24 +770,17 @@ export default function App() {
     URL.revokeObjectURL(url);
   };
 
-  const handleExportRdf = () => {
-    const rdf = exportRdf(rows, { schema });
-    const blob = new Blob([rdf], { type: 'text/turtle;charset=utf-8;' });
+  const handleExportPlugin = () => {
+    if (!selectedOutputPlugin) return;
+    const result = runOutputPlugin(selectedOutputPlugin.format, selectedOutputPlugin.serializer, {
+      rows,
+      schema,
+    });
+    const blob = new Blob([result.content], { type: result.mimeType });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = 'export.ttl';
-    link.click();
-    URL.revokeObjectURL(url);
-  };
-
-  const handleExportYaml = () => {
-    const yaml = exportYaml(rows, { schema });
-    const blob = new Blob([yaml], { type: 'text/yaml;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = 'export.yaml';
+    link.download = `export.${result.extension}`;
     link.click();
     URL.revokeObjectURL(url);
   };
@@ -795,21 +820,43 @@ export default function App() {
             >
               CSVを書き出す
             </Button>
+            <TextField
+              select
+              size="small"
+              label="フォーマット"
+              value={selectedOutputFormat}
+              onChange={(event) => setSelectedOutputFormat(event.target.value)}
+              data-testid="output-format-select"
+              sx={{ minWidth: 140 }}
+            >
+              {outputFormats.map((format) => (
+                <MenuItem key={format} value={format}>
+                  {format}
+                </MenuItem>
+              ))}
+            </TextField>
+            <TextField
+              select
+              size="small"
+              label="シリアライズ"
+              value={selectedOutputSerializer}
+              onChange={(event) => setSelectedOutputSerializer(event.target.value)}
+              data-testid="output-serializer-select"
+              sx={{ minWidth: 160 }}
+            >
+              {outputSerializers.map((serializer) => (
+                <MenuItem key={serializer} value={serializer}>
+                  {serializer}
+                </MenuItem>
+              ))}
+            </TextField>
             <Button
               variant="outlined"
-              onClick={handleExportRdf}
-              disabled={rows.length === 0}
-              data-testid="rdf-export-button"
+              onClick={handleExportPlugin}
+              disabled={rows.length === 0 || !selectedOutputPlugin}
+              data-testid="output-export-button"
             >
-              RDFを書き出す
-            </Button>
-            <Button
-              variant="outlined"
-              onClick={handleExportYaml}
-              disabled={rows.length === 0}
-              data-testid="yaml-export-button"
-            >
-              YAMLを書き出す
+              出力する
             </Button>
             <input
               ref={fileInputRef}
