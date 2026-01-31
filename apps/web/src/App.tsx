@@ -177,12 +177,13 @@ export default function App() {
     csvRows,
     csvColumns,
     rows,
+    modelRows,
     tree,
     selectedId,
     issues,
     setData,
     setSelectedId,
-    updateRow,
+    updateModelRow,
     setRows,
   } = useAppStore();
   const [search, setSearch] = useState('');
@@ -369,8 +370,8 @@ export default function App() {
 
   const selectedRow = useMemo(() => {
     if (!selectedId || selectedId === 'root') return undefined;
-    return rows.find((row) => row.id === selectedId);
-  }, [rows, selectedId]);
+    return modelRows.find((row) => row.id === selectedId);
+  }, [modelRows, selectedId]);
 
   const selectedKind = useMemo(() => {
     if (!selectedRow) return undefined;
@@ -598,12 +599,11 @@ export default function App() {
     if (!selectedRow) return;
     const key = newProperty.trim();
     if (!key) return;
-    const rowKey = String(selectedRow.__rowId ?? selectedRow.id);
     const nextRow = {
       ...selectedRow,
       [key]: newPropertyValue,
     } as RowRecord;
-    updateRow(rowKey, nextRow);
+    updateModelRow(selectedRow.id, nextRow);
     if (newPropertyDescription.trim()) {
       setCustomPropertyDescriptions((prev) => ({
         ...prev,
@@ -617,12 +617,11 @@ export default function App() {
 
   const handlePropertyValueChange = (property: string, value: string) => {
     if (!selectedRow) return;
-    const rowKey = String(selectedRow.__rowId ?? selectedRow.id);
     const nextRow = {
       ...selectedRow,
       [property]: value,
     } as RowRecord;
-    updateRow(rowKey, nextRow);
+    updateModelRow(selectedRow.id, nextRow);
   };
 
   const updateTemplateDraft = (

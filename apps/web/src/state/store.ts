@@ -1,19 +1,12 @@
 ﻿import { create } from 'zustand';
 import type { SchemaRoot } from '@repo/core';
-import {
-  buildTree,
-  Issue,
-  Node,
-  resolveRowId,
-  RowRecord,
-  syncRowIdentifiers,
-  validate,
-} from '@repo/core';
+import { buildTree, buildResourceModelMap, Issue, Node, RowRecord, validate } from '@repo/core';
 
 type AppState = {
   csvRows: RowRecord[];
   csvColumns: string[];
   rows: RowRecord[];
+  modelRows: RowRecord[];
   tree: Node[];
   selectedId: string;
   issues: Issue[];
@@ -25,7 +18,7 @@ type AppState = {
     schema?: SchemaRoot,
   ) => void;
   setSelectedId: (id: string) => void;
-  updateRow: (oldRowId: string, row: RowRecord) => void;
+  updateModelRow: (id: string, row: RowRecord) => void;
   setRows: (rows: RowRecord[]) => void;
 };
 
@@ -39,36 +32,33 @@ export const useAppStore = create<AppState>((set, get) => ({
   csvRows: [],
   csvColumns: [],
   rows: [],
+  modelRows: [],
   tree: [],
   selectedId: 'root',
   issues: [],
   schema: undefined,
   setData: (csvRows, csvColumns, rows, schema) => {
     const { tree, issues } = recompute(rows, schema);
-    set({ csvRows, csvColumns, rows, tree, issues, selectedId: 'root', schema });
+    const modelRows = Array.from(buildResourceModelMap(rows).values());
+    set({ csvRows, csvColumns, rows, modelRows, tree, issues, selectedId: 'root', schema });
   },
   setSelectedId: (id) => set({ selectedId: id }),
-  updateRow: (oldRowId, row) => {
-    const current = get().rows;
-    const oldRow = current.find((item) => (item.__rowId ?? item.id) === oldRowId);
-    const nextRow = oldRow ? syncRowIdentifiers(oldRow, row) : row;
-    const nextRows = current.map((item) =>
-      (item.__rowId ?? item.id) === oldRowId ? nextRow : item,
-    );
+  updateModelRow: (id, row) => {
+    const currentModelRows = get().modelRows;
+    const hasModelRow = currentModelRows.some((item) => item.id === id);
+    const nextModelRows = hasModelRow
+      ? currentModelRows.map((item) => (item.id === id ? row : item))
+      : [...currentModelRows, row];
+    const currentRows = get().rows;
+    const nextRows = currentRows.map((item) => (item.id === id ? row : item));
     const { tree, issues } = recompute(nextRows, get().schema);
     const selectedId = get().selectedId;
-    let nextSelectedId = selectedId;
-    if (oldRow) {
-      const prevFocusId = resolveRowId(oldRow);
-      const nextFocusId = resolveRowId(nextRow);
-      if (selectedId === prevFocusId && nextFocusId && prevFocusId !== nextFocusId) {
-        nextSelectedId = nextFocusId;
-      }
-    }
-    set({ rows: nextRows, tree, issues, selectedId: nextSelectedId });
+    const nextSelectedId = selectedId === id && row.id && row.id !== id ? row.id : selectedId;
+    set({ modelRows: nextModelRows, rows: nextRows, tree, issues, selectedId: nextSelectedId });
   },
   setRows: (rows) => {
     const { tree, issues } = recompute(rows, get().schema);
-    set({ rows, tree, issues });
+    const modelRows = Array.from(buildResourceModelMap(rows).values());
+    set({ rows, modelRows, tree, issues });
   },
 }));

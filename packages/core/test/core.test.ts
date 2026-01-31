@@ -8,6 +8,7 @@ import {
   buildBaseTemplatesFromRows,
   buildTemplatesZip,
   buildDeviceTemplatesFromCsv,
+  buildResourceModelMap,
   diffDeviceTemplate,
   exportCsv,
   exportRdf,
@@ -311,6 +312,25 @@ describe('schema descriptions', () => {
   it('returns property descriptions from schema definitions', () => {
     const description = getSchemaPropertyDescription(schema, 'site', 'name');
     expect(description).toBeTruthy();
+  });
+});
+
+describe('resource model map', () => {
+  it('provides space and equipment resources for editing', () => {
+    const rows = parseCsv(loadSampleCsv(), { schema });
+    const map = buildResourceModelMap(rows);
+    const values = Array.from(map.values());
+
+    const site = values.find((row) => row.kind === 'Site' && row.name === 'TokyoSite1');
+    expect(site).toBeDefined();
+
+    const equipment = values.find(
+      (row) => row.kind === 'EquipmentExt' && row.name === 'Temperature Sensor 01',
+    );
+    expect(equipment).toBeDefined();
+
+    const point = values.find((row) => row.kind === 'PointExt' && row.id === 'PT001');
+    expect(point).toBeDefined();
   });
 });
 
