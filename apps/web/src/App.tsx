@@ -44,6 +44,7 @@ import {
 } from '@repo/core';
 import { useAppStore } from './state/store';
 import schema from '../../../schema/building_model.schema.json';
+import shaclText from '../../../schema/building_model_shacl.yaml?raw';
 
 type SchemaDefinition = {
   properties?: Record<string, Record<string, unknown>>;
@@ -181,10 +182,12 @@ export default function App() {
     tree,
     selectedId,
     issues,
+    outputIssues,
     setData,
     setSelectedId,
     updateModelRow,
     setRows,
+    setOutputIssues,
   } = useAppStore();
   const [search, setSearch] = useState('');
   const [expandedItems, setExpandedItems] = useState<string[]>(['root']);
@@ -254,9 +257,11 @@ export default function App() {
     [scale.fontSize, scale.lineHeight],
   );
 
+  const allIssues = useMemo(() => [...issues, ...outputIssues], [issues, outputIssues]);
+
   const issueMap = useMemo(() => {
     const map = new Map<string, Set<string>>();
-    for (const issue of issues) {
+    for (const issue of allIssues) {
       if (issue.rowId === undefined || !issue.field) continue;
       const rowKey = String(issue.rowId);
       if (!map.has(rowKey)) {
@@ -265,16 +270,16 @@ export default function App() {
       map.get(rowKey)?.add(issue.field);
     }
     return map;
-  }, [issues]);
+  }, [allIssues]);
 
   const issueRows = useMemo(() => {
     const rowsWithIssues = new Set<string>();
-    for (const issue of issues) {
+    for (const issue of allIssues) {
       if (!issue.rowId) continue;
       rowsWithIssues.add(String(issue.rowId));
     }
     return rowsWithIssues;
-  }, [issues]);
+  }, [allIssues]);
 
   const issueRowLabelMap = useMemo(() => {
     const map = new Map<string, string>();
@@ -288,8 +293,14 @@ export default function App() {
         map.set(rowId, `id:${rowId}${rowKey ? ` (行${index + 1})` : ''}`);
       }
     });
+    for (const row of modelRows) {
+      const rowId = row.id ? String(row.id) : '';
+      if (rowId && !map.has(rowId)) {
+        map.set(rowId, `id:${rowId}`);
+      }
+    }
     return map;
-  }, [rows]);
+  }, [modelRows, rows]);
 
   const baseTemplates = useMemo(() => buildBaseTemplatesFromRows(rows), [rows]);
   const generatedTemplates = useMemo(
@@ -773,8 +784,11 @@ export default function App() {
     if (!selectedOutputPlugin) return;
     const result = runOutputPlugin(selectedOutputPlugin.format, selectedOutputPlugin.serializer, {
       rows,
+      modelRows,
       schema,
+      shacl: { shapeText: shaclText },
     });
+    setOutputIssues(result.issues ?? []);
     const blob = new Blob([result.content], { type: result.mimeType });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -933,6 +947,25 @@ export default function App() {
               ) : (
                 <Alert severity="success" variant="outlined">
                   エラーなし
+                </Alert>
+              )}
+              {outputIssues.length > 0 && (
+                <Alert severity="warning" variant="outlined" sx={{ mt: 1 }}>
+                  {`SHACL違反: ${outputIssues.length}件`}
+                  <ul className="issue-list">
+                    {outputIssues.slice(0, 4).map((issue, index) => {
+                      const rowLabel = issue.rowId
+                        ? (issueRowLabelMap.get(issue.rowId) ?? `id:${issue.rowId}`)
+                        : '行不明';
+                      const fieldLabel = issue.field ? `/${issue.field}` : '';
+                      return (
+                        <li key={`shacl-${issue.code}-${index}`}>
+                          {rowLabel}
+                          {fieldLabel}: {issue.message}
+                        </li>
+                      );
+                    })}
+                  </ul>
                 </Alert>
               )}
             </Box>

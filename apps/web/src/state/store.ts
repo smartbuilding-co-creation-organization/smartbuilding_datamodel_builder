@@ -10,6 +10,7 @@ type AppState = {
   tree: Node[];
   selectedId: string;
   issues: Issue[];
+  outputIssues: Issue[];
   schema?: SchemaRoot;
   setData: (
     csvRows: RowRecord[],
@@ -20,6 +21,7 @@ type AppState = {
   setSelectedId: (id: string) => void;
   updateModelRow: (id: string, row: RowRecord) => void;
   setRows: (rows: RowRecord[]) => void;
+  setOutputIssues: (issues: Issue[]) => void;
 };
 
 function recompute(rows: RowRecord[], schema?: SchemaRoot) {
@@ -36,11 +38,22 @@ export const useAppStore = create<AppState>((set, get) => ({
   tree: [],
   selectedId: 'root',
   issues: [],
+  outputIssues: [],
   schema: undefined,
   setData: (csvRows, csvColumns, rows, schema) => {
     const { tree, issues } = recompute(rows, schema);
     const modelRows = Array.from(buildResourceModelMap(rows).values());
-    set({ csvRows, csvColumns, rows, modelRows, tree, issues, selectedId: 'root', schema });
+    set({
+      csvRows,
+      csvColumns,
+      rows,
+      modelRows,
+      tree,
+      issues,
+      outputIssues: [],
+      selectedId: 'root',
+      schema,
+    });
   },
   setSelectedId: (id) => set({ selectedId: id }),
   updateModelRow: (id, row) => {
@@ -54,11 +67,19 @@ export const useAppStore = create<AppState>((set, get) => ({
     const { tree, issues } = recompute(nextRows, get().schema);
     const selectedId = get().selectedId;
     const nextSelectedId = selectedId === id && row.id && row.id !== id ? row.id : selectedId;
-    set({ modelRows: nextModelRows, rows: nextRows, tree, issues, selectedId: nextSelectedId });
+    set({
+      modelRows: nextModelRows,
+      rows: nextRows,
+      tree,
+      issues,
+      outputIssues: [],
+      selectedId: nextSelectedId,
+    });
   },
   setRows: (rows) => {
     const { tree, issues } = recompute(rows, get().schema);
     const modelRows = Array.from(buildResourceModelMap(rows).values());
-    set({ rows, modelRows, tree, issues });
+    set({ rows, modelRows, tree, issues, outputIssues: [] });
   },
+  setOutputIssues: (issues) => set({ outputIssues: issues }),
 }));

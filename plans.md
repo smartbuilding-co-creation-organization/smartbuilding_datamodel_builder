@@ -550,7 +550,7 @@
   - [ ] 既存のポイント編集と共存する
 - 実行すべきコマンド（最低限）: `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm test:e2e`
 
-38) 出力時の編集反映と SHACL 検証
+38) 出力時の編集反映と SHACL 検証 (Done)
 - 目的: 編集プロパティ/デフォルト値の出力反映と SHACL 検証を追加する
 - 変更対象（パス）: `packages/core/src`, `packages/core/test`, `apps/web/src`, `schema/`
 - 受入基準:
