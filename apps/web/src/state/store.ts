@@ -1,6 +1,14 @@
 ﻿import { create } from 'zustand';
 import type { SchemaRoot } from '@repo/core';
-import { buildTree, Issue, Node, RowRecord, validate } from '@repo/core';
+import {
+  buildTree,
+  Issue,
+  Node,
+  resolveRowId,
+  RowRecord,
+  syncRowIdentifiers,
+  validate,
+} from '@repo/core';
 
 type AppState = {
   csvRows: RowRecord[];
@@ -41,8 +49,21 @@ export const useAppStore = create<AppState>((set, get) => ({
   setSelectedId: (id) => set({ selectedId: id }),
   updateRow: (oldRowId, row) => {
     const current = get().rows;
-    const nextRows = current.map((item) => ((item.__rowId ?? item.id) === oldRowId ? row : item));
+    const oldRow = current.find((item) => (item.__rowId ?? item.id) === oldRowId);
+    const nextRow = oldRow ? syncRowIdentifiers(oldRow, row) : row;
+    const nextRows = current.map((item) =>
+      (item.__rowId ?? item.id) === oldRowId ? nextRow : item,
+    );
     const { tree, issues } = recompute(nextRows, get().schema);
-    set({ rows: nextRows, tree, issues });
+    const selectedId = get().selectedId;
+    let nextSelectedId = selectedId;
+    if (oldRow) {
+      const prevFocusId = resolveRowId(oldRow);
+      const nextFocusId = resolveRowId(nextRow);
+      if (selectedId === prevFocusId && nextFocusId && prevFocusId !== nextFocusId) {
+        nextSelectedId = nextFocusId;
+      }
+    }
+    set({ rows: nextRows, tree, issues, selectedId: nextSelectedId });
   },
 }));

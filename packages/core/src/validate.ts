@@ -1,6 +1,6 @@
 ﻿import { z } from 'zod';
 import { getRequiredPropsFromCache, SchemaRoot, buildSchemaCache } from './schema-mapping';
-import { inferRowKind, normalizeValue } from './row-utils';
+import { inferRowKind, listMissingHierarchyParents, normalizeValue } from './row-utils';
 import { Issue, RowRecord } from './types';
 
 const KindSchema = z.enum(['site', 'building', 'floor', 'space', 'device', 'point']);
@@ -58,10 +58,7 @@ type ValidateOptions = {
   schema?: SchemaRoot;
 };
 
-export function validate(
-  rows: RowRecord[],
-  options: ValidateOptions = {},
-): { issues: Issue[] } {
+export function validate(rows: RowRecord[], options: ValidateOptions = {}): { issues: Issue[] } {
   const issues: Issue[] = [];
   const issueKeys = new Set<string>();
   const addIssue = (issue: Issue) => {
@@ -114,12 +111,7 @@ export function validate(
       const required = getRequiredPropsFromCache(schemaCache, kind);
       for (const field of required) {
         if (field === 'id' || field === 'name') continue;
-        const value =
-          field === 'id'
-            ? row.id
-            : field === 'name'
-              ? row.name
-              : row[field];
+        const value = field === 'id' ? row.id : field === 'name' ? row.name : row[field];
         if (!normalizeValue(value)) {
           addIssue({
             code: 'schema',
@@ -128,6 +120,18 @@ export function validate(
             field,
           });
         }
+      }
+    }
+
+    const hierarchyMissing = listMissingHierarchyParents(row);
+    if (hierarchyMissing.length > 0) {
+      for (const missingField of hierarchyMissing) {
+        addIssue({
+          code: 'hierarchy_missing',
+          message: `Hierarchy parent missing: ${missingField}`,
+          rowId: rowIdForIssue(row),
+          field: missingField,
+        });
       }
     }
   }

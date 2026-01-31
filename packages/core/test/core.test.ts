@@ -7,7 +7,10 @@ import {
   exportCsv,
   exportRdf,
   exportYaml,
+  getSchemaPropertyDescription,
+  hasHierarchySignalChange,
   parseCsv,
+  resolveHierarchySignals,
   validate,
 } from '../src/index';
 import schema from '../../../schema/building_model.schema.json';
@@ -54,19 +57,16 @@ describe('buildTree (hierarchy csv)', () => {
     const room = level?.children.find((node) => node.name === 'Room101');
     expect(room?.kind).toBe('Room');
 
-    const equipment = room?.children.find(
-      (node) => node.name === 'Temperature Sensor 01',
-    );
+    const equipment = room?.children.find((node) => node.name === 'Temperature Sensor 01');
     expect(equipment?.kind).toBe('EquipmentExt');
 
     const point = equipment?.children.find((node) => node.id === 'PT001');
     expect(point?.kind).toBe('PointExt');
   });
 
-  it('generates ids when deviceId or pointId is missing', () => {
+  it('skips rows with missing hierarchy parents', () => {
     const rows = [
       {
-        site: 'Site X',
         building: 'Building X',
         level: 'Level X',
         deviceName: 'Device X',
@@ -74,33 +74,22 @@ describe('buildTree (hierarchy csv)', () => {
       },
     ];
     const tree = buildTree(rows);
-    const site = tree[0];
-    const building = site?.children[0];
-    const level = building?.children[0];
-    const equipment = level?.children[0];
-    const point = equipment?.children[0];
-
-    expect(equipment?.id).toBeTruthy();
-    expect(point?.id).toBeTruthy();
-    expect(equipment?.id).not.toBe(point?.id);
+    expect(tree).toHaveLength(0);
   });
 
-  it('allows equipment directly under level when level is empty', () => {
+  it('omits point node when point signals are missing', () => {
     const rows = [
       {
         site: 'Site X',
         building: 'Building X',
-        level: '-',
-        installationArea: 'Room X',
+        level: 'Level X',
         deviceName: 'Device X',
-        pointName: 'Point X',
       },
     ];
     const tree = buildTree(rows);
-    const level = tree[0]?.children[0]?.children[0];
-    expect(level?.kind).toBe('Level');
-    expect(level?.children.some((node) => node.kind === 'Room')).toBe(false);
-    expect(level?.children[0]?.kind).toBe('EquipmentExt');
+    const equipment = tree[0]?.children[0]?.children[0]?.children[0];
+    expect(equipment?.kind).toBe('EquipmentExt');
+    expect(equipment?.children).toHaveLength(0);
   });
 });
 
@@ -119,6 +108,20 @@ describe('validate', () => {
     expect(issues.some((issue) => issue.code === 'parent_missing')).toBe(true);
     expect(issues.some((issue) => issue.code === 'cycle')).toBe(true);
     expect(issues.some((issue) => issue.code === 'schema')).toBe(true);
+  });
+
+  it('returns hierarchy issues when parent signals are missing', () => {
+    const rows = [
+      {
+        building: 'Building X',
+        level: 'Level X',
+        deviceName: 'Device X',
+        pointName: 'Point X',
+      },
+    ];
+    const { issues } = validate(rows);
+    expect(issues.some((issue) => issue.code === 'hierarchy_missing')).toBe(true);
+    expect(issues.some((issue) => issue.field === 'site')).toBe(true);
   });
 });
 
@@ -140,9 +143,7 @@ describe('exportRdf', () => {
 
     expect(rdf).toContain('@prefix sbco: <https://www.sbco.or.jp/ont/> .');
     expect(rdf).toContain('<https://www.sbco.or.jp/ont/resource/site-1> a sbco:Site ;');
-    expect(rdf).toContain(
-      'sbco:isPartOf <https://www.sbco.or.jp/ont/resource/site-1>',
-    );
+    expect(rdf).toContain('sbco:isPartOf <https://www.sbco.or.jp/ont/resource/site-1>');
   });
 });
 
@@ -173,6 +174,53 @@ describe('schema mapping', () => {
     const rows = parseCsv(loadCsv('valid.csv'), { schema });
     const building = rows.find((row) => row.id === 'bldg-1');
     expect(building?.isPartOf).toBe('site-1');
+  });
+});
+
+describe('hierarchy signal utilities', () => {
+  it('detects hierarchy signal changes for monitored columns', () => {
+    const before = {
+      site: 'Site A',
+      building: 'Building A',
+      level: 'Level 1',
+      deviceName: 'Device A',
+      pointName: 'Point A',
+      note: 'unchanged',
+    };
+    const after = {
+      ...before,
+      building: 'Building B',
+    };
+    const ignoreChange = {
+      ...before,
+      note: 'updated',
+    };
+
+    expect(hasHierarchySignalChange(before, after)).toBe(true);
+    expect(hasHierarchySignalChange(before, ignoreChange)).toBe(false);
+  });
+
+  it('normalizes hierarchy signals consistently', () => {
+    const signals = resolveHierarchySignals({
+      siteName: 'Site A',
+      buildingId: 'Building A',
+      floorName: 'Level 1',
+      zone: 'Zone A',
+      deviceId: 'Device A',
+      pointId: 'Point A',
+    });
+    expect(signals.site).toBe('Site A');
+    expect(signals.building).toBe('Building A');
+    expect(signals.level).toBe('Level 1');
+    expect(signals.room).toBe('Zone A');
+    expect(signals.roomKind).toBe('Zone');
+  });
+});
+
+describe('schema descriptions', () => {
+  it('returns property descriptions from schema definitions', () => {
+    const description = getSchemaPropertyDescription(schema, 'site', 'name');
+    expect(description).toBeTruthy();
   });
 });
 
