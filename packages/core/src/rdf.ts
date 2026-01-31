@@ -1,7 +1,7 @@
 import { buildResourceGraph } from './resource-graph';
 import { buildSchemaCache, getRequiredPropsFromCache, SchemaRoot } from './schema-mapping';
 import { RowRecord } from './types';
-import { normalizeValue } from './row-utils';
+import { collectOutputFields, resolveOutputValue } from './output-utils';
 
 type RdfOptions = {
   baseIri?: string;
@@ -63,30 +63,11 @@ export function exportRdf(rows: RowRecord[], options: RdfOptions = {}): string {
 
     const props: string[] = [`a sbco:${className}`];
 
-    for (const field of required) {
-      if (field === 'id') {
-        props.push(`sbco:id "${escapeLiteral(resource.id)}"`);
-        continue;
-      }
-      if (field === 'name') {
-        const value = normalizeValue(resource.name) || (autoFill ? resource.id : '');
-        if (value) {
-          props.push(`sbco:name "${escapeLiteral(value)}"`);
-        }
-        continue;
-      }
-
-      const rowValue = normalizeValue(resource.row?.[field]);
-      const fallbackValue =
-        field === 'pointType'
-          ? normalizeValue(resource.row?.pointSpecification) ||
-            normalizeValue(resource.row?.objectTypeBacnet) ||
-            ''
-          : '';
-      const finalValue = rowValue || fallbackValue || (autoFill ? 'Unknown' : '');
-      if (finalValue) {
-        props.push(`sbco:${field} "${escapeLiteral(finalValue)}"`);
-      }
+    const fields = collectOutputFields(resource.row, required);
+    for (const field of fields) {
+      const value = resolveOutputValue(resource, field, { autoFill });
+      if (!value) continue;
+      props.push(`sbco:${field} "${escapeLiteral(value)}"`);
     }
 
     const relationsForResource = relationMap.get(resource.id) ?? [];

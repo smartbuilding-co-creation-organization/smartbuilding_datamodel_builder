@@ -1,7 +1,7 @@
 import { buildResourceGraph } from './resource-graph';
 import { buildSchemaCache, getRequiredPropsFromCache, SchemaRoot } from './schema-mapping';
 import { RowRecord } from './types';
-import { normalizeValue } from './row-utils';
+import { collectOutputFields, resolveOutputValue } from './output-utils';
 
 type YamlOptions = {
   baseIri?: string;
@@ -47,7 +47,7 @@ export function exportYaml(rows: RowRecord[], options: YamlOptions = {}): string
       ? getRequiredPropsFromCache(schemaCache, className)
       : requiredFallback;
 
-    const name = normalizeValue(resource.name) || (autoFill ? resource.id : '');
+    const name = resolveOutputValue(resource, 'name', { autoFill });
 
     lines.push(`  - id: "${escapeYaml(resource.id)}"`);
     if (name) {
@@ -56,19 +56,13 @@ export function exportYaml(rows: RowRecord[], options: YamlOptions = {}): string
     lines.push(`    class: "sbco:${className}"`);
     lines.push(`    iri: "${escapeYaml(iriFor(baseIri, resource.id))}"`);
 
-    for (const field of required) {
-      if (field === 'id' || field === 'name') continue;
-      const rowValue = normalizeValue(resource.row?.[field]);
-      const fallbackValue =
-        field === 'pointType'
-          ? normalizeValue(resource.row?.pointSpecification) ||
-            normalizeValue(resource.row?.objectTypeBacnet) ||
-            ''
-          : '';
-      const finalValue = rowValue || fallbackValue || (autoFill ? 'Unknown' : '');
-      if (finalValue) {
-        lines.push(`    ${field}: "${escapeYaml(finalValue)}"`);
-      }
+    const fields = collectOutputFields(resource.row, required).filter(
+      (field) => field !== 'id' && field !== 'name',
+    );
+    for (const field of fields) {
+      const value = resolveOutputValue(resource, field, { autoFill });
+      if (!value) continue;
+      lines.push(`    ${field}: "${escapeYaml(value)}"`);
     }
 
     const predicateMap = relationMap.get(resource.id);

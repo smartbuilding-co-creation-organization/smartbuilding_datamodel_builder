@@ -9,6 +9,7 @@ import {
   buildTemplatesZip,
   buildDeviceTemplatesFromCsv,
   buildResourceModelMap,
+  buildShaclShapeFromYaml,
   diffDeviceTemplate,
   exportCsv,
   exportRdf,
@@ -21,6 +22,7 @@ import {
   resolveDeviceTemplateInheritance,
   resolveHierarchySignals,
   runOutputPlugin,
+  validateShacl,
   serializeDeviceTemplate,
   validate,
 } from '../src/index';
@@ -197,6 +199,48 @@ describe('output plugins', () => {
     const result = runOutputPlugin('RDF', 'Turtle', { rows, schema });
     expect(result.extension).toBe('ttl');
     expect(result.content).toContain('sbco:EquipmentExt');
+  });
+
+  it('merges edited model rows into output and omits blank values', () => {
+    const rows = parseCsv(loadCsv('valid.csv'), { schema });
+    const modelRows = Array.from(buildResourceModelMap(rows).values()).map((row) => {
+      if (row.id === 'DEV001') {
+        return {
+          ...row,
+          description: 'Edited description',
+          customNote: '',
+        };
+      }
+      return row;
+    });
+
+    const result = runOutputPlugin('RDF', 'Turtle', { rows, modelRows, schema });
+    expect(result.content).toContain('sbco:description "Edited description"');
+    expect(result.content).not.toContain('sbco:customNote');
+  });
+
+  it('returns SHACL issues for missing required fields', () => {
+    const shapeText = [
+      'slots:',
+      '  name:',
+      '    required: true',
+      'classes:',
+      '  PointExt:',
+      '    slots:',
+      '      - name',
+      '',
+    ].join('\n');
+    const rows = [
+      {
+        id: 'P1',
+        name: '',
+        kind: 'PointExt',
+      },
+    ];
+    const shape = buildShaclShapeFromYaml(shapeText);
+    const issues = validateShacl(rows, { shape });
+    expect(issues).toHaveLength(1);
+    expect(issues[0]?.field).toBe('name');
   });
 });
 

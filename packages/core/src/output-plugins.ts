@@ -1,17 +1,24 @@
 import { exportRdf } from './rdf';
 import { SchemaRoot } from './schema-mapping';
-import { RowRecord } from './types';
+import { Issue, RowRecord } from './types';
 import { exportYaml } from './yaml';
+import { buildOutputRows, mergeOutputRows } from './output-aggregation';
+import { buildShaclShapeFromYaml, validateShacl } from './shacl';
 
 export type OutputPluginResult = {
   content: string;
   extension: string;
   mimeType: string;
+  issues?: Issue[];
 };
 
 export type OutputPluginRunOptions = {
   rows: RowRecord[];
+  modelRows?: RowRecord[];
   schema?: SchemaRoot;
+  shacl?: {
+    shapeText: string;
+  };
 };
 
 export type OutputPlugin = {
@@ -28,22 +35,36 @@ const OUTPUT_PLUGINS: OutputPlugin[] = [
     label: 'RDF (Turtle)',
     format: 'RDF',
     serializer: 'Turtle',
-    run: ({ rows, schema }) => ({
-      content: exportRdf(rows, { schema }),
-      extension: 'ttl',
-      mimeType: 'text/turtle;charset=utf-8;',
-    }),
+    run: ({ rows, schema, shacl }) => {
+      const outputRows = buildOutputRows(rows);
+      const content = exportRdf(outputRows, { schema, autoFill: false });
+      return {
+        content,
+        extension: 'ttl',
+        mimeType: 'text/turtle;charset=utf-8;',
+        issues: shacl
+          ? validateShacl(outputRows, { shape: buildShaclShapeFromYaml(shacl.shapeText) })
+          : undefined,
+      };
+    },
   },
   {
     id: 'yaml',
     label: 'YAML',
     format: 'YAML',
     serializer: 'YAML',
-    run: ({ rows, schema }) => ({
-      content: exportYaml(rows, { schema }),
-      extension: 'yaml',
-      mimeType: 'text/yaml;charset=utf-8;',
-    }),
+    run: ({ rows, schema, shacl }) => {
+      const outputRows = buildOutputRows(rows);
+      const content = exportYaml(outputRows, { schema, autoFill: false });
+      return {
+        content,
+        extension: 'yaml',
+        mimeType: 'text/yaml;charset=utf-8;',
+        issues: shacl
+          ? validateShacl(outputRows, { shape: buildShaclShapeFromYaml(shacl.shapeText) })
+          : undefined,
+      };
+    },
   },
 ];
 
@@ -66,5 +87,6 @@ export function runOutputPlugin(
   if (!plugin) {
     throw new Error(`Output plugin not found for ${format}/${serializer}`);
   }
-  return plugin.run(options);
+  const merged = mergeOutputRows(options.rows, options.modelRows ?? []);
+  return plugin.run({ ...options, rows: merged });
 }
