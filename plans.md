@@ -269,6 +269,14 @@
 
 ## 4. タスクバックログ（優先順）
 
+0) E2E 実行前提の明文化
+- 目的: Playwright のブラウザインストール/依存パッケージの前提をREADMEとscriptsに明記する
+- 変更対象（パス）: `README.md`, `package.json`, `apps/web/package.json`
+- 受入基準:
+  - [ ] README に「Playwright のブラウザ/依存導入」手順がある
+  - [ ] package.json に Playwright 導入の補助スクリプトがある
+- 実行すべきコマンド（最低限）: 省略可（ドキュメントのみ）
+
 1) リポジトリの起動確認
 - 目的: 既存の起動導線を確認し、作業の前提を固める
 - 変更対象（パス）: 変更なし
@@ -471,7 +479,33 @@
   - [ ] 主要クラス/プロパティと出力例が記載されている
 - 実行すべきコマンド（最低限）: MAY 省略（理由記載）
 
-29) fixture 更新時のルール明文化
+29) E2E 失敗の根本原因修正（fixture 拡充 + ID 期待値調整）
+- 目的: E2E テストが実際の Tree 構築実装と fixture データに整合するよう修正する
+- 背景:
+  - 実装調査により、以下の不整合が判明した:
+    1. Tree ID 生成: `tree.ts` の `buildHierarchyTree()` は slug ベースの ID（例: `"site:tokyo-site1"`, `"building:site:tokyo-site1/main-bldg"`）を生成する。
+    2. E2E 期待値: テストは numeric suffix ID（例: `"site-1"`, `"bldg-1"`, `"floor-1"`, `"space-1"`）を期待している。
+    3. Fixture 不足: `valid.csv` は 2 行のみで、単一階層（TokyoSite1 > MainBldg > 3F > Room101）しか含まれていない。テストが期待する複数の site/building/floor/space は存在しない。
+    4. バリデーションメッセージ: テストは `"Duplicate id"` を期待するが、実装は `"Duplicate id: ${id}"` を返す。
+- 修正方針:
+  1. Fixture 拡充（`packages/fixtures/valid.csv`）
+     - 複数の site/building/floor/room を含む行を追加する。
+     - E2E テストが期待する検索キーワード（例: "Room 201"）に対応するデータを含める。
+  2. E2E テスト ID 期待値の調整（`apps/web/e2e/app.spec.ts`）
+     - 生成される実際の ID（slug ベース）を反映した `data-testid` を使用するように修正する。
+     - または、fixture データの site/building/floor/room 名を調整して、生成される ID が単純化されるようにする（例: site 名を "Site1" にすることで `"site:site1"` が生成される）。
+  3. バリデーションメッセージ期待値の修正
+     - テストの期待メッセージを `"Duplicate id: PT001"` のように具体的な形式に修正する。
+- 変更対象（パス）: `packages/fixtures/valid.csv`, `packages/fixtures/invalid.csv`, `apps/web/e2e/app.spec.ts`
+- 受入基準:
+  - [ ] `valid.csv` に複数の site/building/floor/room が含まれる（最低でも site 2 つ、building 各 1 つ、floor 各 1 つ、room 各 1 つ）
+  - [ ] `valid.csv` に "Room 201" を含む行が存在する（検索テスト用）
+  - [ ] E2E テストの `data-testid` 期待値が実際に生成される ID と一致する
+  - [ ] `invalid.csv` のバリデーションメッセージテストが通る
+  - [ ] `pnpm test:e2e` で 18 テスト中少なくとも 15 テストが通る
+- 実行すべきコマンド（最低限）: `pnpm test:e2e`
+
+29-2) fixture 更新時のルール明文化
 - 目的: テストデータの品質を維持する
 - 変更対象（パス）: `packages/fixtures/README.md`（なければ作成）
 - 受入基準:
@@ -560,6 +594,23 @@
   - [ ] SHACL 検証が出力時に実行され、違反が Issue として返る
   - [ ] UI で SHACL 違反が確認できる
 - 実行すべきコマンド（最低限）: `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm test:e2e`
+
+39) MUI レイアウト統一（余白・密度・整列）
+- 目的: 余白・密度・整列を 8px グリッド（theme.spacing）で統一し、プロダクト品質のレイアウトにする。機能と状態管理は一切変更せず、見た目のみ改善する。
+- 変更対象（パス）: `apps/web/src/theme.ts`（新規）, `apps/web/src/App.tsx`, `apps/web/src/styles.css`
+- 受入基準:
+  - [ ] margin/padding/gap は theme.spacing 系のみ
+  - [ ] toolbar の1行目/2行目の高さと要素整列が揃っている（ガタつきがない）
+  - [ ] panel の内側余白が一定で、Tree と Grid の上端が揃う
+  - [ ] DataGrid が panel 内で自然に伸び、余白が均一
+  - [ ] 動作・機能は変わっていない（E2E が通る）
+- 実装タスク:
+  - A) `apps/web/src/theme.ts` を作成し、createTheme を App.tsx から移動。shape.borderRadius=8、MuiButton/TextField/Alert/Chip/DataGrid の components overrides を追加
+  - B) App.tsx に AppShell 相当の構造を導入（padding/gap を theme.spacing で統一）
+  - C) toolbar を 2 行 Stack 構成に整理（1行目：タイトル+CSV操作+出力選択、2行目：ビュー+サイズ+検証概要）、spacing/flexWrap を統一
+  - D) main を CSS grid 化（grid-template-columns: 320px 1fr、gap: theme.spacing(2)）、panel を Paper variant="outlined" + padding: theme.spacing(2) に統一
+  - E) styles.css の余白関連 className を削減し、状態表現クラス（row-error 等）のみ残す
+- 実行すべきコマンド（最低限）: `pnpm lint`, `pnpm typecheck`, `pnpm test:e2e`
 
 ## 5. リスクと軽減策
 - DataGrid 編集の罠

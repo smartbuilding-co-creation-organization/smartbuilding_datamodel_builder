@@ -10,7 +10,9 @@
     "lint": "eslint \"src/**/*.{ts,tsx}\" \"e2e/**/*.ts\"",
     "format": "prettier --write \"src/**/*.{ts,tsx,css}\" \"e2e/**/*.ts\"",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "playwright:install": "playwright install",
+    "playwright:install-deps": "playwright install-deps"
   },
   "dependencies": {
     "@emotion/react": "^11.11.4",

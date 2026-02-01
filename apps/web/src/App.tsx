@@ -14,10 +14,12 @@
   Tooltip,
   Typography,
 } from '@mui/material';
-import { ThemeProvider, createTheme } from '@mui/material/styles';
+import { ThemeProvider } from '@mui/material/styles';
 import { DataGrid, GridColDef } from '@mui/x-data-grid';
 import { SimpleTreeView, TreeItem } from '@mui/x-tree-view';
+import { Paper } from '@mui/material';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { buildTheme, uiScales, type UiScaleKey } from './theme';
 import {
   buildSchemaCache,
   buildDeviceTemplatesFromCsv,
@@ -145,32 +147,6 @@ function TreeLabel({ node }: { node: Node }) {
   );
 }
 
-const uiScales = {
-  compact: {
-    label: '小',
-    fontSize: 13,
-    lineHeight: 1.35,
-    gridRowHeight: 36,
-    gridHeaderHeight: 36,
-  },
-  regular: {
-    label: '中',
-    fontSize: 14,
-    lineHeight: 1.45,
-    gridRowHeight: 42,
-    gridHeaderHeight: 40,
-  },
-  large: {
-    label: '大',
-    fontSize: 15,
-    lineHeight: 1.55,
-    gridRowHeight: 48,
-    gridHeaderHeight: 44,
-  },
-} as const;
-
-type UiScaleKey = keyof typeof uiScales;
-
 export default function App() {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const templateInputRef = useRef<HTMLInputElement | null>(null);
@@ -238,23 +214,8 @@ export default function App() {
   const scale = uiScales[uiScale];
 
   const theme = useMemo(
-    () =>
-      createTheme({
-        typography: {
-          fontFamily: "'Space Grotesk', 'Segoe UI', sans-serif",
-          fontSize: scale.fontSize,
-        },
-        components: {
-          MuiCssBaseline: {
-            styleOverrides: {
-              body: {
-                lineHeight: scale.lineHeight,
-              },
-            },
-          },
-        },
-      }),
-    [scale.fontSize, scale.lineHeight],
+    () => buildTheme(uiScale),
+    [uiScale],
   );
 
   const allIssues = useMemo(() => [...issues, ...outputIssues], [issues, outputIssues]);
@@ -814,9 +775,27 @@ export default function App() {
 
   return (
     <ThemeProvider theme={theme}>
-      <Box className="app-shell">
-        <Box className="toolbar">
-          <Stack direction="row" spacing={2} alignItems="center">
+      <Box
+        sx={{
+          display: 'flex',
+          flexDirection: 'column',
+          height: '100%',
+          p: 2,
+          gap: 2,
+        }}
+      >
+        {/* Toolbar: 2行構成 */}
+        <Stack
+          spacing={1}
+          sx={{
+            borderBottom: 1,
+            borderColor: 'divider',
+            pb: 2,
+            bgcolor: 'background.paper',
+          }}
+        >
+          {/* 1行目: タイトル + CSV操作 + 出力選択 */}
+          <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
             <Typography variant="h6">Building Model CSV Explorer</Typography>
             <Button
               variant="contained"
@@ -886,7 +865,9 @@ export default function App() {
               }}
             />
           </Stack>
-          <Stack direction="row" spacing={2} alignItems="center">
+
+          {/* 2行目: ビュー + サイズ + 検証概要 */}
+          <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
             <Stack direction="row" spacing={1} alignItems="center">
               <Typography variant="caption" color="text.secondary">
                 ビュー
@@ -970,40 +951,52 @@ export default function App() {
               )}
             </Box>
           </Stack>
-        </Box>
+        </Stack>
 
         <Box className="main">
           {activeView === 'data' ? (
-            <>
-              <Box className="panel tree-panel">
-                <Typography className="panel-title" variant="subtitle1">
+            <Box
+              sx={{
+                display: 'grid',
+                gridTemplateColumns: '320px 1fr',
+                gap: 2,
+                flex: 1,
+                overflow: 'hidden',
+              }}
+            >
+              {/* Tree Panel */}
+              <Paper variant="outlined" sx={{ p: 2, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                <Typography variant="subtitle1" sx={{ mb: 1 }}>
                   階層ツリー
                 </Typography>
-                <SimpleTreeView
-                  selectedItems={selectedId ?? ''}
-                  expandedItems={expandedItems}
-                  onExpandedItemsChange={(_, itemIds) => {
-                    const next = Array.isArray(itemIds) ? itemIds : [itemIds];
-                    setExpandedItems(next.filter(Boolean));
-                  }}
-                  onSelectedItemsChange={(_, itemIds) => {
-                    const id = Array.isArray(itemIds) ? itemIds[0] : itemIds;
-                    if (id) setSelectedId(id);
-                  }}
-                  data-testid="tree"
-                  sx={{ fontSize: scale.fontSize, lineHeight: scale.lineHeight }}
-                >
-                  <TreeItem itemId="root" label={<Box data-testid="tree-item-root">All</Box>}>
-                    {tree.map(renderTree)}
-                  </TreeItem>
-                </SimpleTreeView>
-              </Box>
+                <Box sx={{ flex: 1, overflow: 'auto' }}>
+                  <SimpleTreeView
+                    selectedItems={selectedId ?? ''}
+                    expandedItems={expandedItems}
+                    onExpandedItemsChange={(_, itemIds) => {
+                      const next = Array.isArray(itemIds) ? itemIds : [itemIds];
+                      setExpandedItems(next.filter(Boolean));
+                    }}
+                    onSelectedItemsChange={(_, itemIds) => {
+                      const id = Array.isArray(itemIds) ? itemIds[0] : itemIds;
+                      if (id) setSelectedId(id);
+                    }}
+                    data-testid="tree"
+                    sx={{ fontSize: scale.fontSize, lineHeight: scale.lineHeight }}
+                  >
+                    <TreeItem itemId="root" label={<Box data-testid="tree-item-root">All</Box>}>
+                      {tree.map(renderTree)}
+                    </TreeItem>
+                  </SimpleTreeView>
+                </Box>
+              </Paper>
 
-              <Box className="panel grid-panel">
-                <Typography className="panel-title" variant="subtitle1">
+              {/* Grid Panel */}
+              <Paper variant="outlined" sx={{ p: 2, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                <Typography variant="subtitle1" sx={{ mb: 1 }}>
                   データ表示
                 </Typography>
-                <Stack direction="row" spacing={2} alignItems="center" className="mode-row">
+                <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" sx={{ mb: 1 }}>
                   <Typography variant="caption" color="text.secondary">
                     表示モード
                   </Typography>
@@ -1033,10 +1026,10 @@ export default function App() {
                 </Stack>
                 {editMode === 'csv' ? (
                   <>
-                    <Alert severity="info" variant="outlined" className="mode-alert">
+                    <Alert severity="info" variant="outlined" sx={{ mb: 1 }}>
                       CSV 表示モードは参照専用です。編集は「データモデル編集」モードで行います。
                     </Alert>
-                    <Box className="search-row">
+                    <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
                       <TextField
                         size="small"
                         placeholder="検索（ID/名称/任意列）"
@@ -1054,8 +1047,8 @@ export default function App() {
                           クリア
                         </Button>
                       )}
-                    </Box>
-                    <Box className="grid-wrapper" data-testid="grid-csv">
+                    </Stack>
+                    <Box sx={{ flex: 1 }} data-testid="grid-csv">
                       <DataGrid
                         rows={searchedRows}
                         columns={csvGridColumns}
@@ -1087,7 +1080,7 @@ export default function App() {
                   </>
                 ) : (
                   <>
-                    <Box className="property-form" data-testid="property-form">
+                    <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" sx={{ mb: 1 }} data-testid="property-form">
                       <TextField
                         size="small"
                         label="プロパティ名"
@@ -1114,8 +1107,8 @@ export default function App() {
                       >
                         追加
                       </Button>
-                    </Box>
-                    <Box className="grid-wrapper" data-testid="grid-model">
+                    </Stack>
+                    <Box sx={{ flex: 1 }} data-testid="grid-model">
                       <DataGrid
                         rows={propertyRows}
                         columns={propertyColumns}
@@ -1139,17 +1132,26 @@ export default function App() {
                     </Box>
                   </>
                 )}
-              </Box>
-            </>
+              </Paper>
+            </Box>
           ) : (
-            <Box className="panel templates-panel" data-testid="templates-view">
-              <Box className="templates-sidebar">
-                <Typography className="panel-title" variant="subtitle1">
+            <Box
+              sx={{
+                display: 'flex',
+                gap: 2,
+                flex: 1,
+                overflow: 'hidden',
+              }}
+              data-testid="templates-view"
+            >
+              {/* Sidebar */}
+              <Paper variant="outlined" sx={{ width: 260, p: 2, display: 'flex', flexDirection: 'column' }}>
+                <Typography variant="subtitle1" sx={{ mb: 1 }}>
                   デバイス種別
                 </Typography>
-                <Divider />
+                <Divider sx={{ mb: 1 }} />
                 {generatedTemplates.length > 0 ? (
-                  <List className="template-list" data-testid="template-list">
+                  <List sx={{ overflow: 'auto', pr: 0.5 }} data-testid="template-list">
                     {generatedTemplates.map((template) => {
                       const key = templateKey(template);
                       return (
@@ -1172,10 +1174,13 @@ export default function App() {
                     CSV を読み込むとデバイス種別が表示されます。
                   </Typography>
                 )}
-              </Box>
+              </Paper>
+
               <Divider orientation="vertical" flexItem />
-              <Box className="templates-editor">
-                <Stack direction="row" spacing={2} alignItems="center" className="template-actions">
+
+              {/* Editor */}
+              <Paper variant="outlined" sx={{ flex: 1, p: 2, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" sx={{ mb: 1 }}>
                   <Button
                     variant="outlined"
                     onClick={handleGenerateTemplate}
@@ -1232,18 +1237,18 @@ export default function App() {
                   />
                 </Stack>
                 {templateLoadError && (
-                  <Alert severity="error" variant="outlined">
+                  <Alert severity="error" variant="outlined" sx={{ mb: 1 }}>
                     {templateLoadError}
                   </Alert>
                 )}
                 {templateResolveError && (
-                  <Alert severity="error" variant="outlined">
+                  <Alert severity="error" variant="outlined" sx={{ mb: 1 }}>
                     {templateResolveError}
                   </Alert>
                 )}
                 {activeTemplate ? (
                   <>
-                    <Box className="template-header">
+                    <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" sx={{ mb: 1 }}>
                       <TextField
                         size="small"
                         label="className"
@@ -1276,9 +1281,9 @@ export default function App() {
                           </MenuItem>
                         ))}
                       </TextField>
-                    </Box>
+                    </Stack>
                     {templateDiff ? (
-                      <Alert severity="warning" variant="outlined" data-testid="template-diff">
+                      <Alert severity="warning" variant="outlined" data-testid="template-diff" sx={{ mb: 1 }}>
                         <Typography variant="subtitle2">CSV との差分</Typography>
                         <ul className="template-diff-list">
                           {templateDiff.missing.map((prop) => (
@@ -1295,11 +1300,11 @@ export default function App() {
                         </ul>
                       </Alert>
                     ) : (
-                      <Alert severity="success" variant="outlined" data-testid="template-no-diff">
+                      <Alert severity="success" variant="outlined" data-testid="template-no-diff" sx={{ mb: 1 }}>
                         CSV 推定値と一致しています。
                       </Alert>
                     )}
-                    <Box className="template-property-form" data-testid="template-property-form">
+                    <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" sx={{ mb: 1 }} data-testid="template-property-form">
                       <TextField
                         size="small"
                         label="プロパティ名"
@@ -1367,8 +1372,8 @@ export default function App() {
                       >
                         追加
                       </Button>
-                    </Box>
-                    <Box className="grid-wrapper" data-testid="template-properties-grid">
+                    </Stack>
+                    <Box sx={{ flex: 1 }} data-testid="template-properties-grid">
                       <DataGrid
                         rows={templatePropertyRows}
                         columns={templatePropertyColumns}
@@ -1400,7 +1405,7 @@ export default function App() {
                     左のリストからテンプレートを選択してください。
                   </Typography>
                 )}
-              </Box>
+              </Paper>
             </Box>
           )}
         </Box>

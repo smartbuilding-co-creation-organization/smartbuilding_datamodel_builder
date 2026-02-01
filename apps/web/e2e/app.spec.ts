@@ -11,36 +11,29 @@ test('upload csv, filter tree, edit and export', async ({ page }) => {
   const fixturePath = path.resolve(__dirname, '../../../packages/fixtures/valid.csv');
   await page.getByTestId('csv-input').setInputFiles(fixturePath);
 
-  const siteItem = page.getByTestId('tree-item-site-1');
+  const siteItem = page.getByTestId('tree-item-site:site-1');
   await expect(siteItem).toBeVisible();
-  const siteTreeItem = siteItem.locator('xpath=ancestor::*[@role="treeitem"][1]');
-  const siteToggle = siteTreeItem.locator(
-    ':scope > .MuiTreeItem-content > .MuiTreeItem-iconContainer',
-  );
-  await siteToggle.click();
+  await siteItem.click();
+  await page.keyboard.press('ArrowRight');
 
-  const buildingItem = page.getByTestId('tree-item-bldg-1');
+  const buildingItem = page.getByTestId('tree-item-building:site:site-1/bldg-1');
   await expect(buildingItem).toBeVisible();
   await buildingItem.click();
 
   const gridRows = page.getByTestId('grid-csv').locator('.MuiDataGrid-row');
   await expect(gridRows).toHaveCount(4);
 
-  const buildingTreeItem = buildingItem.locator('xpath=ancestor::*[@role="treeitem"][1]');
-  const buildingToggle = buildingTreeItem.locator(
-    ':scope > .MuiTreeItem-content > .MuiTreeItem-iconContainer',
-  );
-  await buildingToggle.click();
+  await buildingItem.click();
+  await page.keyboard.press('ArrowRight');
 
-  const floorItem = page.getByTestId('tree-item-floor-1');
+  const floorItem = page.getByTestId('tree-item-level:building:site:site-1/bldg-1/floor-1');
   await expect(floorItem).toBeVisible();
-  const floorTreeItem = floorItem.locator('xpath=ancestor::*[@role="treeitem"][1]');
-  const floorToggle = floorTreeItem.locator(
-    ':scope > .MuiTreeItem-content > .MuiTreeItem-iconContainer',
-  );
-  await floorToggle.click();
+  await floorItem.click();
+  await page.keyboard.press('ArrowRight');
 
-  const spaceItem = page.getByTestId('tree-item-space-1');
+  const spaceItem = page.getByTestId(
+    'tree-item-room:level:building:site:site-1/bldg-1/floor-1/Room-101',
+  );
   await expect(spaceItem).toBeVisible();
   await spaceItem.click();
 
@@ -48,7 +41,9 @@ test('upload csv, filter tree, edit and export', async ({ page }) => {
   const modelGrid = page.getByTestId('grid-model');
   await expect(modelGrid).toBeVisible();
   await expect(
-    modelGrid.getByRole('gridcell', { name: 'Machine or Human-readable name' }),
+    modelGrid.locator('[data-field="description"]').getByText(
+      'Machine or Human-readable name',
+    ),
   ).toBeVisible();
 
   const cell = modelGrid.getByRole('gridcell', { name: 'Room 101' }).first();
@@ -131,8 +126,11 @@ test('rebuilds tree when hierarchy signal edits are committed', async ({ page })
   const modelGrid = page.getByTestId('grid-model');
   await expect(modelGrid).toBeVisible();
 
-  const buildingRow = modelGrid.locator('[role="row"]').filter({ hasText: 'building' });
-  const buildingCell = buildingRow.getByRole('gridcell', { name: 'MainBldg' }).first();
+  const buildingRow = modelGrid
+    .locator('[data-field="property"]')
+    .getByText('building')
+    .locator('xpath=ancestor::div[@role="row"][1]');
+  const buildingCell = buildingRow.locator('[data-field="value"]').getByText('MainBldg');
   await buildingCell.dblclick();
   await page.keyboard.press('Control+A');
   await page.keyboard.type('MainBldg-2');
@@ -177,11 +175,14 @@ test('shows hierarchy validation errors when parent signals are missing', async 
   const modelGrid = page.getByTestId('grid-model');
   await expect(modelGrid).toBeVisible();
 
-  const buildingRow = modelGrid.locator('[role="row"]').filter({ hasText: 'building' });
-  const buildingCell = buildingRow.getByRole('gridcell', { name: 'MainBldg' }).first();
+  const buildingRow = modelGrid
+    .locator('[data-field="property"]')
+    .getByText('building')
+    .locator('xpath=ancestor::div[@role="row"][1]');
+  const buildingCell = buildingRow.locator('[data-field="value"]').getByText('MainBldg');
   await buildingCell.dblclick();
   await page.keyboard.press('Control+A');
-  await page.keyboard.type('');
+  await page.keyboard.press('Backspace');
   await page.keyboard.press('Enter');
 
   const summary = page.getByTestId('validation-summary');
@@ -194,15 +195,15 @@ test('can expand and collapse tree items', async ({ page }) => {
   const fixturePath = path.resolve(__dirname, '../../../packages/fixtures/valid.csv');
   await page.getByTestId('csv-input').setInputFiles(fixturePath);
 
-  const siteItem = page.getByTestId('tree-item-site-1');
+  const siteItem = page.getByTestId('tree-item-site:site-1');
   await expect(siteItem).toBeVisible();
 
-  const floorItem = page.getByTestId('tree-item-floor-1');
+  const floorItem = page.getByTestId('tree-item-level:building:site:site-1/bldg-1/floor-1');
   await expect(floorItem).toHaveCount(0);
 
   await siteItem.click();
   await page.keyboard.press('ArrowRight');
-  const buildingItem = page.getByTestId('tree-item-bldg-1');
+  const buildingItem = page.getByTestId('tree-item-building:site:site-1/bldg-1');
   await expect(buildingItem).toBeVisible();
 
   const buildingTreeItem = buildingItem.locator('xpath=ancestor::*[@role="treeitem"][1]');
@@ -227,7 +228,7 @@ test('shows validation summary for invalid csv', async ({ page }) => {
 
   const summary = page.getByTestId('validation-summary');
   await expect(summary).toContainText('バリデーションエラー');
-  await expect(summary).toContainText('Duplicate id');
+  await expect(summary).toContainText('Duplicate id: PT001');
 
   const errorRows = page.getByTestId('grid-csv').locator('.row-error');
   expect(await errorRows.count()).toBeGreaterThan(0);

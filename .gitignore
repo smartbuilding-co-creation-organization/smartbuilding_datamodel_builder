@@ -4,3 +4,5 @@ dist
 .vite
 .DS_Store
 *.log
+./apps/web/test-results/
+.env

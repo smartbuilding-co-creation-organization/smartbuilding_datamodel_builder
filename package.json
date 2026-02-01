@@ -7,6 +7,8 @@
     "preview": "pnpm -C apps/web preview",
     "test": "pnpm -C packages/core test",
     "test:e2e": "pnpm -C apps/web test:e2e",
+    "playwright:install": "pnpm -C apps/web exec playwright install",
+    "playwright:install-deps": "pnpm -C apps/web exec playwright install-deps",
     "lint": "pnpm -r lint",
     "format": "pnpm -r format",
     "typecheck": "pnpm -r typecheck"

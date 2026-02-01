@@ -1,4 +1,3 @@
 gateway_id,device_id,device_name,device_type,site,building,floor,installation_area,target_area,panel,point_type,point_specification,point_id,point_name,writable,interval,unit,max_pres_value,min_pres_value,labels,scale,tags,supplier,owner,description,local_id,device_id_bacnet,instance_no_bacnet,object_type_bacnet
 GW001,DEV001,Temperature Sensor 01,Sensor,TokyoSite1,MainBldg,3F,Room101,Room101,,Temperature,Measurement,PT001,Room Temperature,false,60,C,50,-10,,1.0,temperature&&room101,VendorA,Building Management,Room 101 temperature sensor,LOCAL001,BAC001,1001,Analog-Input
 GW001,DEV001,Temperature Sensor 01,Sensor,TokyoSite1,MainBldg,3F,Room101,Room101,,Temperature,Measurement,PT001,Wall Temperature,false,60,C,50,-10,,1.0,temperature&&room101,VendorA,Building Management,Wall mounted temperature sensor in Room 101,LOCAL002,BAC001,1002,Analog-Input
-,,,,,,,,,,,,PT003,,,,,,,,,,,,,,,,

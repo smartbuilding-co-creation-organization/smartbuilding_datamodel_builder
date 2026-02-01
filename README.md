@@ -24,6 +24,36 @@ pnpm test
 
 ## E2E test（playwright）
 
+### 前提（Playwright ブラウザの導入）
+
+初回実行時は Playwright のブラウザをインストールしてください。
+
+```bash
+pnpm playwright:install
+```
+
+Linux 環境でホスト依存が不足する場合は、システムライブラリのインストールが必要です（sudo 権限が必要）。
+
+```bash
+# sudo 環境で PATH を保持して実行
+sudo -E pnpm playwright:install-deps
+
+# または npx 経由で実行（推奨）
+cd apps/web
+npx playwright install-deps
+```
+
+**注意**: `sudo pnpm` で「command not found」エラーが出る場合は、上記の `sudo -E` または `npx` を使ってください。
+
+apps/web 直下で実行する場合は次も使えます。
+
+```bash
+pnpm -C apps/web playwright:install
+cd apps/web && npx playwright install-deps
+```
+
+### 実行
+
 ```bash
 pnpm test:e2e
 ```
