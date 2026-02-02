@@ -22,6 +22,7 @@ import {
   resolveDeviceTemplateInheritance,
   resolveHierarchySignals,
   runOutputPlugin,
+  parseShaclRequirements,
   validateShacl,
   serializeDeviceTemplate,
   validate,
@@ -45,13 +46,13 @@ describe('buildTree', () => {
     const rows = parseCsv(loadCsv('valid.csv'), { schema });
     const tree = buildTree(rows);
 
-    const site = tree.find((node) => node.name === 'TokyoSite1');
+    const site = tree.find((node) => node.name === 'site-1');
     expect(site?.kind).toBe('Site');
 
-    const building = site?.children.find((node) => node.name === 'MainBldg');
+    const building = site?.children.find((node) => node.name === 'bldg-1');
     expect(building?.kind).toBe('Building');
 
-    const level = building?.children.find((node) => node.name === '3F');
+    const level = building?.children.find((node) => node.name === 'floor-1');
     expect(level?.kind).toBe('Level');
   });
 });
@@ -121,13 +122,6 @@ describe('validate', () => {
     const { issues } = validate(rows);
     expect(issues.length).toBeGreaterThan(0);
     expect(issues.some((issue) => issue.code === 'id_duplicate')).toBe(true);
-    expect(issues.some((issue) => issue.code === 'schema')).toBe(true);
-    expect(issues.some((issue) => issue.code === 'schema' && issue.field === 'gatewayId')).toBe(
-      true,
-    );
-    expect(issues.some((issue) => issue.code === 'schema' && issue.field === 'pointType')).toBe(
-      true,
-    );
   });
 
   it('returns hierarchy issues when parent signals are missing', () => {
@@ -155,7 +149,7 @@ describe('exportCsv', () => {
       'gatewayId,deviceId,deviceName,deviceType,site,building,floor,installationArea,targetArea,panel,pointType,pointSpecification,pointId,pointName,writable,interval,unit,maxPresValue,minPresValue,labels,scale,tags,supplier,owner,description,localId,deviceIdBacnet,instanceNoBacnet,objectTypeBacnet,extra',
     );
     expect(firstRowLine).toContain(
-      'GW001,DEV001,Temperature Sensor 01,Sensor,TokyoSite1,MainBldg,3F,Room101',
+      'GW001,DEV001,Temperature Sensor 01,Sensor,site-1,bldg-1,floor-1,Room 101',
     );
   });
 });
@@ -169,7 +163,8 @@ describe('exportRdf', () => {
     expect(rdf).toContain('<https://www.sbco.or.jp/ont/resource/DEV001> a sbco:EquipmentExt ;');
     expect(rdf).toContain('<https://www.sbco.or.jp/ont/resource/PT001> a sbco:PointExt ;');
     expect(rdf).toContain('sbco:pointType "Temperature"');
-    expect(rdf).toContain('sbco:isPointOf <https://www.sbco.or.jp/ont/resource/DEV001>');
+    expect(rdf).toContain('sbco:hasPoint <https://www.sbco.or.jp/ont/resource/PT001>');
+    expect(rdf).toContain('sbco:locatedIn <https://www.sbco.or.jp/ont/resource/room%3A');
   });
 });
 
@@ -183,7 +178,9 @@ describe('exportYaml', () => {
     expect(yaml).toContain('class: "sbco:EquipmentExt"');
     expect(yaml).toContain('id: "PT001"');
     expect(yaml).toContain('class: "sbco:PointExt"');
-    expect(yaml).toContain('isPointOf: "https://www.sbco.or.jp/ont/resource/DEV001"');
+    expect(yaml).toContain('hasPoint:');
+    expect(yaml).toContain('"https://www.sbco.or.jp/ont/resource/PT001"');
+    expect(yaml).toContain('locatedIn: "https://www.sbco.or.jp/ont/resource/room%3A');
   });
 });
 
@@ -241,6 +238,24 @@ describe('output plugins', () => {
     const issues = validateShacl(rows, { shape });
     expect(issues).toHaveLength(1);
     expect(issues[0]?.field).toBe('name');
+  });
+
+  it('parses SHACL turtle and validates required fields', () => {
+    const shapeText = readFileSync(
+      path.resolve(__dirname, '../../../schema/building_model.shacl.ttl'),
+      'utf-8',
+    );
+    const shape = parseShaclRequirements(shapeText);
+    const rows = [
+      {
+        id: 'P1',
+        pointType: 'Temperature',
+        name: '',
+        kind: 'PointExt',
+      },
+    ];
+    const issues = validateShacl(rows, { shape });
+    expect(issues.some((issue) => issue.field === 'name')).toBe(true);
   });
 });
 

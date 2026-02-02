@@ -35,12 +35,10 @@ describe('sample debug csv', () => {
     const rows = parseCsv(loadSample(), { schema });
     const rdf = exportRdf(rows, { schema });
     expect(rdf).toContain('sbco:locatedIn');
-    expect(rdf).toContain('sbco:isPointOf');
     expect(rdf).toContain('sbco:hasPoint');
 
     const yaml = exportYaml(rows, { schema });
     expect(yaml).toContain('locatedIn:');
-    expect(yaml).toContain('isPointOf:');
     expect(yaml).toContain('hasPoint:');
   });
 });

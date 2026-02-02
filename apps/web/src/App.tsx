@@ -46,7 +46,7 @@ import {
 } from '@repo/core';
 import { useAppStore } from './state/store';
 import schema from '../../../schema/building_model.schema.json';
-import shaclText from '../../../schema/building_model_shacl.yaml?raw';
+import shaclText from '../../../schema/building_model.shacl.ttl?raw';
 
 type SchemaDefinition = {
   properties?: Record<string, Record<string, unknown>>;

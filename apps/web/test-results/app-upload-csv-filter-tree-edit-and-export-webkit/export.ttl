@@ -141,8 +141,7 @@
 
 <https://www.sbco.or.jp/ont/resource/room%3Alevel%3Abuilding%3Asite%3Asite-1%2Fbldg-1%2Ffloor-1%2FRoom-101A> a sbco:Room ;
   sbco:id "room:level:building:site:site-1/bldg-1/floor-1/Room-101A" ;
-  sbco:name "Room 101A" ;
-  sbco:isPartOf <https://www.sbco.or.jp/ont/resource/level%3Abuilding%3Asite%3Asite-1%2Fbldg-1%2Ffloor-1> .
+  sbco:name "Room 101A" .
 
 <https://www.sbco.or.jp/ont/resource/building%3Asite%3Asite-1%2Fbldg-1> a sbco:Resource ;
   sbco:id "building:site:site-1/bldg-1" ;

@@ -222,7 +222,7 @@
 - SHACL 検証を `packages/core` に実装し、RDF 生成前/後どちらで検証するかを決める。
   - まずは「RDF 生成後に SHACL 検証」を採用し、違反内容を Issue 形式で返す。
   - 検証結果は UI で確認できるようにする（エラー一覧に統合）。
-- SHACL の shape は `schema/` に置き、出力時に参照できるようにする。
+- SHACL の shape は `schema/building_model.shacl.ttl` を正とし、出力時に参照できるようにする。
 
 ### テスト方針
 #### ユニットテスト（packages/core）
@@ -276,6 +276,15 @@
   - [ ] README に「Playwright のブラウザ/依存導入」手順がある
   - [ ] package.json に Playwright 導入の補助スクリプトがある
 - 実行すべきコマンド（最低限）: 省略可（ドキュメントのみ）
+
+0.5) SHACL 検証の参照ファイル修正（building_model.shacl.ttl） (Done)
+- 目的: RDF 検証で誤った SHACL ファイルを参照している問題を解消する
+- 変更対象（パス）: `packages/core/src`, `packages/core/test`, `apps/web/e2e`, `schema/`
+- 受入基準:
+  - [x] SHACL 検証が `schema/building_model.shacl.ttl` を参照する
+  - [x] 既知の違反ケースで violation が返ることを unit で確認できる
+  - [x] E2E の SHACL エラー表示が参照ファイル修正後も安定している
+- 実行すべきコマンド（最低限）: `pnpm test`, `pnpm test:e2e`
 
 1) リポジトリの起動確認
 - 目的: 既存の起動導線を確認し、作業の前提を固める
@@ -358,6 +367,17 @@
 - 受入基準:
   - [ ] クラス/プロパティ対応表が明文化される
 - 実行すべきコマンド（最低限）: MAY 省略（理由記載）
+
+11.1) 空間/機器/ポイントの関係マッピング追加
+- 目的: CSV 読み込み時の親子関係を RDF 出力に反映する
+- 変更対象（パス）: `packages/core/src`, `packages/core/test`
+- 受入基準:
+  - [ ] Site は `hasPart` で子 Building の ID を参照する
+  - [ ] Building は `hasPart` で子要素（例: Room など）の ID を参照する
+  - [ ] EquipmentExt は `locatedIn` で親空間（CSV の `parentId` 相当）を参照する
+  - [ ] PointExt は `hasPoint` で空間または EquipmentExt への関係を持つ
+  - [ ] unit テストで最小ケースを検証する
+- 実行すべきコマンド（最低限）: `pnpm test`
 
 12) RDF 生成の最小実装（core）
 - 目的: OWL に従った RDF を生成できるようにする

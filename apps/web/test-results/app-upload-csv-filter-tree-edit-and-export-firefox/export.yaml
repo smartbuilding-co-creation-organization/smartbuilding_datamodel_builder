@@ -140,7 +140,6 @@ resources:
     name: "Room 101A"
     class: "sbco:Room"
     iri: "https://www.sbco.or.jp/ont/resource/room%3Alevel%3Abuilding%3Asite%3Asite-1%2Fbldg-1%2Ffloor-1%2FRoom-101A"
-    isPartOf: "https://www.sbco.or.jp/ont/resource/level%3Abuilding%3Asite%3Asite-1%2Fbldg-1%2Ffloor-1"
   - id: "building:site:site-1/bldg-1"
     name: "bldg-1"
     class: "sbco:Resource"

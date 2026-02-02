@@ -43,7 +43,98 @@ function resolveClassKey(kind: string | undefined): string {
 }
 
 export function parseShaclRequirements(yamlText: string): ShaclShape {
+  const trimmed = yamlText.trim();
+  if (
+    trimmed.startsWith('@prefix') ||
+    trimmed.includes('sh:NodeShape') ||
+    trimmed.includes('sh:targetClass')
+  ) {
+    return buildShaclShapeFromTurtle(yamlText);
+  }
   return buildShaclShapeFromYaml(yamlText);
+}
+
+function extractLocalName(token: string): string {
+  const cleaned = token.trim().replace(/[;,]$/, '');
+  if (!cleaned) return '';
+  if (cleaned.startsWith('<') && cleaned.endsWith('>')) {
+    const iri = cleaned.slice(1, -1);
+    const splitIndex = Math.max(iri.lastIndexOf('#'), iri.lastIndexOf('/'));
+    return splitIndex >= 0 ? iri.slice(splitIndex + 1) : iri;
+  }
+  const colonIndex = cleaned.indexOf(':');
+  if (colonIndex >= 0) return cleaned.slice(colonIndex + 1);
+  return cleaned;
+}
+
+function extractNodeShapeBlocks(turtleText: string): string[] {
+  const lines = turtleText.split(/\r?\n/);
+  const blocks: string[] = [];
+  let current: string[] = [];
+  let inBlock = false;
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!inBlock) {
+      if (trimmed.includes('a sh:NodeShape')) {
+        inBlock = true;
+        current = [line];
+        if (trimmed.endsWith('.')) {
+          blocks.push(current.join('\n'));
+          inBlock = false;
+          current = [];
+        }
+      }
+      continue;
+    }
+
+    current.push(line);
+    if (trimmed.endsWith('.')) {
+      blocks.push(current.join('\n'));
+      inBlock = false;
+      current = [];
+    }
+  }
+
+  return blocks;
+}
+
+export function buildShaclShapeFromTurtle(turtleText: string): ShaclShape {
+  const requiredByClass = new Map<string, Set<string>>();
+  const blocks = extractNodeShapeBlocks(turtleText);
+
+  for (const block of blocks) {
+    const targetMatch = block.match(/sh:targetClass\s+([^\s;]+)\s*;?/);
+    if (!targetMatch) continue;
+    const targetClass = extractLocalName(targetMatch[1]);
+    if (!targetClass) continue;
+    const classKey = resolveClassKey(targetClass);
+    const requiredSet = requiredByClass.get(classKey) ?? new Set<string>();
+
+    const propertyBlocks = block.match(/\[[\s\S]*?\]/g) ?? [];
+    for (const propBlock of propertyBlocks) {
+      if (!/sh:path\s+/.test(propBlock)) continue;
+      if (!/sh:minCount\s+1\b/.test(propBlock)) continue;
+      const pathMatch = propBlock.match(/sh:path\s+([^\s;]+)\s*;?/);
+      if (!pathMatch) continue;
+      const pathToken = pathMatch[1];
+      const pathLocal = extractLocalName(pathToken);
+      if (!pathLocal) continue;
+      if (pathToken.startsWith('rdf:') && pathLocal === 'type') continue;
+      requiredSet.add(pathLocal);
+    }
+
+    if (requiredSet.size > 0) {
+      requiredByClass.set(classKey, requiredSet);
+    }
+  }
+
+  const required: Record<string, string[]> = {};
+  for (const [className, slots] of requiredByClass.entries()) {
+    required[className] = Array.from(slots);
+  }
+
+  return { required };
 }
 
 export function buildShaclShapeFromYaml(yamlText: string): ShaclShape {

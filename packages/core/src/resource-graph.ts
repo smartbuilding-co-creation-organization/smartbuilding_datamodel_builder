@@ -112,12 +112,7 @@ export function buildResourceGraph(rows: RowRecord[]) {
     const childCategory = classCategory(resource.className);
     const parentCategory = classCategory(parent.className);
 
-    if (childCategory === 'point' && parentCategory === 'equipment') {
-      relations.push({
-        subjectId: resource.id,
-        predicate: 'isPointOf',
-        objectId: parent.id,
-      });
+    if (childCategory === 'point' && (parentCategory === 'equipment' || parentCategory === 'space')) {
       relations.push({
         subjectId: parent.id,
         predicate: 'hasPoint',
@@ -132,20 +127,10 @@ export function buildResourceGraph(rows: RowRecord[]) {
         predicate: 'locatedIn',
         objectId: parent.id,
       });
-      relations.push({
-        subjectId: parent.id,
-        predicate: 'isLocationOf',
-        objectId: resource.id,
-      });
       continue;
     }
 
     if (childCategory === 'space' && parentCategory === 'space') {
-      relations.push({
-        subjectId: resource.id,
-        predicate: 'isPartOf',
-        objectId: parent.id,
-      });
       relations.push({
         subjectId: parent.id,
         predicate: 'hasPart',
@@ -154,11 +139,6 @@ export function buildResourceGraph(rows: RowRecord[]) {
       continue;
     }
 
-    relations.push({
-      subjectId: resource.id,
-      predicate: 'isPartOf',
-      objectId: parent.id,
-    });
     relations.push({
       subjectId: parent.id,
       predicate: 'hasPart',

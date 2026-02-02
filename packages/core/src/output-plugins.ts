@@ -3,7 +3,7 @@ import { SchemaRoot } from './schema-mapping';
 import { Issue, RowRecord } from './types';
 import { exportYaml } from './yaml';
 import { buildOutputRows, mergeOutputRows } from './output-aggregation';
-import { buildShaclShapeFromYaml, validateShacl } from './shacl';
+import { parseShaclRequirements, validateShacl } from './shacl';
 
 export type OutputPluginResult = {
   content: string;
@@ -43,7 +43,7 @@ const OUTPUT_PLUGINS: OutputPlugin[] = [
         extension: 'ttl',
         mimeType: 'text/turtle;charset=utf-8;',
         issues: shacl
-          ? validateShacl(outputRows, { shape: buildShaclShapeFromYaml(shacl.shapeText) })
+          ? validateShacl(outputRows, { shape: parseShaclRequirements(shacl.shapeText) })
           : undefined,
       };
     },
@@ -61,7 +61,7 @@ const OUTPUT_PLUGINS: OutputPlugin[] = [
         extension: 'yaml',
         mimeType: 'text/yaml;charset=utf-8;',
         issues: shacl
-          ? validateShacl(outputRows, { shape: buildShaclShapeFromYaml(shacl.shapeText) })
+          ? validateShacl(outputRows, { shape: parseShaclRequirements(shacl.shapeText) })
           : undefined,
       };
     },
