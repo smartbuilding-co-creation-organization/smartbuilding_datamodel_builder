@@ -5,6 +5,7 @@ export * from './output-aggregation';
 export * from './output-plugins';
 export * from './output-utils';
 export * from './row-utils';
+export * from './dtdl';
 export * from './rdf';
 export * from './resource-graph';
 export * from './resource-models';
