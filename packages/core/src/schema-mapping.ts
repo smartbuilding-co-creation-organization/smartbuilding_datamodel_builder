@@ -1,5 +1,6 @@
 import { inferRowKind } from './row-utils';
 import { RowRecord } from './types';
+import { INTERNAL_ROW_KEYS, KIND_TO_CLASS } from './constants';
 
 export type SchemaRoot = {
   properties?: Record<string, unknown>;
@@ -18,30 +19,6 @@ export type SchemaCache = {
   requiredByKind: Map<string, Set<string>>;
   requiredRoot: Set<string>;
 };
-
-const KIND_TO_DEF: Record<string, string> = {
-  site: 'Site',
-  building: 'Building',
-  floor: 'Level',
-  level: 'Level',
-  space: 'Room',
-  room: 'Room',
-  device: 'EquipmentExt',
-  equipment: 'EquipmentExt',
-  equipmentext: 'EquipmentExt',
-  point: 'PointExt',
-  pointext: 'PointExt',
-};
-
-const INTERNAL_KEYS = new Set([
-  '__rowId',
-  'parentId',
-  'kind',
-  'pointId',
-  'pointName',
-  'deviceId',
-  'deviceName',
-]);
 
 function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
@@ -86,7 +63,7 @@ function normalizeKindKey(kind?: string): string | undefined {
   if (!kind) return undefined;
   const trimmed = kind.trim();
   if (!trimmed) return undefined;
-  const mapped = KIND_TO_DEF[trimmed.toLowerCase()] ?? trimmed;
+  const mapped = KIND_TO_CLASS[trimmed.toLowerCase()] ?? trimmed;
   return mapped;
 }
 
@@ -201,7 +178,7 @@ export function mapRowsToSchema(rows: RowRecord[], schema: SchemaRoot): RowRecor
       mapped[prop] = row[prop] ?? '';
     }
 
-    for (const key of INTERNAL_KEYS) {
+    for (const key of INTERNAL_ROW_KEYS) {
       if (row[key] !== undefined) {
         mapped[key] = row[key];
       }
@@ -209,7 +186,7 @@ export function mapRowsToSchema(rows: RowRecord[], schema: SchemaRoot): RowRecor
 
     const unknown: Record<string, string> = {};
     for (const [key, value] of Object.entries(row)) {
-      if (INTERNAL_KEYS.has(key)) continue;
+      if (INTERNAL_ROW_KEYS.has(key)) continue;
       if (propSet.has(key)) {
         mapped[key] = value ?? '';
       } else {

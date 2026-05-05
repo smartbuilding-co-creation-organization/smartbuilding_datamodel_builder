@@ -1,24 +1,9 @@
 import { buildTree } from './tree';
 import { Node, RowRecord } from './types';
 import { inferRowKind, normalizeValue, resolveRowId, resolveRowName } from './row-utils';
+import { KIND_TO_CLASS } from './constants';
 
 type ResourceCategory = 'space' | 'equipment' | 'point' | 'other';
-
-const KIND_CLASS: Record<string, string> = {
-  site: 'Site',
-  building: 'Building',
-  floor: 'Level',
-  level: 'Level',
-  space: 'Room',
-  room: 'Room',
-  zone: 'Zone',
-  outdoorspace: 'OutdoorSpace',
-  device: 'EquipmentExt',
-  equipment: 'EquipmentExt',
-  equipmentext: 'EquipmentExt',
-  point: 'PointExt',
-  pointext: 'PointExt',
-};
 
 const SPACE_CLASSES = new Set([
   'Site',
@@ -36,7 +21,7 @@ const POINT_CLASSES = new Set(['Point', 'PointExt']);
 function resolveClassName(kind?: string): string {
   const normalized = normalizeValue(kind).toLowerCase();
   if (!normalized) return 'Resource';
-  return KIND_CLASS[normalized] ?? kind?.trim() ?? 'Resource';
+  return KIND_TO_CLASS[normalized] ?? kind?.trim() ?? 'Resource';
 }
 
 function classCategory(className: string): ResourceCategory {

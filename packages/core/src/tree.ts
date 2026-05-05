@@ -1,27 +1,13 @@
 import { Node, RowRecord } from './types';
 import { hasHierarchySignals, normalizeValue, resolveHierarchySignals } from './row-utils';
+import { KIND_TO_CLASS } from './constants';
 
 let lastIndex = new Map<string, Node>();
-
-const KIND_LABEL_MAP: Record<string, string> = {
-  site: 'Site',
-  building: 'Building',
-  floor: 'Level',
-  level: 'Level',
-  space: 'Room',
-  room: 'Room',
-  zone: 'Zone',
-  device: 'EquipmentExt',
-  equipment: 'EquipmentExt',
-  equipmentext: 'EquipmentExt',
-  point: 'PointExt',
-  pointext: 'PointExt',
-};
 
 function resolveKind(kind?: string): string | undefined {
   const normalized = normalizeValue(kind).toLowerCase();
   if (!normalized) return undefined;
-  return KIND_LABEL_MAP[normalized] ?? kind;
+  return KIND_TO_CLASS[normalized] ?? kind;
 }
 
 function resolveId(row: RowRecord): string {
