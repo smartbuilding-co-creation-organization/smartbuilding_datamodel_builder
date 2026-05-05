@@ -1,0 +1,12 @@
+id,name,kind,parent_id,notes
+site-root,Root Site,site,,valid root
+bldg-east,East Building,building,site-root,valid child
+floor-east-1,East 1F,floor,bldg-east,valid grandchild
+room-east-101,Room 101,space,floor-east-1,valid space
+dev-east-101,Device 101,device,room-east-101,valid device
+pt-east-101-temp,Room Temperature,point,dev-east-101,valid point
+orphan-device,Orphan Device,device,missing-parent,should raise parent_missing
+dup-node,Duplicate A,device,room-east-101,first duplicate id
+dup-node,Duplicate B,device,room-east-101,second duplicate id
+cycle-a,Cycle A,device,cycle-b,cycle participant
+cycle-b,Cycle B,device,cycle-a,cycle participant
