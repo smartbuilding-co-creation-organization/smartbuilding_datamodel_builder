@@ -2,6 +2,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   buildTree,
   exportCsv,
+  exportDtdlInterfaces,
+  exportDtdlTwinGraph,
   exportRdf,
   exportYaml,
   parseCsv,
@@ -163,6 +165,10 @@ export default function App() {
         }, null, 2);
       case 'rdf':
         try { return exportRdf(rows); } catch { return rows.map((r) => `:${String(r.id)} a :${String(r.kind)} ;\n    :name "${String(r.name ?? '').replace(/"/g, '\\"')}" .`).join('\n'); }
+      case 'dtdl-interfaces':
+        return exportDtdlInterfaces(rows);
+      case 'dtdl-twin-graph':
+        return exportDtdlTwinGraph(rows);
       default:
         return '';
     }

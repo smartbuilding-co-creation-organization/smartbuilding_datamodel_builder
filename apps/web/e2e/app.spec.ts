@@ -100,6 +100,26 @@ test('export rdf and yaml from output view', async ({ page }) => {
   await yamlDownload.saveAs(yamlPath);
   const yamlText = await fs.readFile(yamlPath, 'utf-8');
   expect(yamlText.length).toBeGreaterThan(10);
+
+  // Download DTDL Interfaces
+  const dtdlInterfacesPromise = page.waitForEvent('download');
+  await page.getByTestId('output-download-dtdl-interfaces').click();
+  const dtdlInterfacesDownload = await dtdlInterfacesPromise;
+  const dtdlInterfacesPath = test.info().outputPath('export.dtdl.json');
+  await dtdlInterfacesDownload.saveAs(dtdlInterfacesPath);
+  const dtdlInterfacesText = await fs.readFile(dtdlInterfacesPath, 'utf-8');
+  expect(dtdlInterfacesText.length).toBeGreaterThan(10);
+  expect(JSON.parse(dtdlInterfacesText)).toBeInstanceOf(Array);
+
+  // Download DTDL Twin Graph
+  const dtdlTwinGraphPromise = page.waitForEvent('download');
+  await page.getByTestId('output-download-dtdl-twin-graph').click();
+  const dtdlTwinGraphDownload = await dtdlTwinGraphPromise;
+  const dtdlTwinGraphPath = test.info().outputPath('export-twins.json');
+  await dtdlTwinGraphDownload.saveAs(dtdlTwinGraphPath);
+  const dtdlTwinGraphText = await fs.readFile(dtdlTwinGraphPath, 'utf-8');
+  expect(dtdlTwinGraphText.length).toBeGreaterThan(10);
+  expect(JSON.parse(dtdlTwinGraphText)).toHaveProperty('digitalTwinsGraph');
 });
 
 test('rebuilds tree when inspector property is edited', async ({ page }) => {

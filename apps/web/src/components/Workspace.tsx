@@ -16,6 +16,8 @@ export const OUTPUT_FORMATS: OutputFormat[] = [
   { id: 'yaml', label: 'YAML', ext: 'yaml', desc: 'デバイステンプレートを含む人間可読形式。レビューに向いています。' },
   { id: 'jsonld', label: 'JSON-LD', ext: 'jsonld', desc: 'Linked Data形式。Brick / RealEstateCore等のスキーマと連携可能。' },
   { id: 'rdf', label: 'RDF Turtle', ext: 'ttl', desc: 'セマンティックWeb形式。SPARQLで問い合わせができます。' },
+  { id: 'dtdl-interfaces', label: 'DTDL Interfaces', ext: 'dtdl.json', desc: 'Azure Digital Twins クラス定義。デバイス種別ごとのInterface（型定義）をDTDL v3形式で出力します。' },
+  { id: 'dtdl-twin-graph', label: 'DTDL Twin Graph', ext: 'json', desc: 'Azure Digital Twins インスタンスデータ。ビル・デバイス・計測点の実データをデジタルツインとして出力します。' },
 ];
 
 function collectNodeIds(node: Node, set: Set<string>): void {
