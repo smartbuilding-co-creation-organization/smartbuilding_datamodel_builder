@@ -52,6 +52,7 @@ export default function App() {
   const [tree, setTree] = useState<Node[]>([]);
   const [issues, setIssues] = useState<Issue[]>([]);
   const [selectedId, setSelectedId] = useState<string>('');
+  const [inspectorId, setInspectorId] = useState<string>('');
   const [searchTerm, setSearchTerm] = useState('');
   const [view, setView] = useState<ViewMode>('explore');
   const [helpModal, setHelpModal] = useState<HelpView>(null);
@@ -79,6 +80,7 @@ export default function App() {
     setRows(SAMPLE_ROWS);
     recompute(SAMPLE_ROWS);
     setSelectedId('');
+    setInspectorId('');
     setView('explore');
   };
 
@@ -86,13 +88,16 @@ export default function App() {
     setRows(parsed);
     recompute(parsed);
     setSelectedId('');
+    setInspectorId('');
     setView('explore');
   };
 
+  const activeId = inspectorId || selectedId;
+
   const handleChange = (key: string, value: string) => {
-    if (!selectedId) return;
+    if (!activeId) return;
     const nextRows = rows.map((r) => {
-      if ((r.id as string) !== selectedId) return r;
+      if ((r.id as string) !== activeId) return r;
       const update: Record<string, string> = { [key]: value };
       if (key === 'name') {
         if (r.pointName !== undefined) update.pointName = value;
@@ -106,7 +111,12 @@ export default function App() {
 
   const handleSelect = (id: string) => {
     setSelectedId(id);
+    setInspectorId('');
     setView('explore');
+  };
+
+  const handleRowSelect = (id: string) => {
+    setInspectorId(id);
   };
 
   const handleFileUpload = async (file: File | null | undefined) => {
@@ -128,27 +138,27 @@ export default function App() {
   }, [issues]);
 
   const selectedRow = useMemo(
-    () => rows.find((r) => (r.id as string) === selectedId),
-    [rows, selectedId],
+    () => rows.find((r) => (r.id as string) === activeId),
+    [rows, activeId],
   );
 
   const fieldErrors = useMemo(() => {
     const out: Record<string, string> = {};
     if (!selectedRow) return out;
     for (const iss of issues) {
-      if (iss.rowId === selectedId && iss.field) {
+      if (iss.rowId === activeId && iss.field) {
         out[iss.field] = iss.message;
       }
     }
     return out;
-  }, [issues, selectedId, selectedRow]);
+  }, [issues, activeId, selectedRow]);
 
   const descendantCount = useMemo(
-    () => (selectedId ? countDescendants(tree, selectedId) : 0),
-    [tree, selectedId],
+    () => (activeId ? countDescendants(tree, activeId) : 0),
+    [tree, activeId],
   );
 
-  const step = rows.length === 0 ? 1 : view === 'output' ? 4 : selectedId ? 3 : 2;
+  const step = rows.length === 0 ? 1 : view === 'output' ? 4 : (selectedId || inspectorId) ? 3 : 2;
 
   const handleGenerateOutput = (formatId: string): string => {
     switch (formatId) {
@@ -316,7 +326,9 @@ export default function App() {
               rows={rows}
               tree={tree}
               selectedId={selectedId}
+              inspectorId={inspectorId}
               onSelect={handleSelect}
+              onRowSelect={handleRowSelect}
               searchTerm={searchTerm}
               setSearchTerm={setSearchTerm}
               errorMap={errorMap}

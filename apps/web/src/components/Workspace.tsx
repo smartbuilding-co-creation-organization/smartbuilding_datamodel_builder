@@ -76,7 +76,9 @@ type Props = {
   rows: RowRecord[];
   tree: Node[];
   selectedId: string;
+  inspectorId: string;
   onSelect: (id: string) => void;
+  onRowSelect: (id: string) => void;
   searchTerm: string;
   setSearchTerm: (s: string) => void;
   errorMap: Map<string, Set<string>>;
@@ -89,7 +91,9 @@ export function Workspace({
   rows,
   tree,
   selectedId,
+  inspectorId,
   onSelect,
+  onRowSelect,
   searchTerm,
   setSearchTerm,
   errorMap,
@@ -278,12 +282,12 @@ export function Workspace({
             <tbody>
               {filteredRows.map((r) => {
                 const errs = errorMap.get(r.id as string);
-                const isSelected = selectedId === (r.id as string);
+                const isSelected = (inspectorId || selectedId) === (r.id as string);
                 return (
                   <tr
                     key={r.id as string}
                     className={isSelected ? 'selected' : ''}
-                    onClick={() => onSelect(r.id as string)}
+                    onClick={() => onRowSelect(r.id as string)}
                     style={{ cursor: 'pointer' }}
                   >
                     {columns.map((c) => {
