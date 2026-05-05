@@ -5,8 +5,6 @@ import {
   buildDeviceTemplatesFromCsv,
   buildTemplatesZip,
   diffDeviceTemplate,
-  exportDtdlInterfaces,
-  exportDtdlTwinGraph,
   parseDeviceTemplateYaml,
   resolveDeviceTemplateInheritance,
   serializeDeviceTemplate,
@@ -199,14 +197,6 @@ export function TemplatesView({ rows, onApplyTemplate, expertMode }: Props) {
     downloadFile(zipBytes, 'device-templates.zip', 'application/zip');
   };
 
-  const handleDownloadDtdlInterfaces = () => {
-    downloadFile(exportDtdlInterfaces(rows), 'building-model.dtdl.json', 'application/json;charset=utf-8');
-  };
-
-  const handleDownloadDtdlTwinGraph = () => {
-    downloadFile(exportDtdlTwinGraph(rows), 'building-model-twins.json', 'application/json;charset=utf-8');
-  };
-
   const handleApplyToCsv = () => {
     if (!resolved.template) return;
     const next = applyTemplateToRows(rows, resolved.template);
@@ -325,24 +315,6 @@ export function TemplatesView({ rows, onApplyTemplate, expertMode }: Props) {
               data-testid="template-zip"
             >
               <span className="ic">↓</span> 全テンプレートZIP
-            </button>
-            <button
-              className="btn"
-              onClick={handleDownloadDtdlInterfaces}
-              disabled={rows.length === 0}
-              data-testid="template-dtdl-interfaces"
-              title="デバイス種別のDTDL Interface定義（クラス）を出力"
-            >
-              <span className="ic">↓</span> DTDL クラス
-            </button>
-            <button
-              className="btn"
-              onClick={handleDownloadDtdlTwinGraph}
-              disabled={rows.length === 0}
-              data-testid="template-dtdl-twin-graph"
-              title="全デジタルツインのインスタンスデータを出力"
-            >
-              <span className="ic">↓</span> DTDL インスタンス
             </button>
             <input
               ref={fileInputRef}
