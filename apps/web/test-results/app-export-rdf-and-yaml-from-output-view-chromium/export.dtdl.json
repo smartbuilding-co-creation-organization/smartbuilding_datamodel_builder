@@ -1,0 +1,215 @@
+[
+  {
+    "@context": "dtmi:dtdl:context;3",
+    "@id": "dtmi:sbco:Site;1",
+    "@type": "Interface",
+    "displayName": "Site",
+    "contents": [
+      {
+        "@type": "Property",
+        "name": "id",
+        "schema": "string",
+        "writable": true
+      },
+      {
+        "@type": "Property",
+        "name": "name",
+        "schema": "string",
+        "writable": true
+      },
+      {
+        "@type": "Relationship",
+        "name": "hasPart",
+        "target": "dtmi:sbco:Building;1"
+      }
+    ]
+  },
+  {
+    "@context": "dtmi:dtdl:context;3",
+    "@id": "dtmi:sbco:Building;1",
+    "@type": "Interface",
+    "displayName": "Building",
+    "contents": [
+      {
+        "@type": "Property",
+        "name": "id",
+        "schema": "string",
+        "writable": true
+      },
+      {
+        "@type": "Property",
+        "name": "name",
+        "schema": "string",
+        "writable": true
+      },
+      {
+        "@type": "Relationship",
+        "name": "hasPart",
+        "target": "dtmi:sbco:Level;1"
+      }
+    ]
+  },
+  {
+    "@context": "dtmi:dtdl:context;3",
+    "@id": "dtmi:sbco:Level;1",
+    "@type": "Interface",
+    "displayName": "Level",
+    "contents": [
+      {
+        "@type": "Property",
+        "name": "id",
+        "schema": "string",
+        "writable": true
+      },
+      {
+        "@type": "Property",
+        "name": "name",
+        "schema": "string",
+        "writable": true
+      },
+      {
+        "@type": "Relationship",
+        "name": "hasPart",
+        "target": "dtmi:sbco:Room;1"
+      }
+    ]
+  },
+  {
+    "@context": "dtmi:dtdl:context;3",
+    "@id": "dtmi:sbco:Room;1",
+    "@type": "Interface",
+    "displayName": "Room",
+    "contents": [
+      {
+        "@type": "Property",
+        "name": "id",
+        "schema": "string",
+        "writable": true
+      },
+      {
+        "@type": "Property",
+        "name": "name",
+        "schema": "string",
+        "writable": true
+      },
+      {
+        "@type": "Relationship",
+        "name": "hasPart"
+      },
+      {
+        "@type": "Relationship",
+        "name": "isLocationOf",
+        "target": "dtmi:sbco:EquipmentExt;1"
+      }
+    ]
+  },
+  {
+    "@context": "dtmi:dtdl:context;3",
+    "@id": "dtmi:sbco:EquipmentExt;1",
+    "@type": "Interface",
+    "displayName": "EquipmentExt",
+    "contents": [
+      {
+        "@type": "Property",
+        "name": "id",
+        "schema": "string",
+        "writable": true
+      },
+      {
+        "@type": "Property",
+        "name": "name",
+        "schema": "string",
+        "writable": true
+      },
+      {
+        "@type": "Property",
+        "name": "deviceType",
+        "schema": "string",
+        "writable": true
+      },
+      {
+        "@type": "Property",
+        "name": "gatewayId",
+        "schema": "string",
+        "writable": true
+      },
+      {
+        "@type": "Property",
+        "name": "localId",
+        "schema": "string",
+        "writable": true
+      },
+      {
+        "@type": "Relationship",
+        "name": "locatedIn"
+      },
+      {
+        "@type": "Relationship",
+        "name": "hasPoint",
+        "target": "dtmi:sbco:PointExt;1"
+      }
+    ]
+  },
+  {
+    "@context": "dtmi:dtdl:context;3",
+    "@id": "dtmi:sbco:PointExt;1",
+    "@type": "Interface",
+    "displayName": "PointExt",
+    "contents": [
+      {
+        "@type": "Property",
+        "name": "id",
+        "schema": "string",
+        "writable": true
+      },
+      {
+        "@type": "Property",
+        "name": "name",
+        "schema": "string",
+        "writable": true
+      },
+      {
+        "@type": "Property",
+        "name": "pointType",
+        "schema": "string",
+        "writable": true
+      },
+      {
+        "@type": "Property",
+        "name": "pointSpecification",
+        "schema": "string",
+        "writable": true
+      },
+      {
+        "@type": "Property",
+        "name": "unit",
+        "schema": "string",
+        "writable": true
+      },
+      {
+        "@type": "Property",
+        "name": "writable",
+        "schema": "string",
+        "writable": true
+      },
+      {
+        "@type": "Property",
+        "name": "interval",
+        "schema": "string",
+        "writable": true
+      },
+      {
+        "@type": "Property",
+        "name": "maxPresValue",
+        "schema": "string",
+        "writable": true
+      },
+      {
+        "@type": "Property",
+        "name": "minPresValue",
+        "schema": "string",
+        "writable": true
+      }
+    ]
+  }
+]
