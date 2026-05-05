@@ -45,6 +45,7 @@ import {
   diffDeviceTemplate,
 } from '@repo/core';
 import { useAppStore } from './state/store';
+import { downloadFile } from './utils/downloadFile';
 import schema from '../../../schema/building_model.schema.json';
 import shaclText from '../../../schema/building_model.shacl.ttl?raw';
 
@@ -698,13 +699,11 @@ export default function App() {
   const handleDownloadTemplateYaml = () => {
     if (!activeTemplate) return;
     const yamlText = serializeDeviceTemplate(activeTemplate);
-    const blob = new Blob([yamlText], { type: 'text/yaml;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `${activeTemplate.deviceType || 'template'}.yaml`;
-    link.click();
-    URL.revokeObjectURL(url);
+    downloadFile(
+      yamlText,
+      `${activeTemplate.deviceType || 'template'}.yaml`,
+      'text/yaml;charset=utf-8;',
+    );
   };
 
   const handleDownloadTemplateZip = async () => {
@@ -713,15 +712,7 @@ export default function App() {
     );
     if (templates.length === 0) return;
     const zipBytes = await buildTemplatesZip(templates);
-    const zipBuffer = new ArrayBuffer(zipBytes.byteLength);
-    new Uint8Array(zipBuffer).set(zipBytes);
-    const blob = new Blob([zipBuffer], { type: 'application/zip' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = 'device-templates.zip';
-    link.click();
-    URL.revokeObjectURL(url);
+    downloadFile(zipBytes, 'device-templates.zip', 'application/zip');
   };
 
   const handleApplyTemplateToCsv = () => {
@@ -732,13 +723,7 @@ export default function App() {
 
   const handleExport = () => {
     const csv = exportCsv(rows);
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = 'export.csv';
-    link.click();
-    URL.revokeObjectURL(url);
+    downloadFile(csv, 'export.csv', 'text/csv;charset=utf-8;');
   };
 
   const handleExportPlugin = () => {
@@ -750,13 +735,7 @@ export default function App() {
       shacl: { shapeText: shaclText },
     });
     setOutputIssues(result.issues ?? []);
-    const blob = new Blob([result.content], { type: result.mimeType });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `export.${result.extension}`;
-    link.click();
-    URL.revokeObjectURL(url);
+    downloadFile(result.content, `export.${result.extension}`, result.mimeType);
   };
 
   const renderTree = (node: Node) => (

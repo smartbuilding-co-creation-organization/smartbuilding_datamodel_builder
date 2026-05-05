@@ -1,16 +1,7 @@
 import { ResourceNode } from './resource-graph';
 import { RowRecord } from './types';
 import { normalizeValue } from './row-utils';
-
-const INTERNAL_KEYS = new Set([
-  '__rowId',
-  'parentId',
-  'kind',
-  'pointId',
-  'pointName',
-  'deviceId',
-  'deviceName',
-]);
+import { INTERNAL_ROW_KEYS } from './constants';
 
 const RELATION_KEYS = new Set([
   'isPointOf',
@@ -35,7 +26,7 @@ export function collectOutputFields(row: RowRecord | undefined, required: Set<st
 
   if (row) {
     for (const key of Object.keys(row)) {
-      if (INTERNAL_KEYS.has(key)) continue;
+      if (INTERNAL_ROW_KEYS.has(key)) continue;
       if (RELATION_KEYS.has(key)) continue;
       fields.add(key);
     }

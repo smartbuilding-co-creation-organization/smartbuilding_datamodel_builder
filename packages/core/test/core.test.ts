@@ -12,6 +12,8 @@ import {
   buildShaclShapeFromYaml,
   diffDeviceTemplate,
   exportCsv,
+  exportDtdlInterfaces,
+  exportDtdlTwinGraph,
   exportRdf,
   exportYaml,
   getOutputPlugins,
@@ -530,5 +532,134 @@ describe('device templates', () => {
     const templates = buildDeviceTemplatesFromCsv(rows);
     const zipBytes = await buildTemplatesZip(templates.slice(0, 1));
     expect(zipBytes.byteLength).toBeGreaterThan(0);
+  });
+});
+
+describe('exportDtdlInterfaces', () => {
+  it('generates an Interface for each class present in rows', () => {
+    const rows = parseCsv(loadSampleCsv(), { schema });
+    const json = exportDtdlInterfaces(rows);
+    const interfaces = JSON.parse(json) as { '@type': string; '@id': string; displayName: string }[];
+
+    expect(Array.isArray(interfaces)).toBe(true);
+    expect(interfaces.length).toBeGreaterThan(0);
+    const classNames = interfaces.map((i) => i.displayName);
+    expect(classNames).toContain('Building');
+    expect(classNames).toContain('EquipmentExt');
+    expect(classNames).toContain('PointExt');
+  });
+
+  it('each Interface has required DTDL fields', () => {
+    const rows = parseCsv(loadSampleCsv(), { schema });
+    const interfaces = JSON.parse(exportDtdlInterfaces(rows)) as Record<string, unknown>[];
+
+    for (const iface of interfaces) {
+      expect(iface['@context']).toBe('dtmi:dtdl:context;3');
+      expect(typeof iface['@id']).toBe('string');
+      expect((iface['@id'] as string).startsWith('dtmi:sbco:')).toBe(true);
+      expect(iface['@type']).toBe('Interface');
+      expect(typeof iface['displayName']).toBe('string');
+      expect(Array.isArray(iface['contents'])).toBe(true);
+    }
+  });
+
+  it('Building Interface includes hasPart Relationship', () => {
+    const rows = parseCsv(loadSampleCsv(), { schema });
+    const interfaces = JSON.parse(exportDtdlInterfaces(rows)) as {
+      displayName: string;
+      contents: { '@type': string; name: string }[];
+    }[];
+    const building = interfaces.find((i) => i.displayName === 'Building');
+    expect(building).toBeDefined();
+    const hasPart = building?.contents.find(
+      (c) => c['@type'] === 'Relationship' && c.name === 'hasPart',
+    );
+    expect(hasPart).toBeDefined();
+  });
+
+  it('EquipmentExt Interface includes locatedIn Relationship', () => {
+    const rows = parseCsv(loadSampleCsv(), { schema });
+    const interfaces = JSON.parse(exportDtdlInterfaces(rows)) as {
+      displayName: string;
+      contents: { '@type': string; name: string }[];
+    }[];
+    const equipment = interfaces.find((i) => i.displayName === 'EquipmentExt');
+    expect(equipment).toBeDefined();
+    const locatedIn = equipment?.contents.find(
+      (c) => c['@type'] === 'Relationship' && c.name === 'locatedIn',
+    );
+    expect(locatedIn).toBeDefined();
+  });
+});
+
+describe('exportDtdlTwinGraph', () => {
+  it('produces digitalTwins with correct structure', () => {
+    const rows = parseCsv(loadSampleCsv(), { schema });
+    const graph = JSON.parse(exportDtdlTwinGraph(rows)) as {
+      digitalTwinsFileInfo: { fileVersion: string };
+      digitalTwinsGraph: {
+        digitalTwins: { $dtId: string; $metadata: { $model: string }; name?: string }[];
+        relationships: { $relationshipId: string; $relationshipName: string }[];
+      };
+    };
+
+    expect(graph.digitalTwinsFileInfo.fileVersion).toBe('1.0.0');
+    expect(Array.isArray(graph.digitalTwinsGraph.digitalTwins)).toBe(true);
+    expect(graph.digitalTwinsGraph.digitalTwins.length).toBeGreaterThan(0);
+  });
+
+  it('each twin has $dtId and $metadata.$model', () => {
+    const rows = parseCsv(loadSampleCsv(), { schema });
+    const { digitalTwinsGraph } = JSON.parse(exportDtdlTwinGraph(rows)) as {
+      digitalTwinsGraph: { digitalTwins: { $dtId: string; $metadata: { $model: string } }[] };
+    };
+
+    for (const twin of digitalTwinsGraph.digitalTwins) {
+      expect(typeof twin.$dtId).toBe('string');
+      expect(twin.$dtId.length).toBeGreaterThan(0);
+      expect(twin.$metadata.$model.startsWith('dtmi:sbco:')).toBe(true);
+    }
+  });
+
+  it('relationships include hasPart and locatedIn entries', () => {
+    const rows = parseCsv(loadSampleCsv(), { schema });
+    const { digitalTwinsGraph } = JSON.parse(exportDtdlTwinGraph(rows)) as {
+      digitalTwinsGraph: { relationships: { $relationshipName: string }[] };
+    };
+
+    const names = new Set(digitalTwinsGraph.relationships.map((r) => r.$relationshipName));
+    expect(names.has('hasPart')).toBe(true);
+    expect(names.has('locatedIn')).toBe(true);
+  });
+});
+
+describe('runOutputPlugin DTDL', () => {
+  it('runs DTDL/Interfaces plugin and returns JSON', () => {
+    const rows = parseCsv(loadSampleCsv(), { schema });
+    const result = runOutputPlugin('DTDL', 'Interfaces', { rows });
+
+    expect(result.extension).toBe('dtdl.json');
+    expect(result.mimeType).toContain('application/json');
+    const parsed = JSON.parse(result.content);
+    expect(Array.isArray(parsed)).toBe(true);
+  });
+
+  it('runs DTDL/Twin Graph plugin and returns JSON', () => {
+    const rows = parseCsv(loadSampleCsv(), { schema });
+    const result = runOutputPlugin('DTDL', 'Twin Graph', { rows });
+
+    expect(result.extension).toBe('json');
+    expect(result.mimeType).toContain('application/json');
+    const parsed = JSON.parse(result.content) as { digitalTwinsGraph: unknown };
+    expect(parsed.digitalTwinsGraph).toBeDefined();
+  });
+
+  it('DTDL plugin appears in getOutputPlugins()', () => {
+    const plugins = getOutputPlugins();
+    const formats = new Set(plugins.map((p) => p.format));
+    expect(formats.has('DTDL')).toBe(true);
+    const ids = plugins.map((p) => p.id);
+    expect(ids).toContain('dtdl-interfaces');
+    expect(ids).toContain('dtdl-twin-graph');
   });
 });

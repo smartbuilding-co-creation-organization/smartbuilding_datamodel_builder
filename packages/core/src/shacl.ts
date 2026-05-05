@@ -1,4 +1,6 @@
 import { Issue, RowRecord } from './types';
+import { INTERNAL_ROW_KEYS, KIND_TO_CLASS } from './constants';
+import { normalizeValue } from './row-utils';
 
 export type ShaclValidationOptions = {
   shape: ShaclShape;
@@ -8,38 +10,10 @@ type ShaclShape = {
   required?: Record<string, string[]>;
 };
 
-const CLASS_MAP: Record<string, string> = {
-  site: 'Site',
-  building: 'Building',
-  floor: 'Level',
-  level: 'Level',
-  room: 'Room',
-  space: 'Room',
-  device: 'EquipmentExt',
-  equipment: 'EquipmentExt',
-  equipmentext: 'EquipmentExt',
-  point: 'PointExt',
-  pointext: 'PointExt',
-};
-
-const INTERNAL_KEYS = new Set([
-  '__rowId',
-  'parentId',
-  'kind',
-  'pointId',
-  'pointName',
-  'deviceId',
-  'deviceName',
-]);
-
-function normalizeValue(value: string | undefined): string {
-  return value ? value.toString().trim() : '';
-}
-
 function resolveClassKey(kind: string | undefined): string {
   const normalized = normalizeValue(kind).toLowerCase();
   if (!normalized) return 'Resource';
-  return CLASS_MAP[normalized] ?? kind ?? 'Resource';
+  return KIND_TO_CLASS[normalized] ?? kind ?? 'Resource';
 }
 
 export function parseShaclRequirements(yamlText: string): ShaclShape {
@@ -218,7 +192,7 @@ export function validateShacl(rows: RowRecord[], options: ShaclValidationOptions
     const kind = resolveClassKey(row.kind ?? row.resourceKind ?? row.kindLabel ?? row.className);
     const required = requiredByClass[kind] ?? [];
     for (const field of required) {
-      if (INTERNAL_KEYS.has(field)) continue;
+      if (INTERNAL_ROW_KEYS.has(field)) continue;
       const value = normalizeValue(row[field]);
       if (!value) {
         issues.push({

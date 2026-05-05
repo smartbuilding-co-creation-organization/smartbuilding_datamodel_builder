@@ -2,6 +2,7 @@ import { exportRdf } from './rdf';
 import { SchemaRoot } from './schema-mapping';
 import { Issue, RowRecord } from './types';
 import { exportYaml } from './yaml';
+import { exportDtdlInterfaces, exportDtdlTwinGraph } from './dtdl';
 import { buildOutputRows, mergeOutputRows } from './output-aggregation';
 import { parseShaclRequirements, validateShacl } from './shacl';
 
@@ -63,6 +64,34 @@ const OUTPUT_PLUGINS: OutputPlugin[] = [
         issues: shacl
           ? validateShacl(outputRows, { shape: parseShaclRequirements(shacl.shapeText) })
           : undefined,
+      };
+    },
+  },
+  {
+    id: 'dtdl-interfaces',
+    label: 'DTDL (Interfaces)',
+    format: 'DTDL',
+    serializer: 'Interfaces',
+    run: ({ rows }) => {
+      const outputRows = buildOutputRows(rows);
+      return {
+        content: exportDtdlInterfaces(outputRows),
+        extension: 'dtdl.json',
+        mimeType: 'application/json;charset=utf-8;',
+      };
+    },
+  },
+  {
+    id: 'dtdl-twin-graph',
+    label: 'DTDL (Twin Graph)',
+    format: 'DTDL',
+    serializer: 'Twin Graph',
+    run: ({ rows }) => {
+      const outputRows = buildOutputRows(rows);
+      return {
+        content: exportDtdlTwinGraph(outputRows),
+        extension: 'json',
+        mimeType: 'application/json;charset=utf-8;',
       };
     },
   },
