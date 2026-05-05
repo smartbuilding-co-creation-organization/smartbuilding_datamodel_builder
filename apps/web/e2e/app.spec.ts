@@ -205,3 +205,36 @@ test('filters grid rows by search term', async ({ page }) => {
     expect(text).toContain('201');
   }
 });
+
+test('shows device templates view with generated templates', async ({ page }) => {
+  await page.goto('/');
+
+  const fixturePath = path.resolve(__dirname, '../../../packages/fixtures/valid.csv');
+  await page.getByTestId('csv-input').setInputFiles(fixturePath);
+  await expect(page.getByTestId('tree')).toBeVisible();
+
+  // Switch to templates view
+  await page.getByTestId('view-templates').click();
+
+  const templatesView = page.getByTestId('templates-view');
+  await expect(templatesView).toBeVisible();
+
+  // Template list shows at least one device type from CSV
+  const templateList = page.getByTestId('template-list');
+  await expect(templateList).toBeVisible();
+
+  // Sensor template item should appear (valid.csv has device_type=Sensor rows)
+  await expect(page.getByTestId('template-item-Sensor')).toBeVisible();
+
+  // Click sensor template
+  await page.getByTestId('template-item-Sensor').click();
+
+  // Properties grid should be visible
+  await expect(page.getByTestId('template-properties-grid')).toBeVisible();
+
+  // Download YAML button works
+  const downloadPromise = page.waitForEvent('download');
+  await page.getByTestId('template-download').click();
+  const download = await downloadPromise;
+  expect(download.suggestedFilename()).toContain('.yaml');
+});

@@ -17,10 +17,11 @@ import { Inspector } from './components/Inspector';
 import { Workspace } from './components/Workspace';
 import { IssuesDrawer } from './components/IssuesDrawer';
 import { HelpModal } from './components/HelpModal';
+import { TemplatesView } from './components/TemplatesView';
 import { SAMPLE_ROWS } from './data/sampleRows';
 
 type HelpView = 'csv' | 'glossary' | null;
-type ViewMode = 'explore' | 'output';
+type ViewMode = 'explore' | 'templates' | 'output';
 type AccentKey = 'slate' | 'emerald' | 'amber' | 'graphite';
 
 const ACCENTS: Record<AccentKey, Record<string, string>> = {
@@ -220,6 +221,13 @@ export default function App() {
               <button className={view === 'explore' ? 'active' : ''} onClick={() => setView('explore')}>
                 探索 / 編集
               </button>
+              <button
+                className={view === 'templates' ? 'active' : ''}
+                onClick={() => setView('templates')}
+                data-testid="view-templates"
+              >
+                テンプレート
+              </button>
               <button className={view === 'output' ? 'active' : ''} onClick={() => setView('output')}>
                 出力
               </button>
@@ -270,7 +278,7 @@ export default function App() {
           </div>
         </nav>
 
-        <main className="main">
+        <main className={view === 'templates' ? 'main main-templates' : 'main'}>
           <aside className="panel">
             <div className="panel-header">
               <h3>階層ツリー</h3>
@@ -291,18 +299,26 @@ export default function App() {
             </div>
           </aside>
 
-          <Workspace
-            rows={rows}
-            tree={tree}
-            selectedId={selectedId}
-            onSelect={handleSelect}
-            searchTerm={searchTerm}
-            setSearchTerm={setSearchTerm}
-            errorMap={errorMap}
-            view={view}
-            expertMode={expertMode}
-            onGenerateOutput={handleGenerateOutput}
-          />
+          {view === 'templates' ? (
+            <TemplatesView
+              rows={rows}
+              onApplyTemplate={(next) => { setRows(next); recompute(next); }}
+              expertMode={expertMode}
+            />
+          ) : (
+            <Workspace
+              rows={rows}
+              tree={tree}
+              selectedId={selectedId}
+              onSelect={handleSelect}
+              searchTerm={searchTerm}
+              setSearchTerm={setSearchTerm}
+              errorMap={errorMap}
+              view={view}
+              expertMode={expertMode}
+              onGenerateOutput={handleGenerateOutput}
+            />
+          )}
 
           <aside className="panel inspector-panel">
             <div className="panel-header">
