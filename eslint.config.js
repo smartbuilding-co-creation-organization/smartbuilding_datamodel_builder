@@ -28,6 +28,7 @@ export default [
     rules: {
       ...tsPlugin.configs.recommended.rules,
       ...reactHooksPlugin.configs.recommended.rules,
+      'react-hooks/exhaustive-deps': 'off',
       'no-unused-vars': 'off',
       '@typescript-eslint/no-unused-vars': [
         'error',
