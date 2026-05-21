@@ -17,6 +17,7 @@ import {
   exportRdf,
   exportWotTd,
   exportWotThingModel,
+  validateWotThings,
   exportYaml,
   getOutputPlugins,
   getSchemaPropertyDescription,
@@ -861,5 +862,42 @@ describe('runOutputPlugin WoT', () => {
     const ids = getOutputPlugins().map((p) => p.id);
     expect(ids).toContain('wot-td');
     expect(ids).toContain('wot-tm');
+  });
+});
+
+describe('validateWotThings', () => {
+  it('returns no issues for generated TDs from the sample dataset', () => {
+    const rows = parseCsv(loadSampleCsv(), { schema });
+    const things = JSON.parse(exportWotTd(rows)) as unknown[];
+    const issues = validateWotThings(things, 'td');
+    expect(issues).toEqual([]);
+  });
+
+  it('returns no issues for generated TMs from the sample dataset', () => {
+    const rows = parseCsv(loadSampleCsv(), { schema });
+    const things = JSON.parse(exportWotThingModel(rows)) as unknown[];
+    const issues = validateWotThings(things, 'tm');
+    expect(issues).toEqual([]);
+  });
+
+  it('flags TDs missing required security fields', () => {
+    const broken = [
+      {
+        '@context': 'https://www.w3.org/2022/wot/td/v1.1',
+        title: 'broken',
+        id: 'urn:test:broken',
+      },
+    ];
+    const issues = validateWotThings(broken, 'td');
+    expect(issues.length).toBeGreaterThan(0);
+    expect(issues.every((i) => i.code === 'wot-td')).toBe(true);
+    expect(issues.some((i) => i.rowId === 'urn:test:broken')).toBe(true);
+  });
+
+  it('runOutputPlugin surfaces validation issues alongside content', () => {
+    const rows = parseCsv(loadSampleCsv(), { schema });
+    const result = runOutputPlugin('WoT', 'Thing Description', { rows });
+    expect(Array.isArray(result.issues)).toBe(true);
+    expect(result.issues).toEqual([]);
   });
 });

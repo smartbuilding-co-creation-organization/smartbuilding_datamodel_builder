@@ -216,14 +216,18 @@ function buildThings(
   return things;
 }
 
-export function exportWotThingModel(rows: RowRecord[], options: WotOptions = {}): string {
+export function buildWotThings(
+  rows: RowRecord[],
+  options: WotOptions & { asThingModel: boolean },
+): WotThing[] {
   const baseIri = options.baseIri ?? DEFAULT_BASE;
-  const things = buildThings(rows, { asThingModel: true }, baseIri);
-  return JSON.stringify(things, null, 2);
+  return buildThings(rows, { asThingModel: options.asThingModel }, baseIri);
+}
+
+export function exportWotThingModel(rows: RowRecord[], options: WotOptions = {}): string {
+  return JSON.stringify(buildWotThings(rows, { ...options, asThingModel: true }), null, 2);
 }
 
 export function exportWotTd(rows: RowRecord[], options: WotOptions = {}): string {
-  const baseIri = options.baseIri ?? DEFAULT_BASE;
-  const things = buildThings(rows, { asThingModel: false }, baseIri);
-  return JSON.stringify(things, null, 2);
+  return JSON.stringify(buildWotThings(rows, { ...options, asThingModel: false }), null, 2);
 }
