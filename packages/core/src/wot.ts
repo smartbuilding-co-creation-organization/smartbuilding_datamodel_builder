@@ -63,9 +63,9 @@ function thingIdFor(className: string, id: string): string {
   return `urn:sbco:${className}:${id}`;
 }
 
-function isFalsyWritable(value: string): boolean {
+function isTruthyWritable(value: string): boolean {
   const v = value.toLowerCase();
-  return v === 'n' || v === 'no' || v === 'false' || v === '0';
+  return v === 'y' || v === 'yes' || v === 'true' || v === '1' || v === 'rw' || v === 'w';
 }
 
 function inferDataSchemaType(row?: RowRecord): string {
@@ -91,8 +91,7 @@ function buildPropertyAffordance(
   opts: { asThingModel: boolean },
 ): WotPropertyAffordance {
   const row = point.row ?? {};
-  const writable = normalizeValue(row.writable);
-  const readOnly = writable === '' ? true : isFalsyWritable(writable);
+  const readOnly = !isTruthyWritable(normalizeValue(row.writable));
 
   const prop: WotPropertyAffordance = {
     '@type': `${SBCO_PREFIX}:${point.className}`,
