@@ -141,6 +141,68 @@ describe('validate', () => {
   });
 });
 
+describe('validation fixtures', () => {
+  it('keeps edge-case valid input usable and preserves unknown columns', () => {
+    const rows = parseCsv(loadCsv('validation-valid-edge.csv'), { schema });
+    const { issues } = validate(rows);
+
+    expect(rows).toHaveLength(4);
+    expect(issues).toHaveLength(0);
+    expect(rows[0]?.commissioningNote).toBe('checked, calibrated');
+    expect(rows[0]?.externalRef).toBe('EXT-001');
+  });
+
+  it('covers required pointlist field failures', () => {
+    const rows = parseCsv(loadCsv('validation-required-missing.csv'), { schema });
+    const { issues } = validate(rows);
+    const fields = new Set(issues.map((issue) => issue.field));
+
+    expect(issues.some((issue) => issue.code === 'schema')).toBe(true);
+    expect(Array.from(fields)).toEqual(
+      expect.arrayContaining([
+        'gatewayId',
+        'deviceId',
+        'deviceName',
+        'pointId',
+        'pointName',
+        'writable',
+        'localId',
+      ]),
+    );
+  });
+
+  it('covers hierarchy parent signal failures', () => {
+    const rows = parseCsv(loadCsv('validation-hierarchy-missing.csv'), { schema });
+    const { issues } = validate(rows);
+    const hierarchyFields = new Set(
+      issues.filter((issue) => issue.code === 'hierarchy_missing').map((issue) => issue.field),
+    );
+
+    expect(Array.from(hierarchyFields)).toEqual(
+      expect.arrayContaining(['site', 'building', 'level', 'device']),
+    );
+  });
+
+  it('covers parent id reference, duplicate id, and cycle failures', () => {
+    const rows = parseCsv(loadCsv('validation-parent-links.csv'), { schema });
+    const { issues } = validate(rows);
+
+    expect(issues.some((issue) => issue.code === 'parent_missing')).toBe(true);
+    expect(issues.some((issue) => issue.code === 'id_duplicate')).toBe(true);
+    expect(issues.some((issue) => issue.code === 'cycle')).toBe(true);
+  });
+
+  it('keeps semantic edge input available for future stricter validation rules', () => {
+    const rows = parseCsv(loadCsv('validation-semantic-edge.csv'), { schema });
+    const { issues } = validate(rows);
+
+    expect(rows).toHaveLength(4);
+    expect(rows[0]?.writable).toBe('maybe');
+    expect(rows[1]?.interval).toBe('abc');
+    expect(issues).toHaveLength(0);
+  });
+});
+
 describe('exportCsv', () => {
   it('preserves unknown columns and header order from the last parse', () => {
     const rows = parseCsv(loadCsv('valid.csv'), { schema });

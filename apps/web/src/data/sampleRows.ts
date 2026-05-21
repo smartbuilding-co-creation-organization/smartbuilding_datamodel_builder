@@ -1,0 +1,26 @@
+import type { RowRecord } from '@repo/core';
+
+export const SAMPLE_ROWS: RowRecord[] = [
+  { id: 'site-001', kind: 'site', name: '本社キャンパス', site: '本社キャンパス', parentId: '' },
+  { id: 'bldg-A', kind: 'building', name: '本館', site: '本社キャンパス', building: '本館', parentId: 'site-001' },
+  { id: 'bldg-B', kind: 'building', name: '研究棟', site: '本社キャンパス', building: '研究棟', parentId: 'site-001' },
+  { id: 'flr-A1', kind: 'floor', name: '1F', site: '本社キャンパス', building: '本館', floor: '1F', parentId: 'bldg-A' },
+  { id: 'flr-A2', kind: 'floor', name: '2F', site: '本社キャンパス', building: '本館', floor: '2F', parentId: 'bldg-A' },
+  { id: 'flr-A3', kind: 'floor', name: '3F', site: '本社キャンパス', building: '本館', floor: '3F', parentId: 'bldg-A' },
+  { id: 'rm-A101', kind: 'room', name: '101 会議室', site: '本社キャンパス', building: '本館', floor: '1F', installationArea: '101', parentId: 'flr-A1' },
+  { id: 'rm-A102', kind: 'room', name: '102 オフィス', site: '本社キャンパス', building: '本館', floor: '1F', installationArea: '102', parentId: 'flr-A1' },
+  { id: 'rm-A201', kind: 'room', name: '201 オフィス', site: '本社キャンパス', building: '本館', floor: '2F', installationArea: '201', parentId: 'flr-A2' },
+  { id: 'dev-AC-A101', kind: 'device', name: 'エアコン #1', deviceType: 'AirConditioner', deviceId: 'AC-A101', site: '本社キャンパス', building: '本館', floor: '1F', installationArea: '101', parentId: 'rm-A101' },
+  { id: 'dev-AC-A102', kind: 'device', name: 'エアコン #2', deviceType: 'AirConditioner', deviceId: 'AC-A102', site: '本社キャンパス', building: '本館', floor: '1F', installationArea: '102', parentId: 'rm-A102' },
+  { id: 'dev-LT-A101', kind: 'device', name: '照明 #1', deviceType: 'Lighting', deviceId: 'LT-A101', site: '本社キャンパス', building: '本館', floor: '1F', installationArea: '101', parentId: 'rm-A101' },
+  { id: 'dev-AC-A201', kind: 'device', name: 'エアコン #3', deviceType: 'AirConditioner', deviceId: 'AC-A201', site: '本社キャンパス', building: '本館', floor: '2F', installationArea: '201', parentId: 'rm-A201' },
+  { id: 'pt-A101-temp', kind: 'point', name: '室温', pointType: 'roomTemp', pointSpecification: '温度', writable: 'false', unit: '℃', deviceId: 'AC-A101', deviceName: 'エアコン #1', deviceType: 'AirConditioner', pointId: 'AC-A101-T', site: '本社キャンパス', building: '本館', floor: '1F', installationArea: '101', localId: 'T01', parentId: 'dev-AC-A101' },
+  { id: 'pt-A101-set', kind: 'point', name: '設定温度', pointType: 'roomTempSetpoint', pointSpecification: '設定温度', writable: 'true', unit: '℃', deviceId: 'AC-A101', deviceName: 'エアコン #1', deviceType: 'AirConditioner', pointId: 'AC-A101-S', site: '本社キャンパス', building: '本館', floor: '1F', installationArea: '101', localId: 'S01', parentId: 'dev-AC-A101' },
+  { id: 'pt-A101-mode', kind: 'point', name: '運転モード', pointType: 'operationMode', pointSpecification: '運転モード', writable: 'true', deviceId: 'AC-A101', deviceName: 'エアコン #1', deviceType: 'AirConditioner', pointId: 'AC-A101-M', site: '本社キャンパス', building: '本館', floor: '1F', installationArea: '101', localId: 'M01', parentId: 'dev-AC-A101' },
+  { id: 'pt-A102-temp', kind: 'point', name: '室温', pointType: 'roomTemp', pointSpecification: '温度', writable: 'false', unit: '℃', deviceId: 'AC-A102', deviceName: 'エアコン #2', deviceType: 'AirConditioner', pointId: 'AC-A102-T', site: '本社キャンパス', building: '本館', floor: '1F', installationArea: '102', localId: 'T01', parentId: 'dev-AC-A102' },
+  { id: 'pt-A102-set', kind: 'point', name: '設定温度', pointType: 'roomTempSetpoint', pointSpecification: '設定温度', writable: 'true', unit: '℃', deviceId: 'AC-A102', deviceName: 'エアコン #2', deviceType: 'AirConditioner', pointId: 'AC-A102-S', site: '本社キャンパス', building: '本館', floor: '1F', installationArea: '102', localId: 'S01', parentId: 'dev-AC-A102' },
+  { id: 'pt-LT-A101-on', kind: 'point', name: '点灯状態', pointType: 'onOffStatus', pointSpecification: 'ON/OFF', writable: 'true', deviceId: 'LT-A101', deviceName: '照明 #1', deviceType: 'Lighting', pointId: 'LT-A101-ON', site: '本社キャンパス', building: '本館', floor: '1F', installationArea: '101', localId: 'ON', parentId: 'dev-LT-A101' },
+  { id: 'pt-LT-A101-lvl', kind: 'point', name: '調光レベル', pointType: 'dimLevel', pointSpecification: '調光', writable: 'true', unit: '%', deviceId: 'LT-A101', deviceName: '照明 #1', deviceType: 'Lighting', pointId: 'LT-A101-D', site: '本社キャンパス', building: '本館', floor: '1F', installationArea: '101', localId: 'D01', parentId: 'dev-LT-A101' },
+  { id: 'pt-A201-temp', kind: 'point', name: '室温', pointType: 'roomTemp', pointSpecification: '温度', writable: 'false', unit: '℃', deviceId: 'AC-A201', deviceName: 'エアコン #3', deviceType: 'AirConditioner', pointId: 'AC-A201-T', site: '本社キャンパス', building: '本館', floor: '2F', installationArea: '201', localId: 'T01', parentId: 'dev-AC-A201' },
+  { id: 'pt-A201-set', kind: 'point', name: '設定温度', pointType: 'roomTempSetpoint', pointSpecification: '設定温度', writable: 'true', unit: '℃', deviceId: 'AC-A201', deviceName: 'エアコン #3', deviceType: 'AirConditioner', pointId: '', site: '本社キャンパス', building: '本館', floor: '2F', installationArea: '201', localId: 'S01', parentId: 'dev-AC-A201' },
+];
