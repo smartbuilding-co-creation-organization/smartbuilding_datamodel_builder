@@ -5,6 +5,8 @@ import {
   exportDtdlInterfaces,
   exportDtdlTwinGraph,
   exportRdf,
+  exportWotTd,
+  exportWotThingModel,
   exportYaml,
   parseCsv,
   validate,
@@ -179,6 +181,10 @@ export default function App() {
         return exportDtdlInterfaces(rows);
       case 'dtdl-twin-graph':
         return exportDtdlTwinGraph(rows);
+      case 'wot-td':
+        return exportWotTd(rows);
+      case 'wot-tm':
+        return exportWotThingModel(rows);
       default:
         return '';
     }

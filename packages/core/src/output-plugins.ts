@@ -3,6 +3,7 @@ import { SchemaRoot } from './schema-mapping';
 import { Issue, RowRecord } from './types';
 import { exportYaml } from './yaml';
 import { exportDtdlInterfaces, exportDtdlTwinGraph } from './dtdl';
+import { exportWotTd, exportWotThingModel } from './wot';
 import { buildOutputRows, mergeOutputRows } from './output-aggregation';
 import { parseShaclRequirements, validateShacl } from './shacl';
 
@@ -92,6 +93,34 @@ const OUTPUT_PLUGINS: OutputPlugin[] = [
         content: exportDtdlTwinGraph(outputRows),
         extension: 'json',
         mimeType: 'application/json;charset=utf-8;',
+      };
+    },
+  },
+  {
+    id: 'wot-td',
+    label: 'WoT (Thing Description)',
+    format: 'WoT',
+    serializer: 'Thing Description',
+    run: ({ rows }) => {
+      const outputRows = buildOutputRows(rows);
+      return {
+        content: exportWotTd(outputRows),
+        extension: 'td.json',
+        mimeType: 'application/td+json;charset=utf-8;',
+      };
+    },
+  },
+  {
+    id: 'wot-tm',
+    label: 'WoT (Thing Model)',
+    format: 'WoT',
+    serializer: 'Thing Model',
+    run: ({ rows }) => {
+      const outputRows = buildOutputRows(rows);
+      return {
+        content: exportWotThingModel(outputRows),
+        extension: 'tm.json',
+        mimeType: 'application/tm+json;charset=utf-8;',
       };
     },
   },
