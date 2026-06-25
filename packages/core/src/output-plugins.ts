@@ -3,6 +3,8 @@ import { SchemaRoot } from './schema-mapping';
 import { Issue, RowRecord } from './types';
 import { exportYaml } from './yaml';
 import { exportDtdlInterfaces, exportDtdlTwinGraph } from './dtdl';
+import { buildWotThings } from './wot';
+import { validateWotThings } from './wot-validate';
 import { buildOutputRows, mergeOutputRows } from './output-aggregation';
 import { parseShaclRequirements, validateShacl } from './shacl';
 
@@ -92,6 +94,38 @@ const OUTPUT_PLUGINS: OutputPlugin[] = [
         content: exportDtdlTwinGraph(outputRows),
         extension: 'json',
         mimeType: 'application/json;charset=utf-8;',
+      };
+    },
+  },
+  {
+    id: 'wot-td',
+    label: 'WoT (Thing Description)',
+    format: 'WoT',
+    serializer: 'Thing Description',
+    run: ({ rows }) => {
+      const outputRows = buildOutputRows(rows);
+      const things = buildWotThings(outputRows, { asThingModel: false });
+      return {
+        content: JSON.stringify(things, null, 2),
+        extension: 'td.json',
+        mimeType: 'application/td+json;charset=utf-8;',
+        issues: validateWotThings(things, 'td'),
+      };
+    },
+  },
+  {
+    id: 'wot-tm',
+    label: 'WoT (Thing Model)',
+    format: 'WoT',
+    serializer: 'Thing Model',
+    run: ({ rows }) => {
+      const outputRows = buildOutputRows(rows);
+      const things = buildWotThings(outputRows, { asThingModel: true });
+      return {
+        content: JSON.stringify(things, null, 2),
+        extension: 'tm.json',
+        mimeType: 'application/tm+json;charset=utf-8;',
+        issues: validateWotThings(things, 'tm'),
       };
     },
   },

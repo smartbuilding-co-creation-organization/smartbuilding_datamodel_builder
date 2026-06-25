@@ -18,6 +18,8 @@ export const OUTPUT_FORMATS: OutputFormat[] = [
   { id: 'rdf', label: 'RDF Turtle', ext: 'ttl', desc: 'セマンティックWeb形式。SPARQLで問い合わせができます。' },
   { id: 'dtdl-interfaces', label: 'DTDL Interfaces', ext: 'dtdl.json', desc: 'Azure Digital Twins クラス定義。デバイス種別ごとのInterface（型定義）をDTDL v3形式で出力します。' },
   { id: 'dtdl-twin-graph', label: 'DTDL Twin Graph', ext: 'json', desc: 'Azure Digital Twins インスタンスデータ。ビル・デバイス・計測点の実データをデジタルツインとして出力します。' },
+  { id: 'wot-td', label: 'WoT Thing Description', ext: 'td.json', desc: 'W3C Web of Things v1.1 の Thing Description。各機器・空間を Thing、計測点を Property として出力します。' },
+  { id: 'wot-tm', label: 'WoT Thing Model', ext: 'tm.json', desc: 'W3C Web of Things v1.1 の Thing Model（抽象モデル）。tm:submodel リンクで階層を表現します。' },
 ];
 
 function collectNodeIds(node: Node, set: Set<string>): void {

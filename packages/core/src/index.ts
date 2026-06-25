@@ -13,4 +13,6 @@ export * from './schema-mapping';
 export * from './shacl';
 export * from './tree';
 export * from './validate';
+export * from './wot';
+export * from './wot-validate';
 export * from './yaml';

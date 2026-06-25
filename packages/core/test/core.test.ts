@@ -15,6 +15,9 @@ import {
   exportDtdlInterfaces,
   exportDtdlTwinGraph,
   exportRdf,
+  exportWotTd,
+  exportWotThingModel,
+  validateWotThings,
   exportYaml,
   getOutputPlugins,
   getSchemaPropertyDescription,
@@ -723,5 +726,178 @@ describe('runOutputPlugin DTDL', () => {
     const ids = plugins.map((p) => p.id);
     expect(ids).toContain('dtdl-interfaces');
     expect(ids).toContain('dtdl-twin-graph');
+  });
+});
+
+type WotProperty = {
+  '@type': string;
+  title: string;
+  type: string;
+  readOnly: boolean;
+  observable: boolean;
+  unit?: string;
+  minimum?: number;
+  maximum?: number;
+  forms?: { href: string; op: string[]; contentType: string }[];
+};
+
+type WotThingShape = {
+  '@context': unknown[];
+  '@type': string | string[];
+  id: string;
+  title: string;
+  base: string;
+  properties?: Record<string, WotProperty>;
+  links?: { rel: string; href: string; type?: string }[];
+  securityDefinitions?: Record<string, { scheme: string }>;
+  security?: string;
+};
+
+describe('exportWotThingModel', () => {
+  it('emits a Thing Model for every non-point resource', () => {
+    const rows = parseCsv(loadSampleCsv(), { schema });
+    const things = JSON.parse(exportWotThingModel(rows)) as WotThingShape[];
+
+    expect(Array.isArray(things)).toBe(true);
+    expect(things.length).toBeGreaterThan(0);
+
+    for (const t of things) {
+      expect(Array.isArray(t['@type'])).toBe(true);
+      expect((t['@type'] as string[])[0]).toBe('tm:ThingModel');
+      expect(t.id.startsWith('urn:sbco:')).toBe(true);
+      expect(t.securityDefinitions).toBeUndefined();
+    }
+  });
+
+  it('renders child points as PropertyAffordances on the parent Equipment', () => {
+    const rows = parseCsv(loadSampleCsv(), { schema });
+    const things = JSON.parse(exportWotThingModel(rows)) as WotThingShape[];
+
+    const equipmentThings = things.filter((t) =>
+      (t['@type'] as string[]).some((tt) => tt.endsWith(':EquipmentExt')),
+    );
+    const withProps = equipmentThings.find((t) => t.properties && Object.keys(t.properties).length > 0);
+    expect(withProps).toBeDefined();
+
+    const props = withProps!.properties!;
+    const firstKey = Object.keys(props)[0];
+    const prop = props[firstKey];
+    expect(prop['@type'].endsWith(':PointExt')).toBe(true);
+    expect(typeof prop.readOnly).toBe('boolean');
+    expect(prop.observable).toBe(true);
+    expect(prop.forms).toBeUndefined();
+  });
+
+  it('uses tm:submodel link relations to traverse the spatial hierarchy', () => {
+    const rows = parseCsv(loadSampleCsv(), { schema });
+    const things = JSON.parse(exportWotThingModel(rows)) as WotThingShape[];
+
+    const withSubmodel = things.find((t) =>
+      (t.links ?? []).some((l) => l.rel === 'tm:submodel'),
+    );
+    expect(withSubmodel).toBeDefined();
+    const submodelLink = withSubmodel!.links!.find((l) => l.rel === 'tm:submodel')!;
+    expect(submodelLink.type).toBe('application/tm+json');
+    expect(submodelLink.href.startsWith('urn:sbco:')).toBe(true);
+  });
+});
+
+describe('exportWotTd', () => {
+  it('emits TDs with nosec security and form placeholders on every property', () => {
+    const rows = parseCsv(loadSampleCsv(), { schema });
+    const things = JSON.parse(exportWotTd(rows)) as WotThingShape[];
+
+    expect(things.length).toBeGreaterThan(0);
+
+    for (const t of things) {
+      expect(t.securityDefinitions?.nosec_sc.scheme).toBe('nosec');
+      expect(t.security).toBe('nosec_sc');
+    }
+
+    const withProps = things.find((t) => t.properties && Object.keys(t.properties).length > 0);
+    expect(withProps).toBeDefined();
+    const props = withProps!.properties!;
+    for (const key of Object.keys(props)) {
+      const forms = props[key].forms;
+      expect(Array.isArray(forms)).toBe(true);
+      expect(forms!.length).toBeGreaterThan(0);
+      expect(forms![0].href).toContain('{{HREF_BASE}}');
+      expect(forms![0].op).toContain('readproperty');
+    }
+  });
+
+  it('uses item link relations for spatial hierarchy in TDs', () => {
+    const rows = parseCsv(loadSampleCsv(), { schema });
+    const things = JSON.parse(exportWotTd(rows)) as WotThingShape[];
+
+    const rels = new Set(things.flatMap((t) => (t.links ?? []).map((l) => l.rel)));
+    expect(rels.has('item')).toBe(true);
+    expect(rels.has('tm:submodel')).toBe(false);
+  });
+});
+
+describe('runOutputPlugin WoT', () => {
+  it('runs WoT/Thing Description plugin and returns valid JSON', () => {
+    const rows = parseCsv(loadSampleCsv(), { schema });
+    const result = runOutputPlugin('WoT', 'Thing Description', { rows });
+
+    expect(result.extension).toBe('td.json');
+    expect(result.mimeType).toContain('application/td+json');
+    const parsed = JSON.parse(result.content);
+    expect(Array.isArray(parsed)).toBe(true);
+  });
+
+  it('runs WoT/Thing Model plugin and returns valid JSON', () => {
+    const rows = parseCsv(loadSampleCsv(), { schema });
+    const result = runOutputPlugin('WoT', 'Thing Model', { rows });
+
+    expect(result.extension).toBe('tm.json');
+    expect(result.mimeType).toContain('application/tm+json');
+    const parsed = JSON.parse(result.content) as WotThingShape[];
+    expect(Array.isArray(parsed)).toBe(true);
+    expect((parsed[0]['@type'] as string[])[0]).toBe('tm:ThingModel');
+  });
+
+  it('WoT plugins appear in getOutputPlugins()', () => {
+    const ids = getOutputPlugins().map((p) => p.id);
+    expect(ids).toContain('wot-td');
+    expect(ids).toContain('wot-tm');
+  });
+});
+
+describe('validateWotThings', () => {
+  it('returns no issues for generated TDs from the sample dataset', () => {
+    const rows = parseCsv(loadSampleCsv(), { schema });
+    const things = JSON.parse(exportWotTd(rows)) as unknown[];
+    const issues = validateWotThings(things, 'td');
+    expect(issues).toEqual([]);
+  });
+
+  it('returns no issues for generated TMs from the sample dataset', () => {
+    const rows = parseCsv(loadSampleCsv(), { schema });
+    const things = JSON.parse(exportWotThingModel(rows)) as unknown[];
+    const issues = validateWotThings(things, 'tm');
+    expect(issues).toEqual([]);
+  });
+
+  it('flags TDs missing required security fields', () => {
+    const broken = [
+      {
+        '@context': 'https://www.w3.org/2022/wot/td/v1.1',
+        title: 'broken',
+        id: 'urn:test:broken',
+      },
+    ];
+    const issues = validateWotThings(broken, 'td');
+    expect(issues.length).toBeGreaterThan(0);
+    expect(issues.every((i) => i.code === 'wot-td')).toBe(true);
+    expect(issues.some((i) => i.rowId === 'urn:test:broken')).toBe(true);
+  });
+
+  it('runOutputPlugin surfaces validation issues alongside content', () => {
+    const rows = parseCsv(loadSampleCsv(), { schema });
+    const result = runOutputPlugin('WoT', 'Thing Description', { rows });
+    expect(Array.isArray(result.issues)).toBe(true);
+    expect(result.issues).toEqual([]);
   });
 });
