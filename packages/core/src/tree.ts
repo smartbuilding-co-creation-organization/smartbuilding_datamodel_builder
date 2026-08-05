@@ -23,9 +23,12 @@ function resolveName(row: RowRecord): string {
 function makeSlug(value: string): string {
   const trimmed = normalizeValue(value);
   if (!trimmed) return 'unnamed';
+  // Keep letters/digits from any script (not just ASCII) so non-ASCII
+  // names (e.g. Japanese) stay distinguishable instead of all collapsing
+  // to "unnamed". IRI generation percent-encodes the result separately.
   const slug = trimmed
     .replace(/\s+/g, '-')
-    .replace(/[^a-zA-Z0-9._:;-]+/g, '-')
+    .replace(/[^\p{L}\p{N}._:;-]+/gu, '-')
     .replace(/-+/g, '-')
     .replace(/^-+|-+$/g, '');
   return slug || 'unnamed';

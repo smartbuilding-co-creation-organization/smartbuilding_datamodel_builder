@@ -41,6 +41,15 @@ test('shows the onboarding screen on a fresh visit and can proceed to the sample
   await expect(page.getByRole('heading', { name: /建物のデータモデルを/ })).toBeHidden();
 });
 
+test('does not offer a sample-data shortcut once real data is loaded', async ({ page }) => {
+  // Once work is in progress, a stray "サンプル" button next to "CSVを
+  // 読み込む" risks silently overwriting it. Onboarding already covers
+  // loading the sample before any data exists.
+  await loadCsv(page);
+  await expect(page.getByRole('button', { name: 'サンプル', exact: true })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'CSVを読み込む' })).toBeVisible();
+});
+
 test('loads CSV under the Pages subpath and exposes every column in the virtualized grid', async ({
   page,
 }) => {
@@ -214,14 +223,19 @@ test('loads the sample data cleanly and exports CSV matching the pointlist.md sh
   expect(columns).not.toContain('id');
   expect(columns).not.toContain('parentId');
   expect(columns).toContain('gatewayId');
+  expect(columns).toContain('pointId');
+  expect(columns).toContain('pointName');
+
+  const csvBody = await page.getByTestId('output-preview-content').innerText();
+  // eslint-disable-next-line no-control-regex
+  expect(csvBody).toMatch(/^[\x00-\x7F]*$/); // sample content is ASCII-only (English)
+  expect(csvBody).toContain('hq/main-building/'); // localId reads as an MQTT topic
   await page.getByRole('button', { name: '閉じる', exact: true }).click();
 
   // regression: selecting any node below root must still scope the CSV
   // grid to that node's rows, not empty it out.
-  await page.getByTestId('tree').getByText('本館', { exact: true }).click();
+  await page.getByTestId('tree').getByText('Main Building', { exact: true }).click();
   await expect(page.getByTestId('grid-csv').locator('[role="row"][data-id]')).not.toHaveCount(0);
-  expect(columns).toContain('pointId');
-  expect(columns).toContain('pointName');
 });
 
 test('hides the serializer selector when a format has only one option', async ({ page }) => {

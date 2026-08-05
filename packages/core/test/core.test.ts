@@ -117,6 +117,45 @@ describe('buildTree (hierarchy csv)', () => {
     expect(equipment?.kind).toBe('EquipmentExt');
     expect(equipment?.children).toHaveLength(0);
   });
+
+  it('gives distinct, meaningful node ids to differently-named non-ASCII sites/buildings/rooms', () => {
+    // makeSlug() used to strip all non-ASCII characters, so every
+    // Japanese-only name collapsed to the empty string and fell back to
+    // "unnamed" — colliding across genuinely different entities and
+    // leaking into RDF/YAML subject ids with no semantic meaning.
+    const rows = [
+      {
+        site: '本社キャンパス',
+        building: '本館',
+        level: '1F',
+        installationArea: '会議室',
+        deviceId: 'AC-1',
+        deviceName: 'エアコン',
+        pointId: 'PT-1',
+        pointName: '室温',
+      },
+      {
+        site: '大阪サイト',
+        building: '別館',
+        level: '2F',
+        installationArea: 'オフィス',
+        deviceId: 'AC-2',
+        deviceName: 'エアコン2',
+        pointId: 'PT-2',
+        pointName: '室温2',
+      },
+    ];
+    const tree = buildTree(rows);
+
+    const site1 = tree.find((node) => node.name === '本社キャンパス');
+    const site2 = tree.find((node) => node.name === '大阪サイト');
+    expect(site1?.id).not.toBe('site:unnamed');
+    expect(site2?.id).not.toBe('site:unnamed');
+    expect(site1?.id).not.toBe(site2?.id);
+
+    const building1 = site1?.children.find((node) => node.name === '本館');
+    expect(building1?.id).not.toContain('unnamed');
+  });
 });
 
 describe('validate', () => {
@@ -373,6 +412,36 @@ describe('exportRdf', () => {
       '<https://www.sbco.or.jp/ont/property/%E6%82%AA%E6%84%8F%3E%E3%81%82%E3%82%8B%20%E5%88%97>',
     );
     expect(rdf).not.toContain('悪意>ある 列');
+  });
+
+  it('keeps non-ASCII site/building names distinguishable in subject IRIs instead of "unnamed"', () => {
+    const rows = [
+      {
+        site: '本社キャンパス',
+        building: '本館',
+        level: '1F',
+        installationArea: '会議室',
+        deviceId: 'AC-1',
+        deviceName: 'エアコン',
+        pointId: 'PT-1',
+        pointName: '室温',
+      },
+      {
+        site: '大阪サイト',
+        building: '別館',
+        level: '2F',
+        installationArea: 'オフィス',
+        deviceId: 'AC-2',
+        deviceName: 'エアコン2',
+        pointId: 'PT-2',
+        pointName: '室温2',
+      },
+    ];
+    const rdf = exportRdf(rows);
+
+    expect(rdf).not.toContain('unnamed');
+    expect(rdf).toContain(encodeURIComponent('site:本社キャンパス'));
+    expect(rdf).toContain(encodeURIComponent('site:大阪サイト'));
   });
 });
 

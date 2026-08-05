@@ -353,9 +353,6 @@ export default function App() {
             <Button variant="contained" onClick={() => fileInputRef.current?.click()}>
               CSVを読み込む
             </Button>
-            <Button variant="outlined" onClick={loadSample}>
-              サンプル
-            </Button>
             <input
               ref={fileInputRef}
               data-testid="csv-input"
