@@ -287,15 +287,19 @@ export default function App() {
       });
       const nextIssues = result.issues ?? [];
       setOutputIssues(nextIssues);
-      if (nextIssues.some(isBlockingIssue)) {
-        setOutputError('検証エラーがあるため、ダウンロードを中止しました。');
-        setIssuesOpen(true);
-        return;
-      }
+      const blocking = nextIssues.some(isBlockingIssue);
       if (download) {
+        if (blocking) {
+          setOutputError('検証エラーがあるため、ダウンロードを中止しました。');
+          setIssuesOpen(true);
+          return;
+        }
         downloadFile(result.content, `building-model.${result.extension}`, result.mimeType);
       } else {
         setPreview({ title: selectedPlugin.label, content: result.content });
+        if (blocking) {
+          setOutputError('検証エラーがあります。内容を確認してください。');
+        }
       }
     } catch (error) {
       setOutputError(
@@ -390,21 +394,23 @@ export default function App() {
                 </MenuItem>
               ))}
             </TextField>
-            <TextField
-              select
-              size="small"
-              label="シリアライザ"
-              value={selectedPlugin?.serializer ?? ''}
-              data-testid="output-serializer-select"
-              onChange={(event) => setOutputSerializer(event.target.value)}
-              sx={{ minWidth: 150 }}
-            >
-              {serializers.map((plugin) => (
-                <MenuItem key={plugin.id} value={plugin.serializer}>
-                  {plugin.serializer}
-                </MenuItem>
-              ))}
-            </TextField>
+            {serializers.length > 1 ? (
+              <TextField
+                select
+                size="small"
+                label="シリアライザ"
+                value={selectedPlugin?.serializer ?? ''}
+                data-testid="output-serializer-select"
+                onChange={(event) => setOutputSerializer(event.target.value)}
+                sx={{ minWidth: 150 }}
+              >
+                {serializers.map((plugin) => (
+                  <MenuItem key={plugin.id} value={plugin.serializer}>
+                    {plugin.serializer}
+                  </MenuItem>
+                ))}
+              </TextField>
+            ) : null}
             <Button
               variant="outlined"
               disabled={rows.length === 0 || outputBusy}
@@ -583,7 +589,11 @@ export default function App() {
       <Dialog open={preview !== null} onClose={() => setPreview(null)} fullWidth maxWidth="md">
         <DialogTitle>{preview?.title} プレビュー</DialogTitle>
         <DialogContent>
-          <Box component="pre" sx={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>
+          <Box
+            component="pre"
+            data-testid="output-preview-content"
+            sx={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}
+          >
             {preview?.content}
           </Box>
         </DialogContent>

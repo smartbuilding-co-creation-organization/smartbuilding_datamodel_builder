@@ -115,30 +115,56 @@ test('blocks download and opens Issue Drawer when SHACL validation fails', async
   await expect(page.getByTestId('issues-drawer')).toBeVisible();
 });
 
-test('highlights the missing field an Issue points to and shows kind as a read-only Class', async ({
-  page,
-}) => {
-  await page.goto('./');
-  await page.getByRole('button', { name: 'サンプルデータで試す' }).click();
+test('shows kind as a read-only Class in the Inspector', async ({ page }) => {
+  await loadCsv(page);
 
-  await page.getByTestId('validation-summary').click();
-  const drawer = page.getByTestId('issues-drawer');
-  await expect(drawer).toBeVisible();
-  await expect(drawer).not.toContainText("received 'room'");
-
-  const issue = drawer.getByText('pt-A101-temp / pointName');
-  await issue.locator('xpath=following-sibling::button[contains(text(),"対象を表示")]').click();
-
+  await page.getByTestId('grid-csv').locator('[role="row"][data-id="PT001__0"]').click();
   const inspector = page.getByTestId('inspector-panel');
 
-  // The kind/Class row sits near the top, before any scrolling.
+  // kind isn't a column in pointlist.md-shaped CSVs, so it's synthesized
+  // from the resolved class and appended last among the row's properties;
+  // scroll the virtualized grid down to reach it.
+  const scroller = inspector.locator('.MuiDataGrid-virtualScroller');
+  await scroller.evaluate((el) => {
+    el.scrollTop = el.scrollHeight;
+  });
+
   const classCell = inspector.locator('[data-id="kind"] [data-field="property"]');
   await expect(classCell).toHaveText('Class');
   const classValueCell = inspector.locator('[data-id="kind"] [data-field="value"]');
   await expect(classValueCell).toHaveText('PointExt');
 
-  // The virtualized grid only renders rows near the viewport; scroll to
-  // reach pointName, which sits further down the property list.
+  await page.getByRole('button', { name: '編集', exact: true }).click();
+  await classValueCell.dblclick();
+  await expect(inspector.locator('.MuiDataGrid-cell--editing')).toHaveCount(0);
+});
+
+test('highlights an Issue-referenced field even when the row never had that column', async ({
+  page,
+}) => {
+  // point_name is entirely omitted (not just left blank), reproducing the
+  // scenario where the Inspector previously had no row at all to highlight.
+  await page.goto('./');
+  await page.getByTestId('csv-input').setInputFiles({
+    name: 'missing-point-name.csv',
+    mimeType: 'text/csv',
+    buffer: Buffer.from(
+      'gateway_id,device_id,device_name,device_type,site,building,floor,installation_area,' +
+        'point_type,point_specification,point_id,writable,local_id\n' +
+        'GW001,DEV001,Sensor 1,Sensor,Site1,Bldg1,1F,Room1,Temperature,Measurement,PT001,false,LOC001\n',
+    ),
+  });
+  await expect(page.getByTestId('grid-csv')).toBeVisible();
+
+  await page.getByTestId('validation-summary').click();
+  const drawer = page.getByTestId('issues-drawer');
+  const issue = drawer.getByText('PT001 / pointName');
+  await expect(issue).toBeVisible();
+  await issue.locator('xpath=following-sibling::button[contains(text(),"対象を表示")]').click();
+
+  const inspector = page.getByTestId('inspector-panel');
+  // Synthesized fields (present in the Issue but absent from the row) are
+  // appended last among the row's properties; scroll down to reach it.
   const scroller = inspector.locator('.MuiDataGrid-virtualScroller');
   await scroller.evaluate((el) => {
     el.scrollTop = el.scrollHeight;
@@ -148,13 +174,54 @@ test('highlights the missing field an Issue points to and shows kind as a read-o
   await expect(pointNameCell).toBeVisible();
   await expect(pointNameCell).toHaveClass(/cell-error/);
   await expect(pointNameCell).toHaveCSS('background-color', 'rgb(251, 234, 231)');
+});
 
-  await page.getByRole('button', { name: '編集', exact: true }).click();
-  await scroller.evaluate((el) => {
-    el.scrollTop = 0;
-  });
-  await classValueCell.dblclick();
-  await expect(inspector.locator('.MuiDataGrid-cell--editing')).toHaveCount(0);
+test('loads the sample data cleanly and exports CSV matching the pointlist.md shape', async ({
+  page,
+}) => {
+  await page.goto('./');
+  await page.getByRole('button', { name: 'サンプルデータで試す' }).click();
+  await expect(page.getByTestId('tree')).toBeVisible();
+
+  await expect(page.getByTestId('validation-summary')).toHaveText('検証OK');
+
+  await selectFormat(page, 'CSV');
+  await page.getByRole('button', { name: 'プレビュー', exact: true }).click();
+  const headerLine = (await page.getByTestId('output-preview-content').innerText()).split(
+    /\r?\n/,
+  )[0];
+  const columns = headerLine.split(',');
+
+  expect(columns).not.toContain('kind');
+  expect(columns).not.toContain('id');
+  expect(columns).not.toContain('parentId');
+  expect(columns).toContain('gatewayId');
+  expect(columns).toContain('pointId');
+  expect(columns).toContain('pointName');
+});
+
+test('hides the serializer selector when a format has only one option', async ({ page }) => {
+  await loadCsv(page);
+
+  await selectFormat(page, 'CSV');
+  await expect(page.getByTestId('output-serializer-select')).toBeHidden();
+
+  await selectFormat(page, 'DTDL');
+  await expect(page.getByTestId('output-serializer-select')).toBeVisible();
+});
+
+test('shows preview content despite blocking issues, but still blocks download', async ({
+  page,
+}) => {
+  await loadCsv(page, invalidFixture);
+  await selectFormat(page, 'RDF');
+
+  await page.getByRole('button', { name: 'プレビュー', exact: true }).click();
+  await expect(page.getByTestId('output-preview-content')).toContainText('@prefix');
+  await page.getByRole('button', { name: '閉じる', exact: true }).click();
+
+  await page.getByRole('button', { name: 'ダウンロード', exact: true }).click();
+  await expect(page.getByTestId('output-error')).toContainText('ダウンロードを中止');
 });
 
 test('rejects over-limit input atomically and keeps the existing model', async ({ page }) => {
