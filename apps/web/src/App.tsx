@@ -112,7 +112,6 @@ export default function App() {
     selectedId,
     expandedItems,
     view,
-    editMode,
     search,
     issues,
     outputIssues,
@@ -120,7 +119,6 @@ export default function App() {
     setSelectedId,
     setExpandedItems,
     setView,
-    setEditMode,
     setSearch,
     updateModelRow,
     setRows,
@@ -227,7 +225,12 @@ export default function App() {
         renderCell: (params) =>
           params.row.description ? (
             <Tooltip title={params.row.description} placement="top-start">
-              <span>{params.value}</span>
+              <Box
+                component="span"
+                sx={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center' }}
+              >
+                {params.value}
+              </Box>
             </Tooltip>
           ) : (
             params.value
@@ -534,20 +537,6 @@ export default function App() {
               >
                 <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
                   <Typography variant="subtitle1">インスペクタ</Typography>
-                  <ButtonGroup size="small" sx={{ ml: 'auto' }}>
-                    <Button
-                      variant={editMode === 'csv' ? 'contained' : 'outlined'}
-                      onClick={() => setEditMode('csv')}
-                    >
-                      参照
-                    </Button>
-                    <Button
-                      variant={editMode === 'model' ? 'contained' : 'outlined'}
-                      onClick={() => setEditMode('model')}
-                    >
-                      編集
-                    </Button>
-                  </ButtonGroup>
                 </Stack>
                 {selectedRow ? (
                   <>
@@ -559,7 +548,7 @@ export default function App() {
                         rows={propertyRows}
                         columns={propertyColumns.map((column) => ({
                           ...column,
-                          editable: column.field === 'value' && editMode === 'model',
+                          editable: column.field === 'value',
                         }))}
                         disableRowSelectionOnClick
                         isCellEditable={(params) => params.row.id !== 'kind'}

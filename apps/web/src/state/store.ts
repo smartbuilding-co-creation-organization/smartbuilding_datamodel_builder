@@ -19,7 +19,6 @@ type AppState = {
   selectedId: string;
   expandedItems: string[];
   view: 'data' | 'templates';
-  editMode: 'csv' | 'model';
   search: string;
   issues: Issue[];
   outputIssues: Issue[];
@@ -33,7 +32,6 @@ type AppState = {
   setSelectedId: (id: string) => void;
   setExpandedItems: (ids: string[]) => void;
   setView: (view: 'data' | 'templates') => void;
-  setEditMode: (mode: 'csv' | 'model') => void;
   setSearch: (search: string) => void;
   updateModelRow: (id: string, row: RowRecord) => void;
   setRows: (rows: RowRecord[]) => void;
@@ -67,7 +65,6 @@ export const useAppStore = create<AppState>((set, get) => ({
   selectedId: 'root',
   expandedItems: ['root'],
   view: 'data',
-  editMode: 'csv',
   search: '',
   issues: [],
   outputIssues: [],
@@ -86,7 +83,6 @@ export const useAppStore = create<AppState>((set, get) => ({
       selectedId: 'root',
       expandedItems: initialExpandedItems(tree),
       view: 'data',
-      editMode: 'csv',
       search: '',
       schema,
     });
@@ -94,7 +90,6 @@ export const useAppStore = create<AppState>((set, get) => ({
   setSelectedId: (id) => set({ selectedId: id }),
   setExpandedItems: (expandedItems) => set({ expandedItems }),
   setView: (view) => set({ view }),
-  setEditMode: (editMode) => set({ editMode }),
   setSearch: (search) => set({ search }),
   updateModelRow: (id, row) => {
     const currentModelRows = get().modelRows;
