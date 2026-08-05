@@ -176,18 +176,35 @@ export function getOriginalHeaderName(key: string): string {
   return lastHeaderMappings.find((entry) => entry.key === key)?.source ?? key;
 }
 
+// Rebuilds the header mapping from a dataset that did not come through
+// parseCsv() (e.g. the built-in sample data). Without this, exportCsv()
+// keeps using whatever CSV was parsed last, silently mismatching a
+// differently-shaped dataset now on screen.
+export function resetHeaderFromRows(rows: RowRecord[]): void {
+  const seen = new Set<string>();
+  const mappings: HeaderMapping[] = [];
+  for (const row of rows) {
+    for (const key of Object.keys(row)) {
+      if (key.startsWith('__') || seen.has(key)) continue;
+      seen.add(key);
+      mappings.push({ source: key, key });
+    }
+  }
+  lastHeaderMappings = mappings;
+}
+
+function fallbackColumns(rows: RowRecord[]): HeaderMapping[] {
+  return Array.from(
+    new Set(rows.flatMap((row) => Object.keys(row)).filter((key) => !key.startsWith('__'))),
+  ).map((key) => ({ source: key, key }));
+}
+
 function escapeSpreadsheetFormula(value: string): string {
   return /^[=+\-@\t\r]/.test(value) ? `'${value}` : value;
 }
 
 export function exportCsv(rows: RowRecord[]): string {
-  const mappings =
-    lastHeaderMappings.length > 0
-      ? lastHeaderMappings
-      : Array.from(new Set(rows.flatMap((row) => Object.keys(row)))).map((key) => ({
-          source: key,
-          key,
-        }));
+  const mappings = lastHeaderMappings.length > 0 ? lastHeaderMappings : fallbackColumns(rows);
   const exportRows = rows.map((row) =>
     Object.fromEntries(
       mappings.map(({ source, key }) => [source, escapeSpreadsheetFormula(String(row[key] ?? ''))]),

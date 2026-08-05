@@ -26,6 +26,7 @@ import {
   hasHierarchySignalChange,
   parseCsv,
   parseDeviceTemplateYaml,
+  resetHeaderFromRows,
   resolveDeviceTemplateInheritance,
   resolveHierarchySignals,
   runOutputPlugin,
@@ -230,6 +231,32 @@ describe('exportCsv', () => {
     expect(csv).toContain("'@cmd");
     expect(csv).toContain("'\tformula");
     expect(csv).toContain('safe');
+  });
+
+  it('does not export a hardcoded/sample dataset using a previously parsed CSV header', () => {
+    // Loading a real CSV populates the header state used by exportCsv().
+    // Switching to a differently-shaped dataset that never goes through
+    // parseCsv() (e.g. the web app's built-in sample data) must not keep
+    // exporting the stale header, or every non-matching cell silently
+    // exports empty.
+    parseCsv(loadCsv('valid.csv'), { schema });
+    const sampleRows = [{ id: 'site-1', kind: 'site', name: 'Sample Site', parentId: '' }];
+    resetHeaderFromRows(sampleRows);
+    const csv = exportCsv(sampleRows);
+    const [headerLine, firstRowLine] = csv.split(/\r?\n/);
+
+    expect(headerLine.split(',')).toEqual(expect.arrayContaining(['id', 'kind', 'name']));
+    expect(headerLine).not.toContain('gateway_id');
+    expect(firstRowLine).toContain('Sample Site');
+  });
+
+  it('excludes internal bookkeeping keys (e.g. __rowId) from the no-header fallback', () => {
+    resetHeaderFromRows([]);
+    const rows = [{ id: 'pt-1', name: 'Point 1', __rowId: 'pt-1__0' }];
+    const csv = exportCsv(rows);
+    const [headerLine] = csv.split(/\r?\n/);
+
+    expect(headerLine.split(',')).not.toContain('__rowId');
   });
 });
 
