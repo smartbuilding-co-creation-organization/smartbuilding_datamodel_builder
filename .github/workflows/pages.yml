@@ -28,13 +28,13 @@ jobs:
         with:
           ref: ${{ github.event.workflow_run.head_sha }}
           persist-credentials: false
+      - name: Enable pnpm
+        run: corepack enable
       - name: Set up Node.js
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 22
           cache: pnpm
-      - name: Enable pnpm
-        run: corepack enable
       - name: Install and build
         run: |
           pnpm install --frozen-lockfile
