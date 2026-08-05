@@ -35,7 +35,7 @@ export function buildResourceModelMap(rows: RowRecord[]): ResourceModelMap {
       if (predicateMap) {
         for (const [predicate, targets] of predicateMap.entries()) {
           if (normalizeValue(row[predicate])) continue;
-          row[predicate] = targets.length > 1 ? targets.join(', ') : targets[0] ?? '';
+          row[predicate] = targets.length > 1 ? targets.join(', ') : (targets[0] ?? '');
         }
       }
       map.set(resource.id, row);
@@ -54,7 +54,7 @@ export function buildResourceModelMap(rows: RowRecord[]): ResourceModelMap {
     if (predicateMap) {
       for (const [predicate, targets] of predicateMap.entries()) {
         if (normalizeValue(record[predicate])) continue;
-        record[predicate] = targets.length > 1 ? targets.join(', ') : targets[0] ?? '';
+        record[predicate] = targets.length > 1 ? targets.join(', ') : (targets[0] ?? '');
       }
     }
     map.set(resource.id, record);

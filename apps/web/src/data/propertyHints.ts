@@ -5,7 +5,10 @@ export type PropertyHint = {
 
 export const PROPERTY_HINTS: Record<string, PropertyHint> = {
   id: { label: 'ID', desc: 'このノードを一意に識別するID。例: AC-A101' },
-  kind: { label: '種別', desc: 'このノードがsite / building / floor / room / device / pointのどれかを示します。' },
+  kind: {
+    label: '種別',
+    desc: 'このノードがsite / building / floor / room / device / pointのどれかを示します。',
+  },
   name: { label: '名称', desc: '人が読んで分かる表示名。' },
   parentId: { label: '親ID', desc: '階層上の親ノードのID。これでツリーが構築されます。' },
   site: { label: 'サイト', desc: '敷地・拠点名（例: 本社キャンパス）。' },
@@ -23,8 +26,14 @@ export const PROPERTY_HINTS: Record<string, PropertyHint> = {
   point_id: { label: 'ポイントID', desc: '計測点／制御点の一意ID。BACnet等のシステム識別に使用。' },
   pointName: { label: 'ポイント名', desc: '計測点の表示名（例: 室温, 設定温度）。' },
   point_name: { label: 'ポイント名', desc: '計測点の表示名（例: 室温, 設定温度）。' },
-  pointType: { label: 'ポイント種別', desc: '標準ポイントタイプ。例: roomTemp, roomTempSetpoint, onOffStatus。' },
-  point_type: { label: 'ポイント種別', desc: '標準ポイントタイプ。例: roomTemp, roomTempSetpoint, onOffStatus。' },
+  pointType: {
+    label: 'ポイント種別',
+    desc: '標準ポイントタイプ。例: roomTemp, roomTempSetpoint, onOffStatus。',
+  },
+  point_type: {
+    label: 'ポイント種別',
+    desc: '標準ポイントタイプ。例: roomTemp, roomTempSetpoint, onOffStatus。',
+  },
   pointSpecification: { label: 'ポイント仕様', desc: 'ポイントの詳細説明。' },
   point_specification: { label: 'ポイント仕様', desc: 'ポイントの詳細説明。' },
   writable: { label: '書込可', desc: 'true: 制御可能 / false: 読取専用。' },
@@ -48,5 +57,20 @@ export const REQUIRED_BY_KIND: Record<string, string[]> = {
   floor: ['id', 'name', 'floor', 'building', 'site'],
   room: ['id', 'name', 'installationArea', 'floor', 'building', 'site'],
   device: ['id', 'name', 'deviceId', 'deviceType', 'site', 'building', 'floor'],
-  point: ['id', 'name', 'pointId', 'pointType', 'pointSpecification', 'writable', 'deviceId', 'deviceName', 'deviceType', 'site', 'building', 'floor', 'installationArea', 'localId'],
+  point: [
+    'id',
+    'name',
+    'pointId',
+    'pointType',
+    'pointSpecification',
+    'writable',
+    'deviceId',
+    'deviceName',
+    'deviceType',
+    'site',
+    'building',
+    'floor',
+    'installationArea',
+    'localId',
+  ],
 };

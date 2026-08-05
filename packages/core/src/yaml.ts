@@ -2,6 +2,8 @@ import { buildResourceGraph } from './resource-graph';
 import { buildSchemaCache, getRequiredPropsFromCache, SchemaRoot } from './schema-mapping';
 import { RowRecord } from './types';
 import { collectOutputFields, resolveOutputValue } from './output-utils';
+import { getOriginalHeaderName } from './csv';
+import { stringify } from 'yaml';
 
 type YamlOptions = {
   baseIri?: string;
@@ -10,10 +12,6 @@ type YamlOptions = {
 };
 
 const DEFAULT_BASE = 'https://www.sbco.or.jp/ont/resource/';
-
-function escapeYaml(value: string): string {
-  return value.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
-}
 
 function iriFor(baseIri: string, id: string): string {
   const encoded = encodeURIComponent(id);
@@ -39,7 +37,7 @@ export function exportYaml(rows: RowRecord[], options: YamlOptions = {}): string
   }
 
   const requiredFallback = new Set(['id', 'name']);
-  const lines: string[] = ['resources:'];
+  const outputResources: Record<string, unknown>[] = [];
 
   for (const resource of resources) {
     const className = resource.className || 'Resource';
@@ -49,12 +47,12 @@ export function exportYaml(rows: RowRecord[], options: YamlOptions = {}): string
 
     const name = resolveOutputValue(resource, 'name', { autoFill });
 
-    lines.push(`  - id: "${escapeYaml(resource.id)}"`);
+    const outputResource: Record<string, unknown> = { id: resource.id };
     if (name) {
-      lines.push(`    name: "${escapeYaml(name)}"`);
+      outputResource.name = name;
     }
-    lines.push(`    class: "sbco:${className}"`);
-    lines.push(`    iri: "${escapeYaml(iriFor(baseIri, resource.id))}"`);
+    outputResource.class = `sbco:${className}`;
+    outputResource.iri = iriFor(baseIri, resource.id);
 
     const fields = collectOutputFields(resource.row, required).filter(
       (field) => field !== 'id' && field !== 'name',
@@ -62,23 +60,28 @@ export function exportYaml(rows: RowRecord[], options: YamlOptions = {}): string
     for (const field of fields) {
       const value = resolveOutputValue(resource, field, { autoFill });
       if (!value) continue;
-      lines.push(`    ${field}: "${escapeYaml(value)}"`);
+      outputResource[getOriginalHeaderName(field)] = value;
     }
 
     const predicateMap = relationMap.get(resource.id);
     if (predicateMap) {
       for (const [predicate, targets] of predicateMap.entries()) {
         if (targets.length === 1) {
-          lines.push(`    ${predicate}: "${escapeYaml(iriFor(baseIri, targets[0]))}"`);
+          outputResource[predicate] = iriFor(baseIri, targets[0]);
         } else if (targets.length > 1) {
-          lines.push(`    ${predicate}:`);
-          for (const target of targets) {
-            lines.push(`      - "${escapeYaml(iriFor(baseIri, target))}"`);
-          }
+          outputResource[predicate] = targets.map((target) => iriFor(baseIri, target));
         }
       }
     }
+    outputResources.push(outputResource);
   }
 
-  return lines.join('\n') + '\n';
+  return stringify(
+    { resources: outputResources },
+    {
+      defaultKeyType: 'QUOTE_DOUBLE',
+      defaultStringType: 'QUOTE_DOUBLE',
+      lineWidth: 0,
+    },
+  );
 }

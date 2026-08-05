@@ -51,6 +51,10 @@ export function resolveOutputValue(
   }
 
   if (field === 'name') {
+    if (resource.row && Object.prototype.hasOwnProperty.call(resource.row, 'name')) {
+      const explicitName = normalizeValue(resource.row.name);
+      if (explicitName || !autoFill) return explicitName;
+    }
     const value = normalizeValue(resource.name);
     return value || (autoFill ? resource.id : '');
   }

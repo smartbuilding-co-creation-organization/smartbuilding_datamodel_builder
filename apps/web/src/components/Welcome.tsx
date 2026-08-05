@@ -58,11 +58,15 @@ export function Welcome({ onLoadSample, onUploadCsv, onShowHelp }: Props) {
               onClick={() => inputRef.current?.click()}
               role="button"
               tabIndex={0}
-              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') inputRef.current?.click(); }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') inputRef.current?.click();
+              }}
             >
               <div className="dropzone-icon">📄</div>
               <div className="dropzone-headline">CSVをここへドロップ</div>
-              <div className="dropzone-sub">またはクリックしてファイルを選択（pointlist.md準拠のCSV）</div>
+              <div className="dropzone-sub">
+                またはクリックしてファイルを選択（pointlist.md準拠のCSV）
+              </div>
               <input
                 ref={inputRef}
                 data-testid="csv-input"
@@ -86,28 +90,50 @@ export function Welcome({ onLoadSample, onUploadCsv, onShowHelp }: Props) {
             <h4>このツールでできること</h4>
             <ul className="concept-list">
               <li>
-                <span className="badge" style={{ background: 'var(--kind-building)' }}>1</span>
-                <span><b>階層を可視化</b>：CSVのID/親ID関係から、ツリー表示を自動構築します。</span>
+                <span className="badge" style={{ background: 'var(--kind-building)' }}>
+                  1
+                </span>
+                <span>
+                  <b>階層を可視化</b>：CSVのID/親ID関係から、ツリー表示を自動構築します。
+                </span>
               </li>
               <li>
-                <span className="badge" style={{ background: 'var(--kind-room)' }}>2</span>
-                <span><b>検証する</b>：必須項目の抜けや矛盾を画面右にリストアップし、その場で修正できます。</span>
+                <span className="badge" style={{ background: 'var(--kind-room)' }}>
+                  2
+                </span>
+                <span>
+                  <b>検証する</b>
+                  ：必須項目の抜けや矛盾を画面右にリストアップし、その場で修正できます。
+                </span>
               </li>
               <li>
-                <span className="badge" style={{ background: 'var(--kind-device)' }}>3</span>
-                <span><b>編集する</b>：ノードを選んで、説明付きのフォームでプロパティを編集します。</span>
+                <span className="badge" style={{ background: 'var(--kind-device)' }}>
+                  3
+                </span>
+                <span>
+                  <b>編集する</b>：ノードを選んで、説明付きのフォームでプロパティを編集します。
+                </span>
               </li>
               <li>
-                <span className="badge" style={{ background: 'var(--kind-point)' }}>4</span>
-                <span><b>出力する</b>：CSV / JSON / YAML / RDF など、用途に応じた形式で書き出します。</span>
+                <span className="badge" style={{ background: 'var(--kind-point)' }}>
+                  4
+                </span>
+                <span>
+                  <b>出力する</b>：CSV / JSON / YAML / RDF など、用途に応じた形式で書き出します。
+                </span>
               </li>
             </ul>
           </div>
         </div>
 
         <div className="welcome-footer">
-          <span>初めての方は<strong style={{ color: 'var(--accent)' }}>「サンプルデータで試す」</strong>から開始するのがおすすめ。</span>
-          <span>ファイルはすべて<strong>ブラウザ内で処理</strong>され、サーバには送信されません。</span>
+          <span>
+            初めての方は<strong style={{ color: 'var(--accent)' }}>「サンプルデータで試す」</strong>
+            から開始するのがおすすめ。
+          </span>
+          <span>
+            ファイルはすべて<strong>ブラウザ内で処理</strong>され、サーバには送信されません。
+          </span>
         </div>
       </div>
     </div>

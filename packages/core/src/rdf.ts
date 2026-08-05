@@ -2,6 +2,7 @@ import { buildResourceGraph } from './resource-graph';
 import { buildSchemaCache, getRequiredPropsFromCache, SchemaRoot } from './schema-mapping';
 import { RowRecord } from './types';
 import { collectOutputFields, resolveOutputValue } from './output-utils';
+import { getOriginalHeaderName } from './csv';
 
 type RdfOptions = {
   baseIri?: string;
@@ -11,14 +12,131 @@ type RdfOptions = {
 };
 
 const DEFAULT_BASE = 'https://www.sbco.or.jp/ont/resource/';
+const SBCO_BASE = 'https://www.sbco.or.jp/ont/';
+const UNKNOWN_PROPERTY_BASE = `${SBCO_BASE}property/`;
+
+const REC_FIELDS = new Set([
+  'IPAddress',
+  'MACAddress',
+  'address',
+  'adjacentElement',
+  'architectedBy',
+  'area',
+  'assetTag',
+  'capacity',
+  'checksum',
+  'commissionedBy',
+  'commissioningDate',
+  'constructedBy',
+  'containsElement',
+  'customProperties',
+  'customTags',
+  'description',
+  'documentation',
+  'format',
+  'geometry',
+  'georeference',
+  'hasPart',
+  'hasPoint',
+  'identifiers',
+  'initialCost',
+  'installationDate',
+  'installedBy',
+  'intersectingElement',
+  'isFedBy',
+  'isLocationOf',
+  'isPartOf',
+  'language',
+  'levelNumber',
+  'locatedIn',
+  'maintenanceInterval',
+  'manufacturedBy',
+  'memberOf',
+  'modelNumber',
+  'mountedOn',
+  'name',
+  'operatedBy',
+  'ownedBy',
+  'owns',
+  'serialNumber',
+  'servicedBy',
+  'size',
+  'turnoverDate',
+  'url',
+  'version',
+  'weight',
+]);
+
+const BRICK_FIELDS = new Set([
+  'aggregate',
+  'feeds',
+  'hasQuantity',
+  'hasSubstance',
+  'isPointOf',
+  'operationalStageCount',
+]);
+
+const SBCO_FIELDS = new Set([
+  'deviceType',
+  'entries',
+  'flag',
+  'id',
+  'installationArea',
+  'key',
+  'maxPresValue',
+  'minPresValue',
+  'panel',
+  'pointSpecification',
+  'pointType',
+  'scale',
+  'targetArea',
+  'unit',
+  'value',
+]);
+
+const DATE_FIELDS = new Set(['commissioningDate', 'installationDate', 'turnoverDate']);
+const INTEGER_FIELDS = new Set(['levelNumber', 'operationalStageCount']);
+const DECIMAL_FIELDS = new Set(['area', 'capacity', 'size', 'weight']);
+const FLOAT_FIELDS = new Set(['maxPresValue', 'minPresValue', 'scale']);
+const REC_CLASSES = new Set(['Site', 'Building', 'Level', 'Room', 'Space', 'Zone', 'OutdoorSpace']);
+const STRUCTURED_FIELDS = new Set(['customProperties', 'customTags', 'identifiers']);
 
 function escapeLiteral(value: string): string {
-  return value
+  const escaped = value
     .replace(/\\/g, '\\\\')
     .replace(/"/g, '\\"')
     .replace(/\r/g, '\\r')
     .replace(/\n/g, '\\n')
     .replace(/\t/g, '\\t');
+  return Array.from(escaped, (character) => {
+    const code = character.charCodeAt(0);
+    return (code <= 0x1f || code === 0x7f) && character !== '\\'
+      ? `\\u${code.toString(16).padStart(4, '0')}`
+      : character;
+  }).join('');
+}
+
+function strictPercentEncode(value: string): string {
+  return encodeURIComponent(value).replace(
+    /[!'()*]/g,
+    (character) => `%${character.charCodeAt(0).toString(16).toUpperCase()}`,
+  );
+}
+
+function predicateFor(field: string): string {
+  if (REC_FIELDS.has(field)) return `rec:${field}`;
+  if (BRICK_FIELDS.has(field)) return `brick:${field}`;
+  if (SBCO_FIELDS.has(field)) return `sbco:${field}`;
+  return `<${UNKNOWN_PROPERTY_BASE}${strictPercentEncode(getOriginalHeaderName(field))}>`;
+}
+
+function literalFor(field: string, value: string): string {
+  const literal = `"${escapeLiteral(value)}"`;
+  if (DATE_FIELDS.has(field)) return `${literal}^^xsd:date`;
+  if (INTEGER_FIELDS.has(field)) return `${literal}^^xsd:integer`;
+  if (DECIMAL_FIELDS.has(field)) return `${literal}^^xsd:decimal`;
+  if (FLOAT_FIELDS.has(field)) return `${literal}^^xsd:float`;
+  return literal;
 }
 
 function iriFor(baseIri: string, id: string): string {
@@ -50,6 +168,8 @@ export function exportRdf(rows: RowRecord[], options: RdfOptions = {}): string {
   if (includePrefixes) {
     lines.push('@prefix sbco: <https://www.sbco.or.jp/ont/> .');
     lines.push(`@prefix sbr: <${baseIri}> .`);
+    lines.push('@prefix rec: <https://w3id.org/rec/> .');
+    lines.push('@prefix brick: <https://brickschema.org/schema/Brick#> .');
     lines.push('@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .');
     lines.push('');
   }
@@ -61,18 +181,22 @@ export function exportRdf(rows: RowRecord[], options: RdfOptions = {}): string {
       ? getRequiredPropsFromCache(schemaCache, className)
       : requiredFallback;
 
-    const props: string[] = [`a sbco:${className}`];
+    const safeClassName = /^[A-Za-z_][A-Za-z0-9._-]*$/.test(className)
+      ? `${REC_CLASSES.has(className) ? 'rec' : 'sbco'}:${className}`
+      : `<${SBCO_BASE}${strictPercentEncode(className)}>`;
+    const props: string[] = [`a ${safeClassName}`];
 
     const fields = collectOutputFields(resource.row, required);
     for (const field of fields) {
+      if (STRUCTURED_FIELDS.has(field)) continue;
       const value = resolveOutputValue(resource, field, { autoFill });
       if (!value) continue;
-      props.push(`sbco:${field} "${escapeLiteral(value)}"`);
+      props.push(`${predicateFor(field)} ${literalFor(field, value)}`);
     }
 
     const relationsForResource = relationMap.get(resource.id) ?? [];
     for (const relation of relationsForResource) {
-      props.push(`sbco:${relation.predicate} ${iriFor(baseIri, relation.objectId)}`);
+      props.push(`${predicateFor(relation.predicate)} ${iriFor(baseIri, relation.objectId)}`);
     }
 
     lines.push(`${subject} ${props.join(' ;\n  ')} .`);

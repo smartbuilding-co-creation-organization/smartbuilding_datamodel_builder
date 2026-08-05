@@ -17,6 +17,10 @@ type AppState = {
   modelRows: RowRecord[];
   tree: Node[];
   selectedId: string;
+  expandedItems: string[];
+  view: 'data' | 'templates';
+  editMode: 'csv' | 'model';
+  search: string;
   issues: Issue[];
   outputIssues: Issue[];
   schema?: SchemaRoot;
@@ -27,6 +31,10 @@ type AppState = {
     schema?: SchemaRoot,
   ) => void;
   setSelectedId: (id: string) => void;
+  setExpandedItems: (ids: string[]) => void;
+  setView: (view: 'data' | 'templates') => void;
+  setEditMode: (mode: 'csv' | 'model') => void;
+  setSearch: (search: string) => void;
   updateModelRow: (id: string, row: RowRecord) => void;
   setRows: (rows: RowRecord[]) => void;
   setOutputIssues: (issues: Issue[]) => void;
@@ -38,6 +46,18 @@ function recompute(rows: RowRecord[], schema?: SchemaRoot) {
   return { tree, issues };
 }
 
+function initialExpandedItems(tree: Node[]): string[] {
+  const items = ['root'];
+  const visit = (nodes: Node[], depth: number) => {
+    for (const node of nodes) {
+      if (depth < 2 && node.children.length > 0) items.push(node.id);
+      visit(node.children, depth + 1);
+    }
+  };
+  visit(tree, 0);
+  return items;
+}
+
 export const useAppStore = create<AppState>((set, get) => ({
   csvRows: [],
   csvColumns: [],
@@ -45,6 +65,10 @@ export const useAppStore = create<AppState>((set, get) => ({
   modelRows: [],
   tree: [],
   selectedId: 'root',
+  expandedItems: ['root'],
+  view: 'data',
+  editMode: 'csv',
+  search: '',
   issues: [],
   outputIssues: [],
   schema: undefined,
@@ -60,10 +84,18 @@ export const useAppStore = create<AppState>((set, get) => ({
       issues,
       outputIssues: [],
       selectedId: 'root',
+      expandedItems: initialExpandedItems(tree),
+      view: 'data',
+      editMode: 'csv',
+      search: '',
       schema,
     });
   },
   setSelectedId: (id) => set({ selectedId: id }),
+  setExpandedItems: (expandedItems) => set({ expandedItems }),
+  setView: (view) => set({ view }),
+  setEditMode: (editMode) => set({ editMode }),
+  setSearch: (search) => set({ search }),
   updateModelRow: (id, row) => {
     const currentModelRows = get().modelRows;
     const hasModelRow = currentModelRows.some((item) => item.id === id);
@@ -127,6 +159,14 @@ export const useAppStore = create<AppState>((set, get) => ({
     const { tree, issues } = recompute(resolvedRows, get().schema);
     const selectedId = get().selectedId;
     const nextSelectedId = selectedId === id && row.id && row.id !== id ? row.id : selectedId;
+    const validTreeIds = new Set<string>(['root']);
+    const stack = [...tree];
+    while (stack.length > 0) {
+      const node = stack.pop();
+      if (!node) continue;
+      validTreeIds.add(node.id);
+      stack.push(...node.children);
+    }
     set({
       modelRows: resolvedModelRows,
       rows: resolvedRows,
@@ -134,6 +174,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       issues,
       outputIssues: [],
       selectedId: nextSelectedId,
+      expandedItems: get().expandedItems.filter((item) => validTreeIds.has(item)),
     });
   },
   setRows: (rows) => {

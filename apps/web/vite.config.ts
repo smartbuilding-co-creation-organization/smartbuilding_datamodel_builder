@@ -5,7 +5,11 @@ import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-export default defineConfig({
+export default defineConfig(({ command, mode }) => ({
+  base:
+    command === 'serve' && mode === 'development'
+      ? '/'
+      : '/smartbuilding_datamodel_builder/',
   plugins: [react()],
   resolve: {
     alias: {
@@ -15,4 +19,4 @@ export default defineConfig({
   server: {
     port: 5173,
   },
-});
+}));

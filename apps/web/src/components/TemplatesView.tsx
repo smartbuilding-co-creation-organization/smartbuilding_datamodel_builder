@@ -105,10 +105,7 @@ export function TemplatesView({ rows, onApplyTemplate, expertMode }: Props) {
     return out;
   }, [active, availableTemplates]);
 
-  const updateDraft = (
-    key: string,
-    fn: (current: DeviceTemplate) => DeviceTemplate,
-  ) => {
+  const updateDraft = (key: string, fn: (current: DeviceTemplate) => DeviceTemplate) => {
     if (!key) return;
     setDrafts((prev) => {
       const base = prev[key] ?? generatedMap.get(key);
@@ -121,7 +118,7 @@ export function TemplatesView({ rows, onApplyTemplate, expertMode }: Props) {
     if (!selectedKey) return;
     updateDraft(selectedKey, (t) => ({
       ...t,
-      [field]: field === 'extends' ? (value || undefined) : value,
+      [field]: field === 'extends' ? value || undefined : value,
     }));
   };
 
@@ -213,7 +210,9 @@ export function TemplatesView({ rows, onApplyTemplate, expertMode }: Props) {
     return (
       <div className="workspace" data-testid="templates-view">
         <div className="workspace-header">
-          <div className="crumb"><span className="crumb-current">デバイステンプレート</span></div>
+          <div className="crumb">
+            <span className="crumb-current">デバイステンプレート</span>
+          </div>
         </div>
         <div className="empty-state">
           <div>
@@ -229,7 +228,9 @@ export function TemplatesView({ rows, onApplyTemplate, expertMode }: Props) {
   return (
     <div className="workspace templates-workspace" data-testid="templates-view">
       <div className="workspace-header">
-        <div className="crumb"><span className="crumb-current">デバイステンプレート</span></div>
+        <div className="crumb">
+          <span className="crumb-current">デバイステンプレート</span>
+        </div>
       </div>
 
       {!expertMode && (
@@ -237,7 +238,9 @@ export function TemplatesView({ rows, onApplyTemplate, expertMode }: Props) {
           <div className="coach">
             <span className="coach-icon">i</span>
             <span>
-              <b>デバイステンプレート</b>は、デバイス種別ごとに共通して持つべきプロパティを定義したものです。CSVから自動推定し、編集してYAMLやZIPで保存できます。「<b>CSVへ反映</b>」を押すと、現在のテンプレートをCSVの各デバイスに適用します。
+              <b>デバイステンプレート</b>
+              は、デバイス種別ごとに共通して持つべきプロパティを定義したものです。CSVから自動推定し、編集してYAMLやZIPで保存できます。「
+              <b>CSVへ反映</b>」を押すと、現在のテンプレートをCSVの各デバイスに適用します。
             </span>
           </div>
         </div>
@@ -246,7 +249,9 @@ export function TemplatesView({ rows, onApplyTemplate, expertMode }: Props) {
       <div className="templates-body">
         <aside className="templates-list" data-testid="template-list">
           <div className="panel-header">
-            <h3>デバイス種別 <span className="count">{generatedTemplates.length}</span></h3>
+            <h3>
+              デバイス種別 <span className="count">{generatedTemplates.length}</span>
+            </h3>
           </div>
           <div className="templates-list-body">
             {generatedTemplates.map((t) => {
@@ -333,9 +338,7 @@ export function TemplatesView({ rows, onApplyTemplate, expertMode }: Props) {
           {appliedToast && (
             <div className="template-toast template-toast-success">{appliedToast}</div>
           )}
-          {loadError && (
-            <div className="template-toast template-toast-error">⚠ {loadError}</div>
-          )}
+          {loadError && <div className="template-toast template-toast-error">⚠ {loadError}</div>}
           {resolved.error && (
             <div className="template-toast template-toast-error">⚠ {resolved.error}</div>
           )}
@@ -372,25 +375,33 @@ export function TemplatesView({ rows, onApplyTemplate, expertMode }: Props) {
                   >
                     <option value="">なし</option>
                     {extendOptions.map((name) => (
-                      <option key={name} value={name}>{name}</option>
+                      <option key={name} value={name}>
+                        {name}
+                      </option>
                     ))}
                   </select>
                 </label>
               </div>
 
-              {diff && (diff.missing.length > 0 || diff.extra.length > 0 || diff.mismatched.length > 0) ? (
+              {diff &&
+              (diff.missing.length > 0 || diff.extra.length > 0 || diff.mismatched.length > 0) ? (
                 <div className="template-diff" data-testid="template-diff">
                   <div className="template-diff-title">⚠ CSVとの差分</div>
                   <ul>
                     {diff.missing.map((p) => (
-                      <li key={`m-${p.name}`}><b>不足:</b> <span className="mono">{p.name}</span></li>
+                      <li key={`m-${p.name}`}>
+                        <b>不足:</b> <span className="mono">{p.name}</span>
+                      </li>
                     ))}
                     {diff.extra.map((p) => (
-                      <li key={`e-${p.name}`}><b>過剰:</b> <span className="mono">{p.name}</span></li>
+                      <li key={`e-${p.name}`}>
+                        <b>過剰:</b> <span className="mono">{p.name}</span>
+                      </li>
                     ))}
                     {diff.mismatched.map((m) => (
                       <li key={`x-${m.name}`}>
-                        <b>不一致:</b> <span className="mono">{m.name}</span>（{m.differences.join(', ')}）
+                        <b>不一致:</b> <span className="mono">{m.name}</span>（
+                        {m.differences.join(', ')}）
                       </li>
                     ))}
                   </ul>
@@ -414,7 +425,9 @@ export function TemplatesView({ rows, onApplyTemplate, expertMode }: Props) {
                 />
                 <select
                   value={newProp.access}
-                  onChange={(e) => setNewProp((p) => ({ ...p, access: e.target.value as TemplateAccess }))}
+                  onChange={(e) =>
+                    setNewProp((p) => ({ ...p, access: e.target.value as TemplateAccess }))
+                  }
                 >
                   <option value="read">read</option>
                   <option value="readWrite">readWrite</option>
@@ -456,23 +469,27 @@ export function TemplatesView({ rows, onApplyTemplate, expertMode }: Props) {
                       const cls = mismatchedSet.has(p.name)
                         ? 'template-row-mismatch'
                         : extraSet.has(p.name)
-                        ? 'template-row-extra'
-                        : missingSet.has(p.name)
-                        ? 'template-row-missing'
-                        : '';
+                          ? 'template-row-extra'
+                          : missingSet.has(p.name)
+                            ? 'template-row-missing'
+                            : '';
                       return (
                         <tr key={p.name} className={cls}>
                           <td className="mono">{p.name}</td>
                           <td>
                             <input
                               value={p.pointType}
-                              onChange={(e) => updateProperty(p.name, { pointType: e.target.value })}
+                              onChange={(e) =>
+                                updateProperty(p.name, { pointType: e.target.value })
+                              }
                             />
                           </td>
                           <td>
                             <select
                               value={p.access}
-                              onChange={(e) => updateProperty(p.name, { access: e.target.value as TemplateAccess })}
+                              onChange={(e) =>
+                                updateProperty(p.name, { access: e.target.value as TemplateAccess })
+                              }
                             >
                               <option value="read">read</option>
                               <option value="readWrite">readWrite</option>
@@ -481,13 +498,17 @@ export function TemplatesView({ rows, onApplyTemplate, expertMode }: Props) {
                           <td>
                             <input
                               value={p.description ?? ''}
-                              onChange={(e) => updateProperty(p.name, { description: e.target.value || undefined })}
+                              onChange={(e) =>
+                                updateProperty(p.name, { description: e.target.value || undefined })
+                              }
                             />
                           </td>
                           <td>
                             <input
                               value={p.default ?? ''}
-                              onChange={(e) => updateProperty(p.name, { default: e.target.value || undefined })}
+                              onChange={(e) =>
+                                updateProperty(p.name, { default: e.target.value || undefined })
+                              }
                             />
                           </td>
                           <td>
@@ -496,7 +517,9 @@ export function TemplatesView({ rows, onApplyTemplate, expertMode }: Props) {
                               onClick={() => removeProperty(p.name)}
                               title="削除"
                               aria-label={`${p.name}を削除`}
-                            >✕</button>
+                            >
+                              ✕
+                            </button>
                           </td>
                         </tr>
                       );

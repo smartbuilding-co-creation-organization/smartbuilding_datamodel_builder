@@ -28,12 +28,13 @@ export function Inspector({ row, onChange, fieldErrors, descendantCount, expertM
   const required = REQUIRED_BY_KIND[kind.toLowerCase()] ?? [];
 
   const priorityKeys = [
-    'id', 'kind', 'name', 'parentId',
+    'id',
+    'kind',
+    'name',
+    'parentId',
     ...required.filter((k) => !['id', 'kind', 'name', 'parentId'].includes(k)),
   ];
-  const extraKeys = Object.keys(row).filter(
-    (k) => !priorityKeys.includes(k) && k !== 'children',
-  );
+  const extraKeys = Object.keys(row).filter((k) => !priorityKeys.includes(k) && k !== 'children');
   const seen = new Set<string>();
   const orderedKeys = [...priorityKeys, ...extraKeys].filter((k) => {
     if (seen.has(k)) return false;
@@ -56,13 +57,17 @@ export function Inspector({ row, onChange, fieldErrors, descendantCount, expertM
         <div className="insp-section">
           <div className="coach">
             <span className="coach-icon">i</span>
-            <span><b>サイト</b>は最上位の階層です。1つの敷地・拠点に複数の建物が紐づきます。</span>
+            <span>
+              <b>サイト</b>は最上位の階層です。1つの敷地・拠点に複数の建物が紐づきます。
+            </span>
           </div>
         </div>
       )}
 
       <div className="insp-section">
-        <h4>プロパティ <span className="count">{orderedKeys.length}</span></h4>
+        <h4>
+          プロパティ <span className="count">{orderedKeys.length}</span>
+        </h4>
         {orderedKeys.map((key) => {
           const hint = PROPERTY_HINTS[key];
           const isRequired = required.includes(key);
@@ -74,14 +79,22 @@ export function Inspector({ row, onChange, fieldErrors, descendantCount, expertM
               <div className="prop-label">
                 <span>{hint?.label ?? key}</span>
                 {hint?.label && (
-                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--text-faint)' }}>
+                  <span
+                    style={{
+                      fontFamily: 'var(--font-mono)',
+                      fontSize: 10,
+                      color: 'var(--text-faint)',
+                    }}
+                  >
                     {key}
                   </span>
                 )}
                 {isRequired && <span className="req">必須</span>}
                 {hint?.desc && (
                   <span className="tooltip-wrap">
-                    <span className="info-btn" title={hint.desc}>?</span>
+                    <span className="info-btn" title={hint.desc}>
+                      ?
+                    </span>
                     <span className="tip">{hint.desc}</span>
                   </span>
                 )}
@@ -93,12 +106,8 @@ export function Inspector({ row, onChange, fieldErrors, descendantCount, expertM
                 aria-label={hint?.label ?? key}
                 aria-invalid={!!err}
               />
-              {!expertMode && hint?.desc && (
-                <div className="prop-desc">{hint.desc}</div>
-              )}
-              {err && (
-                <div className="prop-error">⚠ {err}</div>
-              )}
+              {!expertMode && hint?.desc && <div className="prop-desc">{hint.desc}</div>}
+              {err && <div className="prop-error">⚠ {err}</div>}
             </div>
           );
         })}

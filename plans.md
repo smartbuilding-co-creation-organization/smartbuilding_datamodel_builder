@@ -280,6 +280,66 @@
   - [ ] 大規模 CSV での基本操作が 2 秒以内に応答する（体感）
   - [ ] E2E の待機が `locator/expect` ベースで安定している
 
+### M4: OSS 公開準備（Issue #16、実装・ローカル検証 Completed）
+
+#### 目的
+- source repository と GitHub Pages の静的デモを、安全かつ再現可能な状態で公開する。
+- 法務・セキュリティ・依存関係・CI・入出力・UI・利用者向け文書を公開品質へ引き上げる。
+- npm package の公開は対象外とする。
+
+#### 実施順と Issue 対応
+
+| 優先度 | Issue | 作業 | 依存先 |
+| --- | --- | --- | --- |
+| P0 | #5 | Apache-2.0 と第三者著作物の棚卸し | なし |
+| P0 | #15 | リポジトリ衛生、公開ポリシー、秘密情報検査 | #5 |
+| P0 | #14 | Node/pnpm/依存関係の固定と監査 | #15 |
+| P0 | #8 | Playwright の移植性と production preview 統一 | #14 |
+| P0 | #13 | GitHub Actions の公開品質ゲート | #8, #14, #15 |
+| P0 | #9 | CSV/RDF/YAML の入力・出力堅牢化 | #14 |
+| P0 | #6 | RDF/JS ベースの SHACL Core 検証 | #9, #14 |
+| P1 | #7 | MUI/Zustand/Tree/DataGrid 統一 | #9 |
+| P1 | #10 | 非同期 output plugin registry への出力経路統合 | #6, #7 |
+| P1 | #12 | README と利用者向け文書の公開品質化 | #5〜#10, #13〜#15 |
+| P1 | #11 | GitHub Pages build/deploy と smoke test | #8, #12, #13 |
+
+#### 公開時の固定値
+- 著作権表記: `Copyright 2026 Smart Building Co-Creation Organization`
+- CSV 入力上限: 5 MiB、20,000 行、100 列、1 セル 32 KiB
+- Node.js: 22、package manager: `pnpm@9.15.9`
+- Vite: 6.4 系、Vitest: 3.2 系、PostCSS: 8.5.18 以上の互換範囲
+
+#### 既存タスクとの関係
+- Task 36 は output plugin registry の core 実装を完了済みとする。公開品質として必要な非同期 API、UI の単一路線化、失敗時の download 抑止は Issue #10 で追加対応する。
+- Task 38 は編集結果の統合と最小 SHACL 検証を完了済みとする。SHACL Core 準拠の RDF/JS 検証、詳細な Issue 変換、形式間の結果一致は Issue #6 で追加対応する。
+
+#### Issue 別受入基準
+- [x] #5: `LICENSE`、`NOTICE`、`THIRD_PARTY_NOTICES.md` が揃い、README にライセンスと著作権表記がある。来歴や再配布条件が不明な同梱物を公開対象に残さない。
+- [x] #15: Playwright 成果物が追跡対象外で、`CONTRIBUTING.md`、`CODE_OF_CONDUCT.md`、`SECURITY.md`、Issue/PR テンプレートがある。gitleaks で全履歴を検査し、結果を記録する。
+- [x] #14: Node.js 22 と `pnpm@9.15.9` が固定され、対象依存が安全な互換範囲へ更新される。実装時点の高・重大 advisory が 0 件で、Dependabot が pnpm と Actions を週次監視する。
+- [x] #8: Playwright 管理 Chromium を使用し、ローカルと CI が production build の preview を同じ経路で E2E 検証する。
+- [x] #13: PR/main push で frozen install、lint、format check、typecheck、unit、build、E2E、dependency audit、gitleaks を最小権限で実行する。Actions は commit SHA 固定で、E2E 失敗 artifact のみ保存する。
+- [x] #9: `CsvInputLimits` と既定値を core から公開し、上限超過が atomic failure になる。CSV formula injection を抑止し、未知列の名前・順序・値を保持する。RDF predicate IRI と YAML の特殊文字出力が安全で unit test がある。
+- [x] #6: `rdf-validate-shacl` で生成後 RDF と `schema/building_model.shacl.ttl` を検証し、focus node、result path、severity、constraint component、message を `Issue` に保持する。schema で使用する SHACL Core 制約を検証し、RDF/YAML で結果が一致する。
+- [x] #7: Theme/CssBaseline、MUI AppBar/Toolbar/Paper/Dialog/Drawer、Zustand、SimpleTreeView/TreeItem、DataGrid に統一する。system font を使い、CSV 全列を表示し、編集確定と Tree 再構築後の選択・展開・フォーカスを E2E で保証する。
+- [x] #10: UI が output plugin registry のみを使い、`OutputPlugin.run` と `runOutputPlugin` が `Promise<OutputPluginResult>` を返す。全形式の選択・download・進行中・失敗処理を統一し、validation error と serializer 例外時は download しない。
+- [x] #12: README に機能、CSV 仕様と上限、未知列、検証、出力、対応ブラウザ、起動方法、制約、公開ポリシーと関連文書への導線がある。ブラウザ内処理、外部 font 通信なし、Pages の静的配信を明記する。
+- [x] #11: production base が `/smartbuilding_datamodel_builder/`、development base が `/` で、main の CI 成功後のみ公式 Pages Actions から deploy される。subpath build の主要フローと外部通信なしを smoke test で確認する。
+
+#### 最終公開ゲート
+- [x] `pnpm install --frozen-lockfile`
+- [x] `pnpm lint`
+- [x] `pnpm format:check`
+- [x] `pnpm typecheck`
+- [x] `pnpm test`
+- [x] `pnpm build`
+- [x] `pnpm test:e2e`
+- [x] dependency audit（high/critical 0 件）
+- [x] gitleaks（全履歴）
+- [ ] Issue #5〜#15 の受入基準と Pages smoke test を確認し、M4 を Completed にして Issue #16 を閉じる
+
+ローカルの Pages 相当 subpath smoke test までは完了。実際の deployed smoke test と Issue #16 の close は、変更の main 反映と Pages deploy 後に実施する。
+
 ## 4. タスクバックログ（優先順）
 
 0) E2E 実行前提の明文化

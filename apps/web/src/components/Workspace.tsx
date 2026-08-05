@@ -11,15 +11,60 @@ export type OutputFormat = {
 };
 
 export const OUTPUT_FORMATS: OutputFormat[] = [
-  { id: 'csv', label: 'CSV', ext: 'csv', desc: '元のCSV形式で出力。Excelやスプレッドシートで開けます。' },
-  { id: 'json', label: 'JSON', ext: 'json', desc: '階層構造を保持したJSON。アプリやAPIで扱いやすい形式です。' },
-  { id: 'yaml', label: 'YAML', ext: 'yaml', desc: 'デバイステンプレートを含む人間可読形式。レビューに向いています。' },
-  { id: 'jsonld', label: 'JSON-LD', ext: 'jsonld', desc: 'Linked Data形式。Brick / RealEstateCore等のスキーマと連携可能。' },
-  { id: 'rdf', label: 'RDF Turtle', ext: 'ttl', desc: 'セマンティックWeb形式。SPARQLで問い合わせができます。' },
-  { id: 'dtdl-interfaces', label: 'DTDL Interfaces', ext: 'dtdl.json', desc: 'Azure Digital Twins クラス定義。デバイス種別ごとのInterface（型定義）をDTDL v3形式で出力します。' },
-  { id: 'dtdl-twin-graph', label: 'DTDL Twin Graph', ext: 'json', desc: 'Azure Digital Twins インスタンスデータ。ビル・デバイス・計測点の実データをデジタルツインとして出力します。' },
-  { id: 'wot-td', label: 'WoT Thing Description', ext: 'td.json', desc: 'W3C Web of Things v1.1 の Thing Description。各機器・空間を Thing、計測点を Property として出力します。' },
-  { id: 'wot-tm', label: 'WoT Thing Model', ext: 'tm.json', desc: 'W3C Web of Things v1.1 の Thing Model（抽象モデル）。tm:submodel リンクで階層を表現します。' },
+  {
+    id: 'csv',
+    label: 'CSV',
+    ext: 'csv',
+    desc: '元のCSV形式で出力。Excelやスプレッドシートで開けます。',
+  },
+  {
+    id: 'json',
+    label: 'JSON',
+    ext: 'json',
+    desc: '階層構造を保持したJSON。アプリやAPIで扱いやすい形式です。',
+  },
+  {
+    id: 'yaml',
+    label: 'YAML',
+    ext: 'yaml',
+    desc: 'デバイステンプレートを含む人間可読形式。レビューに向いています。',
+  },
+  {
+    id: 'jsonld',
+    label: 'JSON-LD',
+    ext: 'jsonld',
+    desc: 'Linked Data形式。Brick / RealEstateCore等のスキーマと連携可能。',
+  },
+  {
+    id: 'rdf',
+    label: 'RDF Turtle',
+    ext: 'ttl',
+    desc: 'セマンティックWeb形式。SPARQLで問い合わせができます。',
+  },
+  {
+    id: 'dtdl-interfaces',
+    label: 'DTDL Interfaces',
+    ext: 'dtdl.json',
+    desc: 'Azure Digital Twins クラス定義。デバイス種別ごとのInterface（型定義）をDTDL v3形式で出力します。',
+  },
+  {
+    id: 'dtdl-twin-graph',
+    label: 'DTDL Twin Graph',
+    ext: 'json',
+    desc: 'Azure Digital Twins インスタンスデータ。ビル・デバイス・計測点の実データをデジタルツインとして出力します。',
+  },
+  {
+    id: 'wot-td',
+    label: 'WoT Thing Description',
+    ext: 'td.json',
+    desc: 'W3C Web of Things v1.1 の Thing Description。各機器・空間を Thing、計測点を Property として出力します。',
+  },
+  {
+    id: 'wot-tm',
+    label: 'WoT Thing Model',
+    ext: 'tm.json',
+    desc: 'W3C Web of Things v1.1 の Thing Model（抽象モデル）。tm:submodel リンクで階層を表現します。',
+  },
 ];
 
 function collectNodeIds(node: Node, set: Set<string>): void {
@@ -31,7 +76,10 @@ function descendantIds(tree: Node[], id: string): Set<string> {
   const set = new Set<string>();
   const findAndCollect = (nodes: Node[]): boolean => {
     for (const n of nodes) {
-      if (n.id === id) { collectNodeIds(n, set); return true; }
+      if (n.id === id) {
+        collectNodeIds(n, set);
+        return true;
+      }
       if (findAndCollect(n.children)) return true;
     }
     return false;
@@ -59,12 +107,37 @@ function buildBreadcrumb(tree: Node[], selectedId: string): BreadcrumbItem[] {
   return path;
 }
 
-const PRIORITY_COLS = ['kind', 'id', 'name', 'deviceType', 'device_type', 'pointType', 'point_type', 'writable', 'unit', 'site', 'building', 'floor', 'installationArea', 'installation_area'];
-const MONO_COLS = new Set(['id', 'parentId', 'parent_id', 'pointId', 'point_id', 'deviceId', 'device_id']);
+const PRIORITY_COLS = [
+  'kind',
+  'id',
+  'name',
+  'deviceType',
+  'device_type',
+  'pointType',
+  'point_type',
+  'writable',
+  'unit',
+  'site',
+  'building',
+  'floor',
+  'installationArea',
+  'installation_area',
+];
+const MONO_COLS = new Set([
+  'id',
+  'parentId',
+  'parent_id',
+  'pointId',
+  'point_id',
+  'deviceId',
+  'device_id',
+]);
 
 function pickColumns(rows: RowRecord[]): string[] {
   if (!rows.length) return [];
-  const all = Array.from(new Set(rows.flatMap((r) => Object.keys(r)))).filter((k) => k !== 'children');
+  const all = Array.from(new Set(rows.flatMap((r) => Object.keys(r)))).filter(
+    (k) => k !== 'children',
+  );
   const ordered = [
     ...PRIORITY_COLS.filter((k) => all.includes(k)),
     ...all.filter((k) => !PRIORITY_COLS.includes(k)),
@@ -113,7 +186,13 @@ export function Workspace({
     }
     if (searchTerm.trim()) {
       const t = searchTerm.toLowerCase();
-      out = out.filter((r) => Object.values(r).some((v) => String(v ?? '').toLowerCase().includes(t)));
+      out = out.filter((r) =>
+        Object.values(r).some((v) =>
+          String(v ?? '')
+            .toLowerCase()
+            .includes(t),
+        ),
+      );
     }
     return out;
   }, [rows, selectedId, searchTerm]);
@@ -135,7 +214,9 @@ export function Workspace({
         </div>
         <div className="outputs">
           <h2>データモデルとして出力</h2>
-          <p className="lede">CSVの内容を、用途に応じた形式で書き出します。プレビューを確認してから保存できます。</p>
+          <p className="lede">
+            CSVの内容を、用途に応じた形式で書き出します。プレビューを確認してから保存できます。
+          </p>
           <div className="format-grid">
             {OUTPUT_FORMATS.map((f) => (
               <div className="format-card" key={f.id}>
@@ -174,24 +255,40 @@ export function Workspace({
             <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 920 }}>
               <div className="modal-header">
                 <h2>{previewModal.title}</h2>
-                <button className="btn btn-ghost btn-sm" onClick={() => setPreviewModal(null)}>✕</button>
+                <button className="btn btn-ghost btn-sm" onClick={() => setPreviewModal(null)}>
+                  ✕
+                </button>
               </div>
               <div className="modal-body">
-                <pre style={{
-                  background: 'var(--bg-sunken)', padding: 14, borderRadius: 8,
-                  fontSize: 12, lineHeight: 1.55, fontFamily: 'var(--font-mono)',
-                  maxHeight: 520, overflow: 'auto', margin: 0,
-                }}>
+                <pre
+                  style={{
+                    background: 'var(--bg-sunken)',
+                    padding: 14,
+                    borderRadius: 8,
+                    fontSize: 12,
+                    lineHeight: 1.55,
+                    fontFamily: 'var(--font-mono)',
+                    maxHeight: 520,
+                    overflow: 'auto',
+                    margin: 0,
+                  }}
+                >
                   {previewModal.content}
                 </pre>
               </div>
               <div className="modal-footer">
-                <button className="btn" onClick={() => setPreviewModal(null)}>閉じる</button>
+                <button className="btn" onClick={() => setPreviewModal(null)}>
+                  閉じる
+                </button>
                 <button
                   className="btn btn-primary"
                   data-testid="csv-export-button"
                   onClick={() => {
-                    downloadFile(previewModal.content, `building-model.${previewModal.ext}`, 'text/plain;charset=utf-8');
+                    downloadFile(
+                      previewModal.content,
+                      `building-model.${previewModal.ext}`,
+                      'text/plain;charset=utf-8',
+                    );
                     setPreviewModal(null);
                   }}
                 >
@@ -216,7 +313,10 @@ export function Workspace({
               <span key={p.id}>
                 {i > 0 && <span className="crumb-sep">›</span>}
                 <span className="crumb-item" onClick={() => onSelect(p.id)}>
-                  <span className={`kind-pill kind-${toDisplayKind(p.kind)}`} style={{ fontSize: 8 }}>
+                  <span
+                    className={`kind-pill kind-${toDisplayKind(p.kind)}`}
+                    style={{ fontSize: 8 }}
+                  >
                     {toDisplayKind(p.kind).slice(0, 4)}
                   </span>
                   <span className={i === breadcrumb.length - 1 ? 'crumb-current' : ''}>
@@ -241,9 +341,7 @@ export function Workspace({
               aria-label="グリッド検索"
             />
           </div>
-          <span style={{ fontSize: 12, color: 'var(--text-faint)' }}>
-            {filteredRows.length} 件
-          </span>
+          <span style={{ fontSize: 12, color: 'var(--text-faint)' }}>{filteredRows.length} 件</span>
         </div>
         <div className="right">
           {!expertMode && (
@@ -259,7 +357,8 @@ export function Workspace({
           <div className="coach">
             <span className="coach-icon">i</span>
             <span>
-              <b>使い方：</b>左の階層ツリーで<b>建物・フロア・部屋</b>などを選ぶと、その配下のデバイス・計測点だけがここに絞り込まれます。行をクリックすると右側のインスペクタで編集できます。
+              <b>使い方：</b>左の階層ツリーで<b>建物・フロア・部屋</b>
+              などを選ぶと、その配下のデバイス・計測点だけがここに絞り込まれます。行をクリックすると右側のインスペクタで編集できます。
             </span>
           </div>
         </div>
@@ -278,7 +377,9 @@ export function Workspace({
           <table className="grid" data-testid="grid-csv">
             <thead>
               <tr>
-                {columns.map((c) => <th key={c}>{c}</th>)}
+                {columns.map((c) => (
+                  <th key={c}>{c}</th>
+                ))}
               </tr>
             </thead>
             <tbody>
@@ -296,8 +397,15 @@ export function Workspace({
                       const isErr = errs?.has(c);
                       const isMono = MONO_COLS.has(c);
                       return (
-                        <td key={c} className={(isErr ? 'cell-error ' : '') + (isMono ? 'mono' : '')}>
-                          {isErr && <span className="err-icon" title="必須項目が空です">⚠</span>}
+                        <td
+                          key={c}
+                          className={(isErr ? 'cell-error ' : '') + (isMono ? 'mono' : '')}
+                        >
+                          {isErr && (
+                            <span className="err-icon" title="必須項目が空です">
+                              ⚠
+                            </span>
+                          )}
                           {(r[c] as string | undefined) ?? ''}
                         </td>
                       );
