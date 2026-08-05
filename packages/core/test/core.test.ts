@@ -9,7 +9,8 @@ import {
   buildTemplatesZip,
   buildDeviceTemplatesFromCsv,
   buildResourceModelMap,
-  buildShaclShapeFromYaml,
+  CsvInputLimitError,
+  DEFAULT_CSV_INPUT_LIMITS,
   diffDeviceTemplate,
   exportCsv,
   exportDtdlInterfaces,
@@ -20,6 +21,7 @@ import {
   validateWotThings,
   exportYaml,
   getOutputPlugins,
+  getLastHeader,
   getSchemaPropertyDescription,
   hasHierarchySignalChange,
   parseCsv,
@@ -27,8 +29,8 @@ import {
   resolveDeviceTemplateInheritance,
   resolveHierarchySignals,
   runOutputPlugin,
-  parseShaclRequirements,
-  validateShacl,
+  validateRdfWithShacl,
+  validateRowsWithShacl,
   serializeDeviceTemplate,
   validate,
 } from '../src/index';
@@ -213,11 +215,58 @@ describe('exportCsv', () => {
     const [headerLine, firstRowLine] = csv.split(/\r?\n/);
 
     expect(headerLine).toBe(
-      'gatewayId,deviceId,deviceName,deviceType,site,building,floor,installationArea,targetArea,panel,pointType,pointSpecification,pointId,pointName,writable,interval,unit,maxPresValue,minPresValue,labels,scale,tags,supplier,owner,description,localId,deviceIdBacnet,instanceNoBacnet,objectTypeBacnet,extra',
+      'gateway_id,device_id,device_name,device_type,site,building,floor,installation_area,target_area,panel,point_type,point_specification,point_id,point_name,writable,interval,unit,max_pres_value,min_pres_value,labels,scale,tags,supplier,owner,description,local_id,device_id_bacnet,instance_no_bacnet,object_type_bacnet,extra',
     );
     expect(firstRowLine).toContain(
       'GW001,DEV001,Temperature Sensor 01,Sensor,site-1,bldg-1,floor-1,Room 101',
     );
+  });
+
+  it('neutralizes spreadsheet formulas without changing safe cells', () => {
+    const rows = parseCsv('id,name,extra\n1,=SUM(A1:A2),safe\n2,+1,@cmd\n3,-2,"\tformula"\n');
+    const csv = exportCsv(rows);
+    expect(csv).toContain("'=SUM(A1:A2)");
+    expect(csv).toContain("'+1");
+    expect(csv).toContain("'@cmd");
+    expect(csv).toContain("'\tformula");
+    expect(csv).toContain('safe');
+  });
+});
+
+describe('CSV input limits', () => {
+  it('accepts configured boundary values', () => {
+    const rows = parseCsv('id,value\n1,abcd\n', {
+      limits: { maxBytes: 16, maxRows: 1, maxColumns: 2, maxCellBytes: 4 },
+    });
+    expect(rows).toHaveLength(1);
+  });
+
+  it.each([
+    ['bytes', 'id\n12345\n', { maxBytes: 4 }],
+    ['rows', 'id\n1\n2\n', { maxRows: 1 }],
+    ['columns', 'a,b\n1,2\n', { maxColumns: 1 }],
+    ['cellBytes', 'id\nああ\n', { maxCellBytes: 5 }],
+  ] as const)('rejects %s overages with a typed error', (kind, text, limits) => {
+    expect(() => parseCsv(text, { limits })).toThrowError(CsvInputLimitError);
+    try {
+      parseCsv(text, { limits });
+    } catch (error) {
+      expect(error).toMatchObject({ kind });
+    }
+  });
+
+  it('does not replace header state when a parse fails atomically', () => {
+    parseCsv('stable_header\nok\n');
+    expect(() => parseCsv('other_header\na\nb\n', { limits: { maxRows: 1 } })).toThrowError(
+      CsvInputLimitError,
+    );
+    expect(getLastHeader()).toEqual(['stable_header']);
+    expect(DEFAULT_CSV_INPUT_LIMITS).toEqual({
+      maxBytes: 5 * 1024 * 1024,
+      maxRows: 20_000,
+      maxColumns: 100,
+      maxCellBytes: 32 * 1024,
+    });
   });
 });
 
@@ -230,8 +279,17 @@ describe('exportRdf', () => {
     expect(rdf).toContain('<https://www.sbco.or.jp/ont/resource/DEV001> a sbco:EquipmentExt ;');
     expect(rdf).toContain('<https://www.sbco.or.jp/ont/resource/PT001> a sbco:PointExt ;');
     expect(rdf).toContain('sbco:pointType "Temperature"');
-    expect(rdf).toContain('sbco:hasPoint <https://www.sbco.or.jp/ont/resource/PT001>');
-    expect(rdf).toContain('sbco:locatedIn <https://www.sbco.or.jp/ont/resource/room%3A');
+    expect(rdf).toContain('rec:hasPoint <https://www.sbco.or.jp/ont/resource/PT001>');
+    expect(rdf).toContain('rec:locatedIn <https://www.sbco.or.jp/ont/resource/room%3A');
+  });
+
+  it('percent-encodes unsafe and Unicode unknown headers in property IRIs', () => {
+    const rows = parseCsv('id,name,悪意>ある 列\nA1,Example,value\n');
+    const rdf = exportRdf(rows);
+    expect(rdf).toContain(
+      '<https://www.sbco.or.jp/ont/property/%E6%82%AA%E6%84%8F%3E%E3%81%82%E3%82%8B%20%E5%88%97>',
+    );
+    expect(rdf).not.toContain('悪意>ある 列');
   });
 });
 
@@ -240,14 +298,22 @@ describe('exportYaml', () => {
     const rows = parseCsv(loadCsv('valid.csv'), { schema });
     const yaml = exportYaml(rows, { schema });
 
-    expect(yaml).toContain('resources:');
-    expect(yaml).toContain('id: "DEV001"');
-    expect(yaml).toContain('class: "sbco:EquipmentExt"');
-    expect(yaml).toContain('id: "PT001"');
-    expect(yaml).toContain('class: "sbco:PointExt"');
-    expect(yaml).toContain('hasPoint:');
+    expect(yaml).toContain('"resources":');
+    expect(yaml).toContain('"id": "DEV001"');
+    expect(yaml).toContain('"class": "sbco:EquipmentExt"');
+    expect(yaml).toContain('"id": "PT001"');
+    expect(yaml).toContain('"class": "sbco:PointExt"');
+    expect(yaml).toContain('"hasPoint":');
     expect(yaml).toContain('"https://www.sbco.or.jp/ont/resource/PT001"');
-    expect(yaml).toContain('locatedIn: "https://www.sbco.or.jp/ont/resource/room%3A');
+    expect(yaml).toContain('"locatedIn": "https://www.sbco.or.jp/ont/resource/room%3A');
+  });
+
+  it('quotes keys and values containing YAML-significant characters', () => {
+    const rows = parseCsv('id,name,bad:key,unicode\nA1,"line\n""quote""",value,日本語\n');
+    const yaml = exportYaml(rows);
+    expect(yaml).toContain('"bad:key": "value"');
+    expect(yaml).toContain('"unicode": "日本語"');
+    expect(yaml).toContain('"name":');
   });
 });
 
@@ -258,14 +324,14 @@ describe('output plugins', () => {
     expect(plugins.some((plugin) => plugin.format === 'YAML')).toBe(true);
   });
 
-  it('runs selected plugin with expected extension', () => {
+  it('runs selected plugin with expected extension', async () => {
     const rows = parseCsv(loadCsv('valid.csv'), { schema });
-    const result = runOutputPlugin('RDF', 'Turtle', { rows, schema });
+    const result = await runOutputPlugin('RDF', 'Turtle', { rows, schema });
     expect(result.extension).toBe('ttl');
     expect(result.content).toContain('sbco:EquipmentExt');
   });
 
-  it('merges edited model rows into output and omits blank values', () => {
+  it('merges edited model rows into output and omits blank values', async () => {
     const rows = parseCsv(loadCsv('valid.csv'), { schema });
     const modelRows = Array.from(buildResourceModelMap(rows).values()).map((row) => {
       if (row.id === 'DEV001') {
@@ -278,22 +344,21 @@ describe('output plugins', () => {
       return row;
     });
 
-    const result = runOutputPlugin('RDF', 'Turtle', { rows, modelRows, schema });
-    expect(result.content).toContain('sbco:description "Edited description"');
-    expect(result.content).not.toContain('sbco:customNote');
+    const result = await runOutputPlugin('RDF', 'Turtle', { rows, modelRows, schema });
+    expect(result.content).toContain('rec:description "Edited description"');
+    expect(result.content).not.toContain('customNote');
   });
 
-  it('returns SHACL issues for missing required fields', () => {
-    const shapeText = [
-      'slots:',
-      '  name:',
-      '    required: true',
-      'classes:',
-      '  PointExt:',
-      '    slots:',
-      '      - name',
-      '',
-    ].join('\n');
+  it('returns detailed SHACL issues for missing required fields', async () => {
+    const shapeText = `
+      @prefix sh: <http://www.w3.org/ns/shacl#> .
+      @prefix sbco: <https://www.sbco.or.jp/ont/> .
+      @prefix rec: <https://w3id.org/rec/> .
+      @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+      sbco:PointShape a sh:NodeShape ;
+        sh:targetClass sbco:PointExt ;
+        sh:property [ sh:path rec:name ; sh:minCount 1 ; sh:datatype xsd:string ] .
+    `;
     const rows = [
       {
         id: 'P1',
@@ -301,18 +366,19 @@ describe('output plugins', () => {
         kind: 'PointExt',
       },
     ];
-    const shape = buildShaclShapeFromYaml(shapeText);
-    const issues = validateShacl(rows, { shape });
+    const { issues } = await validateRowsWithShacl(rows, shapeText);
     expect(issues).toHaveLength(1);
     expect(issues[0]?.field).toBe('name');
+    expect(issues[0]?.focusNode).toContain('/P1');
+    expect(issues[0]?.severity).toBe('violation');
+    expect(issues[0]?.sourceConstraintComponent).toContain('MinCountConstraintComponent');
   });
 
-  it('parses SHACL turtle and validates required fields', () => {
+  it('parses the repository SHACL graph and validates required fields', async () => {
     const shapeText = readFileSync(
       path.resolve(__dirname, '../../../schema/building_model.shacl.ttl'),
       'utf-8',
     );
-    const shape = parseShaclRequirements(shapeText);
     const rows = [
       {
         id: 'P1',
@@ -321,8 +387,46 @@ describe('output plugins', () => {
         kind: 'PointExt',
       },
     ];
-    const issues = validateShacl(rows, { shape });
+    const { issues } = await validateRowsWithShacl(rows, shapeText);
     expect(issues.some((issue) => issue.field === 'name')).toBe(true);
+  });
+
+  it('returns matching SHACL results for RDF and YAML plugins', async () => {
+    const shapeText = readFileSync(
+      path.resolve(__dirname, '../../../schema/building_model.shacl.ttl'),
+      'utf-8',
+    );
+    const rows = parseCsv(loadCsv('valid.csv'), { schema });
+    const rdfResult = await runOutputPlugin('RDF', 'Turtle', {
+      rows,
+      schema,
+      shacl: { shapeText },
+    });
+    const yamlResult = await runOutputPlugin('YAML', 'YAML', {
+      rows,
+      schema,
+      shacl: { shapeText },
+    });
+    expect(yamlResult.issues).toEqual(rdfResult.issues);
+    expect(rdfResult.issues).toEqual([]);
+  });
+
+  it('supports SHACL Core datatype, pattern, cardinality and severity', async () => {
+    const shape = `
+      @prefix sh: <http://www.w3.org/ns/shacl#> .
+      @prefix ex: <https://example.test/> .
+      @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+      ex:Shape a sh:NodeShape ; sh:targetClass ex:Thing ;
+        sh:property [ sh:path ex:value ; sh:datatype xsd:integer ; sh:pattern "^[0-9]+$" ; sh:maxCount 1 ; sh:severity sh:Warning ] .
+    `;
+    const data = `
+      @prefix ex: <https://example.test/> .
+      ex:item a ex:Thing ; ex:value "bad", "also-bad" .
+    `;
+    const result = await validateRdfWithShacl(data, shape);
+    expect(result.conforms).toBe(false);
+    expect(result.issues.some((issue) => issue.severity === 'warning')).toBe(true);
+    expect(result.issues.some((issue) => issue.field === 'value')).toBe(true);
   });
 });
 
@@ -334,7 +438,7 @@ describe('schema mapping', () => {
 
     expect(point?.pointType).toBe('Temperature');
     expect(point?.pointSpecification).toBe('Measurement');
-    expect(point?.unit).toBe('C');
+    expect(point?.unit).toBe('celsius');
     expect(point?.maxPresValue).toBe('50');
     expect(point?.minPresValue).toBe('-10');
     expect(point?.scale).toBe('1.0');
@@ -604,7 +708,11 @@ describe('exportDtdlInterfaces', () => {
   it('generates an Interface for each class present in rows', () => {
     const rows = parseCsv(loadSampleCsv(), { schema });
     const json = exportDtdlInterfaces(rows);
-    const interfaces = JSON.parse(json) as { '@type': string; '@id': string; displayName: string }[];
+    const interfaces = JSON.parse(json) as {
+      '@type': string;
+      '@id': string;
+      displayName: string;
+    }[];
 
     expect(Array.isArray(interfaces)).toBe(true);
     expect(interfaces.length).toBeGreaterThan(0);
@@ -699,9 +807,15 @@ describe('exportDtdlTwinGraph', () => {
 });
 
 describe('runOutputPlugin DTDL', () => {
-  it('runs DTDL/Interfaces plugin and returns JSON', () => {
+  it('rejects unknown plugins without fabricating output', async () => {
+    await expect(runOutputPlugin('unknown', 'unknown', { rows: [] })).rejects.toThrow(
+      'Output plugin not found',
+    );
+  });
+
+  it('runs DTDL/Interfaces plugin and returns JSON', async () => {
     const rows = parseCsv(loadSampleCsv(), { schema });
-    const result = runOutputPlugin('DTDL', 'Interfaces', { rows });
+    const result = await runOutputPlugin('DTDL', 'Interfaces', { rows });
 
     expect(result.extension).toBe('dtdl.json');
     expect(result.mimeType).toContain('application/json');
@@ -709,9 +823,9 @@ describe('runOutputPlugin DTDL', () => {
     expect(Array.isArray(parsed)).toBe(true);
   });
 
-  it('runs DTDL/Twin Graph plugin and returns JSON', () => {
+  it('runs DTDL/Twin Graph plugin and returns JSON', async () => {
     const rows = parseCsv(loadSampleCsv(), { schema });
-    const result = runOutputPlugin('DTDL', 'Twin Graph', { rows });
+    const result = await runOutputPlugin('DTDL', 'Twin Graph', { rows });
 
     expect(result.extension).toBe('json');
     expect(result.mimeType).toContain('application/json');
@@ -776,7 +890,9 @@ describe('exportWotThingModel', () => {
     const equipmentThings = things.filter((t) =>
       (t['@type'] as string[]).some((tt) => tt.endsWith(':EquipmentExt')),
     );
-    const withProps = equipmentThings.find((t) => t.properties && Object.keys(t.properties).length > 0);
+    const withProps = equipmentThings.find(
+      (t) => t.properties && Object.keys(t.properties).length > 0,
+    );
     expect(withProps).toBeDefined();
 
     const props = withProps!.properties!;
@@ -792,9 +908,7 @@ describe('exportWotThingModel', () => {
     const rows = parseCsv(loadSampleCsv(), { schema });
     const things = JSON.parse(exportWotThingModel(rows)) as WotThingShape[];
 
-    const withSubmodel = things.find((t) =>
-      (t.links ?? []).some((l) => l.rel === 'tm:submodel'),
-    );
+    const withSubmodel = things.find((t) => (t.links ?? []).some((l) => l.rel === 'tm:submodel'));
     expect(withSubmodel).toBeDefined();
     const submodelLink = withSubmodel!.links!.find((l) => l.rel === 'tm:submodel')!;
     expect(submodelLink.type).toBe('application/tm+json');
@@ -837,9 +951,9 @@ describe('exportWotTd', () => {
 });
 
 describe('runOutputPlugin WoT', () => {
-  it('runs WoT/Thing Description plugin and returns valid JSON', () => {
+  it('runs WoT/Thing Description plugin and returns valid JSON', async () => {
     const rows = parseCsv(loadSampleCsv(), { schema });
-    const result = runOutputPlugin('WoT', 'Thing Description', { rows });
+    const result = await runOutputPlugin('WoT', 'Thing Description', { rows });
 
     expect(result.extension).toBe('td.json');
     expect(result.mimeType).toContain('application/td+json');
@@ -847,9 +961,9 @@ describe('runOutputPlugin WoT', () => {
     expect(Array.isArray(parsed)).toBe(true);
   });
 
-  it('runs WoT/Thing Model plugin and returns valid JSON', () => {
+  it('runs WoT/Thing Model plugin and returns valid JSON', async () => {
     const rows = parseCsv(loadSampleCsv(), { schema });
-    const result = runOutputPlugin('WoT', 'Thing Model', { rows });
+    const result = await runOutputPlugin('WoT', 'Thing Model', { rows });
 
     expect(result.extension).toBe('tm.json');
     expect(result.mimeType).toContain('application/tm+json');
@@ -894,9 +1008,9 @@ describe('validateWotThings', () => {
     expect(issues.some((i) => i.rowId === 'urn:test:broken')).toBe(true);
   });
 
-  it('runOutputPlugin surfaces validation issues alongside content', () => {
+  it('runOutputPlugin surfaces validation issues alongside content', async () => {
     const rows = parseCsv(loadSampleCsv(), { schema });
-    const result = runOutputPlugin('WoT', 'Thing Description', { rows });
+    const result = await runOutputPlugin('WoT', 'Thing Description', { rows });
     expect(Array.isArray(result.issues)).toBe(true);
     expect(result.issues).toEqual([]);
   });

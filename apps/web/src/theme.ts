@@ -1,4 +1,5 @@
 import { createTheme } from '@mui/material/styles';
+import type {} from '@mui/x-data-grid/themeAugmentation';
 
 export type UiScaleKey = 'compact' | 'regular' | 'large';
 
@@ -31,7 +32,7 @@ export function buildTheme(scaleKey: UiScaleKey = 'compact') {
 
   return createTheme({
     typography: {
-      fontFamily: "'Space Grotesk', 'Segoe UI', sans-serif",
+      fontFamily: "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
       fontSize: scale.fontSize,
     },
     shape: {
@@ -71,6 +72,16 @@ export function buildTheme(scaleKey: UiScaleKey = 'compact') {
           sizeSmall: {
             height: 20,
             fontSize: '0.75rem',
+          },
+        },
+      },
+      MuiDataGrid: {
+        styleOverrides: {
+          root: {
+            borderRadius: 8,
+          },
+          columnHeaders: {
+            backgroundColor: '#f6f7f9',
           },
         },
       },

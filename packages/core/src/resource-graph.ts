@@ -97,7 +97,10 @@ export function buildResourceGraph(rows: RowRecord[]) {
     const childCategory = classCategory(resource.className);
     const parentCategory = classCategory(parent.className);
 
-    if (childCategory === 'point' && (parentCategory === 'equipment' || parentCategory === 'space')) {
+    if (
+      childCategory === 'point' &&
+      (parentCategory === 'equipment' || parentCategory === 'space')
+    ) {
       relations.push({
         subjectId: parent.id,
         predicate: 'hasPoint',

@@ -2,32 +2,54 @@
   "name": "building-model-validator",
   "private": true,
   "type": "module",
+  "license": "Apache-2.0",
+  "packageManager": "pnpm@9.15.9",
   "scripts": {
     "dev": "pnpm -C apps/web dev",
     "build": "pnpm -C apps/web build",
     "preview": "pnpm -C apps/web preview",
     "test": "pnpm -C packages/core test",
     "test:e2e": "pnpm -C apps/web test:e2e",
-    "playwright:install": "pnpm -C apps/web exec playwright install",
-    "playwright:install-deps": "pnpm -C apps/web exec playwright install-deps",
+    "playwright:install": "pnpm -C apps/web exec playwright install chromium",
+    "playwright:install-deps": "pnpm -C apps/web exec playwright install --with-deps chromium",
     "lint": "pnpm -r lint",
     "format": "pnpm -r format",
+    "format:check": "pnpm -r format:check",
+    "audit": "pnpm audit --audit-level high",
     "typecheck": "pnpm -r typecheck"
   },
   "devDependencies": {
-    "@types/node": "^20.11.30",
     "@eslint/js": "^9.0.0",
+    "@types/node": "^22.0.0",
     "@typescript-eslint/eslint-plugin": "^8.0.0",
     "@typescript-eslint/parser": "^8.0.0",
     "eslint": "^9.0.0",
     "eslint-config-prettier": "^9.1.0",
     "eslint-plugin-react": "^7.37.0",
-    "eslint-plugin-react-hooks": "^4.6.2",
+    "eslint-plugin-react-hooks": "^5.2.0",
     "globals": "^15.0.0",
+    "postcss": "^8.5.23",
     "prettier": "^3.2.5",
     "typescript": "^5.4.5"
   },
   "engines": {
-    "node": ">=18"
+    "node": "22.x",
+    "pnpm": "9.15.9"
+  },
+  "pnpm": {
+    "overrides": {
+      "@babel/core@>=7 <8": "7.29.7",
+      "ajv@<7": "6.15.0",
+      "brace-expansion@<2": "1.1.18",
+      "brace-expansion@>=2 <3": "2.1.4",
+      "fast-uri@>=3 <4": "3.1.5",
+      "flatted@>=3 <4": "3.4.4",
+      "js-yaml@>=4 <5": "4.3.1",
+      "minimatch@<4": "3.1.5",
+      "minimatch@>=9 <10": "9.0.9",
+      "picomatch@>=4 <5": "4.0.5",
+      "rollup@>=4 <5": "4.62.4",
+      "yaml@>=1 <2": "1.10.3"
+    }
   }
 }

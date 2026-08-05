@@ -13,4 +13,7 @@ export type Issue = {
   message: string;
   rowId?: string;
   field?: string;
+  severity?: 'violation' | 'warning' | 'info';
+  focusNode?: string;
+  sourceConstraintComponent?: string;
 };

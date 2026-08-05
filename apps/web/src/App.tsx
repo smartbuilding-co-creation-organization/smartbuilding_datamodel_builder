@@ -1,434 +1,564 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useMemo, useRef, useState, type ReactNode } from 'react';
 import {
-  buildTree,
-  exportCsv,
-  exportDtdlInterfaces,
-  exportDtdlTwinGraph,
-  exportRdf,
-  exportWotTd,
-  exportWotThingModel,
-  exportYaml,
+  Alert,
+  AppBar,
+  Box,
+  Button,
+  ButtonGroup,
+  Chip,
+  CssBaseline,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  MenuItem,
+  Paper,
+  Stack,
+  TextField,
+  Toolbar,
+  Tooltip,
+  Typography,
+} from '@mui/material';
+import { ThemeProvider } from '@mui/material/styles';
+import { DataGrid, type GridColDef } from '@mui/x-data-grid';
+import { SimpleTreeView, TreeItem } from '@mui/x-tree-view';
+import {
+  computeDescendants,
+  getLastHeader,
+  getOutputPlugins,
+  getSchemaPropertyDescription,
+  normalizeCsvHeader,
   parseCsv,
-  validate,
+  runOutputPlugin,
   type Issue,
   type Node,
   type RowRecord,
 } from '@repo/core';
-import { downloadFile } from './utils/downloadFile';
-import { Welcome } from './components/Welcome';
-import { TreePanel } from './components/TreePanel';
-import { Inspector } from './components/Inspector';
-import { Workspace } from './components/Workspace';
-import { IssuesDrawer } from './components/IssuesDrawer';
-import { HelpModal } from './components/HelpModal';
+import schema from '../../../schema/building_model.schema.json';
+import shaclText from '../../../schema/building_model.shacl.ttl?raw';
 import { TemplatesView } from './components/TemplatesView';
+import { IssuesDrawer } from './components/IssuesDrawer';
 import { SAMPLE_ROWS } from './data/sampleRows';
+import { useAppStore } from './state/store';
+import { buildTheme } from './theme';
+import { downloadFile } from './utils/downloadFile';
 
-type HelpView = 'csv' | 'glossary' | null;
-type ViewMode = 'explore' | 'templates' | 'output';
-type AccentKey = 'slate' | 'emerald' | 'amber' | 'graphite';
+function addRowIds(rows: RowRecord[]): RowRecord[] {
+  return rows.map((row, index) => ({
+    ...row,
+    __rowId: row.id ? `${row.id}__${index}` : `row__${index}`,
+  }));
+}
 
-const ACCENTS: Record<AccentKey, Record<string, string>> = {
-  slate:    { '--accent': '#4a5dd8', '--accent-soft': '#eef0fc', '--accent-stroke': '#c7cdf2', '--accent-ink': '#2935a8' },
-  emerald:  { '--accent': '#0f8a5f', '--accent-soft': '#e7f5ee', '--accent-stroke': '#bfe1d0', '--accent-ink': '#0a5e42' },
-  amber:    { '--accent': '#a86d05', '--accent-soft': '#fbf1e0', '--accent-stroke': '#e7cf9a', '--accent-ink': '#7d4f01' },
-  graphite: { '--accent': '#37404f', '--accent-soft': '#eef0f3', '--accent-stroke': '#c7cdd6', '--accent-ink': '#1f2533' },
-};
+function collectColumns(rows: RowRecord[]): { field: string; headerName: string }[] {
+  const originalHeaders = getLastHeader();
+  if (originalHeaders.length > 0) {
+    return originalHeaders.map((headerName) => ({
+      field: normalizeCsvHeader(headerName),
+      headerName,
+    }));
+  }
+  return Array.from(
+    new Set(rows.flatMap((row) => Object.keys(row)).filter((key) => !key.startsWith('__'))),
+  ).map((field) => ({ field, headerName: field }));
+}
 
-function countDescendants(nodes: Node[], id: string): number {
-  const find = (ns: Node[]): Node | undefined => {
-    for (const n of ns) {
-      if (n.id === id) return n;
-      const found = find(n.children);
-      if (found) return found;
-    }
-  };
-  const countAll = (n: Node): number =>
-    n.children.reduce((s, c) => s + 1 + countAll(c), 0);
-  const target = find(nodes);
-  return target ? countAll(target) : 0;
+function findNode(nodes: Node[], id: string): Node | undefined {
+  for (const node of nodes) {
+    if (node.id === id) return node;
+    const found = findNode(node.children, id);
+    if (found) return found;
+  }
+  return undefined;
+}
+
+function renderTreeNode(node: Node): ReactNode {
+  return (
+    <TreeItem
+      key={node.id}
+      itemId={node.id}
+      label={
+        <Stack direction="row" spacing={1} alignItems="center" data-testid={`tree-item-${node.id}`}>
+          <Typography variant="body2" noWrap>
+            {node.name || node.id}
+          </Typography>
+          {node.kind ? <Chip label={node.kind} size="small" variant="outlined" /> : null}
+        </Stack>
+      }
+    >
+      {node.children.map(renderTreeNode)}
+    </TreeItem>
+  );
+}
+
+function isBlockingIssue(issue: Issue): boolean {
+  return issue.severity === undefined || issue.severity === 'violation';
 }
 
 export default function App() {
-  const [rows, setRows] = useState<RowRecord[]>([]);
-  const [tree, setTree] = useState<Node[]>([]);
-  const [issues, setIssues] = useState<Issue[]>([]);
-  const [selectedId, setSelectedId] = useState<string>('');
-  const [inspectorId, setInspectorId] = useState<string>('');
-  const [searchTerm, setSearchTerm] = useState('');
-  const [view, setView] = useState<ViewMode>('explore');
-  const [helpModal, setHelpModal] = useState<HelpView>(null);
-  const [issuesOpen, setIssuesOpen] = useState(false);
-  const [expertMode, setExpertMode] = useState(false);
-  const [accent, setAccent] = useState<AccentKey>('slate');
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const theme = useMemo(() => buildTheme('compact'), []);
+  const {
+    csvRows,
+    rows,
+    modelRows,
+    tree,
+    selectedId,
+    expandedItems,
+    view,
+    editMode,
+    search,
+    issues,
+    outputIssues,
+    setData,
+    setSelectedId,
+    setExpandedItems,
+    setView,
+    setEditMode,
+    setSearch,
+    updateModelRow,
+    setRows,
+    setOutputIssues,
+  } = useAppStore();
+  const [csvColumnDefs, setCsvColumnDefs] = useState<{ field: string; headerName: string }[]>([]);
+  const [issuesOpen, setIssuesOpen] = useState(false);
+  const [inputError, setInputError] = useState('');
+  const [outputError, setOutputError] = useState('');
+  const [outputBusy, setOutputBusy] = useState(false);
+  const [preview, setPreview] = useState<{ title: string; content: string } | null>(null);
 
-  useEffect(() => {
-    const root = document.documentElement;
-    Object.entries(ACCENTS[accent]).forEach(([k, v]) => root.style.setProperty(k, v));
-  }, [accent]);
+  const plugins = useMemo(() => getOutputPlugins(), []);
+  const formats = useMemo(
+    () => Array.from(new Set(plugins.map((plugin) => plugin.format))),
+    [plugins],
+  );
+  const [outputFormat, setOutputFormat] = useState(formats[0] ?? '');
+  const serializers = useMemo(
+    () => plugins.filter((plugin) => plugin.format === outputFormat),
+    [outputFormat, plugins],
+  );
+  const [outputSerializer, setOutputSerializer] = useState(serializers[0]?.serializer ?? '');
+  const selectedPlugin =
+    plugins.find(
+      (plugin) => plugin.format === outputFormat && plugin.serializer === outputSerializer,
+    ) ?? serializers[0];
 
-  useEffect(() => {
-    document.body.classList.toggle('expert-mode', expertMode);
-  }, [expertMode]);
-
-  const recompute = (nextRows: RowRecord[]) => {
-    setTree(buildTree(nextRows));
-    const { issues: nextIssues } = validate(nextRows);
-    setIssues(nextIssues);
-  };
-
-  const handleLoadSample = () => {
-    setRows(SAMPLE_ROWS);
-    recompute(SAMPLE_ROWS);
-    setSelectedId('');
-    setInspectorId('');
-    setView('explore');
-  };
-
-  const handleUploadCsv = (parsed: RowRecord[]) => {
-    setRows(parsed);
-    recompute(parsed);
-    setSelectedId('');
-    setInspectorId('');
-    setView('explore');
-  };
-
-  const activeId = inspectorId || selectedId;
-
-  const handleChange = (key: string, value: string) => {
-    if (!activeId) return;
-    const nextRows = rows.map((r) => {
-      if ((r.id as string) !== activeId) return r;
-      const update: Record<string, string> = { [key]: value };
-      if (key === 'name') {
-        if (r.pointName !== undefined) update.pointName = value;
-        else if (r.deviceName !== undefined) update.deviceName = value;
-      }
-      return { ...r, ...update };
-    });
-    setRows(nextRows);
-    recompute(nextRows);
-  };
-
-  const handleSelect = (id: string) => {
-    setSelectedId(id);
-    setInspectorId('');
-    setView('explore');
-  };
-
-  const handleRowSelect = (id: string) => {
-    setInspectorId(id);
-  };
-
-  const handleFileUpload = async (file: File | null | undefined) => {
-    if (!file) return;
-    const text = await file.text();
-    handleUploadCsv(parseCsv(text));
-  };
-
-  const errorIds = useMemo(() => new Set(issues.map((i) => i.rowId ?? '')), [issues]);
-
-  const errorMap = useMemo(() => {
-    const m = new Map<string, Set<string>>();
-    for (const iss of issues) {
-      if (!iss.rowId) continue;
-      if (!m.has(iss.rowId)) m.set(iss.rowId, new Set());
-      m.get(iss.rowId)!.add(iss.field ?? '');
+  const allIssues = useMemo(() => [...issues, ...outputIssues], [issues, outputIssues]);
+  const issueFields = useMemo(() => {
+    const map = new Map<string, Set<string>>();
+    for (const issue of allIssues) {
+      if (!issue.rowId) continue;
+      const fields = map.get(issue.rowId) ?? new Set<string>();
+      if (issue.field) fields.add(issue.field);
+      map.set(issue.rowId, fields);
     }
-    return m;
-  }, [issues]);
+    return map;
+  }, [allIssues]);
+
+  const scopedRows = useMemo(() => {
+    let next = csvRows;
+    if (selectedId && selectedId !== 'root') {
+      const ids = new Set([selectedId, ...computeDescendants(selectedId)]);
+      next = next.filter((row) => ids.has(row.id));
+    }
+    const term = search.trim().toLowerCase();
+    if (term) {
+      next = next.filter((row) =>
+        Object.values(row).some((value) => value.toLowerCase().includes(term)),
+      );
+    }
+    return next;
+  }, [csvRows, search, selectedId, tree]);
+
+  const csvColumns = useMemo<GridColDef[]>(
+    () =>
+      csvColumnDefs.map(({ field, headerName }) => ({
+        field,
+        headerName,
+        minWidth: 140,
+        flex: 1,
+      })),
+    [csvColumnDefs],
+  );
 
   const selectedRow = useMemo(
-    () => rows.find((r) => (r.id as string) === activeId),
-    [rows, activeId],
+    () => modelRows.find((row) => row.id === selectedId),
+    [modelRows, selectedId],
+  );
+  const propertyRows = useMemo(
+    () =>
+      selectedRow
+        ? Object.entries(selectedRow)
+            .filter(([property]) => property !== '__rowId')
+            .map(([property, value]) => ({
+              id: property,
+              property,
+              value,
+              description: getSchemaPropertyDescription(schema, selectedRow.kind, property) ?? '',
+            }))
+        : [],
+    [selectedRow],
+  );
+  const propertyColumns = useMemo<GridColDef[]>(
+    () => [
+      { field: 'property', headerName: 'プロパティ', minWidth: 150, flex: 0.8 },
+      { field: 'value', headerName: '値', minWidth: 180, flex: 1, editable: true },
+      {
+        field: 'description',
+        headerName: '説明',
+        minWidth: 220,
+        flex: 1.2,
+        renderCell: (params) => (
+          <Tooltip title={params.value || ''}>
+            <span>{params.value}</span>
+          </Tooltip>
+        ),
+      },
+    ],
+    [],
   );
 
-  const fieldErrors = useMemo(() => {
-    const out: Record<string, string> = {};
-    if (!selectedRow) return out;
-    for (const iss of issues) {
-      if (iss.rowId === activeId && iss.field) {
-        out[iss.field] = iss.message;
-      }
-    }
-    return out;
-  }, [issues, activeId, selectedRow]);
+  const loadCsvText = (text: string) => {
+    const rawRows = addRowIds(parseCsv(text));
+    const parsedRows = addRowIds(parseCsv(text, { schema }));
+    const columns = collectColumns(rawRows);
+    setCsvColumnDefs(columns);
+    setData(
+      rawRows,
+      columns.map((column) => column.field),
+      parsedRows,
+      schema,
+    );
+    setInputError('');
+  };
 
-  const descendantCount = useMemo(
-    () => (activeId ? countDescendants(tree, activeId) : 0),
-    [tree, activeId],
-  );
-
-  const step = rows.length === 0 ? 1 : view === 'output' ? 4 : (selectedId || inspectorId) ? 3 : 2;
-
-  const handleGenerateOutput = (formatId: string): string => {
-    switch (formatId) {
-      case 'csv':
-        return exportCsv(rows);
-      case 'json':
-        return JSON.stringify(buildTree(rows), null, 2);
-      case 'yaml':
-        try { return exportYaml(rows); } catch { return rows.map((r) => `- id: ${String(r.id)}\n  kind: ${String(r.kind)}\n  name: "${String(r.name ?? '')}"`).join('\n'); }
-      case 'jsonld':
-        return JSON.stringify({
-          '@context': { brick: 'https://brickschema.org/schema/Brick#', '@vocab': 'https://buildingmodel.org/' },
-          '@graph': rows.map((r) => ({ '@id': r.id, '@type': r.kind, name: r.name, parent: r.parentId })),
-        }, null, 2);
-      case 'rdf':
-        try { return exportRdf(rows); } catch { return rows.map((r) => `:${String(r.id)} a :${String(r.kind)} ;\n    :name "${String(r.name ?? '').replace(/"/g, '\\"')}" .`).join('\n'); }
-      case 'dtdl-interfaces':
-        return exportDtdlInterfaces(rows);
-      case 'dtdl-twin-graph':
-        return exportDtdlTwinGraph(rows);
-      case 'wot-td':
-        return exportWotTd(rows);
-      case 'wot-tm':
-        return exportWotThingModel(rows);
-      default:
-        return '';
+  const handleFile = async (file: File) => {
+    try {
+      loadCsvText(await file.text());
+    } catch (error) {
+      setInputError(error instanceof Error ? error.message : 'CSVを読み込めませんでした。');
     }
   };
 
-  if (rows.length === 0) {
-    return (
-      <>
-        <div className="app" style={{ gridTemplateRows: 'auto 1fr' }}>
-          <header className="topbar">
-            <div className="brand">
-              <div className="brand-mark">B</div>
-              <div className="brand-name">Building Model Studio</div>
-              <div className="brand-sub">建物データモデル ビルダー</div>
-            </div>
-            <div className="spacer" />
-            <div className="top-actions">
-              <button className="btn btn-ghost" onClick={() => setHelpModal('glossary')}>用語集</button>
-              <button className="btn btn-ghost" onClick={() => setHelpModal('csv')}>CSV仕様</button>
-            </div>
-          </header>
-          <Welcome
-            onLoadSample={handleLoadSample}
-            onUploadCsv={handleUploadCsv}
-            onShowHelp={() => setHelpModal('csv')}
-          />
-        </div>
-        <HelpModal open={!!helpModal} view={helpModal} onClose={() => setHelpModal(null)} />
-      </>
+  const loadSample = () => {
+    const sampleRows = addRowIds(SAMPLE_ROWS);
+    const columns = collectColumns(sampleRows);
+    setCsvColumnDefs(columns);
+    setData(
+      sampleRows,
+      columns.map((column) => column.field),
+      sampleRows,
+      schema,
     );
-  }
+    setInputError('');
+  };
+
+  const executeOutput = async (download: boolean) => {
+    if (!selectedPlugin || outputBusy) return;
+    setOutputBusy(true);
+    setOutputError('');
+    setOutputIssues([]);
+    try {
+      const result = await runOutputPlugin(selectedPlugin.format, selectedPlugin.serializer, {
+        rows,
+        modelRows,
+        schema,
+        shacl:
+          selectedPlugin.format === 'RDF' || selectedPlugin.format === 'YAML'
+            ? { shapeText: shaclText }
+            : undefined,
+      });
+      const nextIssues = result.issues ?? [];
+      setOutputIssues(nextIssues);
+      if (nextIssues.some(isBlockingIssue)) {
+        setOutputError('検証エラーがあるため、ダウンロードを中止しました。');
+        setIssuesOpen(true);
+        return;
+      }
+      if (download) {
+        downloadFile(result.content, `building-model.${result.extension}`, result.mimeType);
+      } else {
+        setPreview({ title: selectedPlugin.label, content: result.content });
+      }
+    } catch (error) {
+      setOutputError(
+        error instanceof Error ? `出力に失敗しました: ${error.message}` : '出力に失敗しました。',
+      );
+    } finally {
+      setOutputBusy(false);
+    }
+  };
+
+  const updateSelectedProperty = (property: string, value: string) => {
+    if (!selectedRow) return;
+    updateModelRow(selectedRow.id, { ...selectedRow, [property]: value });
+  };
 
   return (
-    <>
-      <div className="app">
-        <header className="topbar">
-          <div className="brand">
-            <div className="brand-mark">B</div>
-            <div className="brand-name">Building Model Studio</div>
-            <div className="brand-sub">／ {rows.length}行</div>
-          </div>
-          <div className="spacer" />
-          <div className="top-actions">
+    <ThemeProvider theme={theme}>
+      <CssBaseline />
+      <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
+        <AppBar position="static" color="default" elevation={0}>
+          <Toolbar sx={{ gap: 1, flexWrap: 'wrap', py: 1 }}>
+            <Typography variant="h6" sx={{ mr: 1 }}>
+              Building Model CSV Explorer
+            </Typography>
+            <Button variant="contained" onClick={() => fileInputRef.current?.click()}>
+              CSVを読み込む
+            </Button>
+            <Button variant="outlined" onClick={loadSample}>
+              サンプル
+            </Button>
             <input
               ref={fileInputRef}
               data-testid="csv-input"
               type="file"
               accept=".csv,text/csv"
-              style={{ display: 'none' }}
-              onChange={(e) => handleFileUpload(e.target.files?.[0])}
+              hidden
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                if (file) void handleFile(file);
+                event.target.value = '';
+              }}
             />
-            <button className="btn" onClick={() => fileInputRef.current?.click()}>
-              <span className="ic">📂</span> CSV読み込み
-            </button>
-            <div className="seg">
-              <button className={view === 'explore' ? 'active' : ''} onClick={() => setView('explore')}>
-                探索 / 編集
-              </button>
-              <button
-                className={view === 'templates' ? 'active' : ''}
-                onClick={() => setView('templates')}
+            <ButtonGroup size="small" sx={{ ml: 1 }}>
+              <Button
+                data-testid="view-data"
+                variant={view === 'data' ? 'contained' : 'outlined'}
+                onClick={() => setView('data')}
+              >
+                データ
+              </Button>
+              <Button
                 data-testid="view-templates"
+                variant={view === 'templates' ? 'contained' : 'outlined'}
+                onClick={() => setView('templates')}
               >
                 テンプレート
-              </button>
-              <button className={view === 'output' ? 'active' : ''} onClick={() => setView('output')}>
-                出力
-              </button>
-            </div>
-            <button
-              className="btn"
+              </Button>
+            </ButtonGroup>
+            <Box sx={{ flex: 1 }} />
+            <TextField
+              select
+              size="small"
+              label="形式"
+              value={outputFormat}
+              data-testid="output-format-select"
+              onChange={(event) => {
+                const format = event.target.value;
+                setOutputFormat(format);
+                setOutputSerializer(
+                  plugins.find((plugin) => plugin.format === format)?.serializer ?? '',
+                );
+              }}
+              sx={{ minWidth: 120 }}
+            >
+              {formats.map((format) => (
+                <MenuItem key={format} value={format}>
+                  {format}
+                </MenuItem>
+              ))}
+            </TextField>
+            <TextField
+              select
+              size="small"
+              label="シリアライザ"
+              value={selectedPlugin?.serializer ?? ''}
+              data-testid="output-serializer-select"
+              onChange={(event) => setOutputSerializer(event.target.value)}
+              sx={{ minWidth: 150 }}
+            >
+              {serializers.map((plugin) => (
+                <MenuItem key={plugin.id} value={plugin.serializer}>
+                  {plugin.serializer}
+                </MenuItem>
+              ))}
+            </TextField>
+            <Button
+              variant="outlined"
+              disabled={rows.length === 0 || outputBusy}
+              onClick={() => void executeOutput(false)}
+            >
+              プレビュー
+            </Button>
+            <Button
+              variant="contained"
+              disabled={rows.length === 0 || outputBusy}
+              data-testid={
+                selectedPlugin ? `output-download-${selectedPlugin.id}` : 'output-export-button'
+              }
+              onClick={() => void executeOutput(true)}
+            >
+              {outputBusy ? '出力中…' : 'ダウンロード'}
+            </Button>
+            <Button
               data-testid="validation-summary"
+              color={allIssues.some(isBlockingIssue) ? 'error' : 'success'}
               onClick={() => setIssuesOpen(true)}
-              style={issues.length > 0 ? { color: 'var(--error)' } : { color: 'var(--success)' }}
             >
-              {issues.length > 0 ? `⚠ ${issues.length} 件のエラー` : '✓ エラーなし'}
-            </button>
-            <button className="btn btn-ghost" onClick={() => setHelpModal('glossary')}>?</button>
-          </div>
-        </header>
+              {allIssues.length > 0 ? `${allIssues.length}件のIssue` : '検証OK'}
+            </Button>
+          </Toolbar>
+        </AppBar>
 
-        <nav className="steps" aria-label="進行状況">
-          <div className={`step ${step > 1 ? 'done' : ''}`}>
-            <span className="step-num">{step > 1 ? '✓' : '1'}</span>
-            <span>インポート</span>
-          </div>
-          <div
-            className={`step ${step === 2 ? 'active' : step > 2 ? 'done' : ''}`}
-            onClick={() => { setView('explore'); setSelectedId(''); }}
-            role="button"
-            tabIndex={0}
-          >
-            <span className="step-num">{step > 2 ? '✓' : '2'}</span>
-            <span>階層を確認</span>
-          </div>
-          <div
-            className={`step ${step === 3 ? 'active' : step > 3 ? 'done' : ''}`}
-            onClick={() => setView('explore')}
-            role="button"
-            tabIndex={0}
-          >
-            <span className="step-num">{step > 3 ? '✓' : '3'}</span>
-            <span>編集 / 検証</span>
-          </div>
-          <div
-            className={`step ${step === 4 ? 'active' : ''}`}
-            onClick={() => setView('output')}
-            role="button"
-            tabIndex={0}
-          >
-            <span className="step-num">4</span>
-            <span>出力</span>
-          </div>
-        </nav>
-
-        <main className={view === 'templates' ? 'main main-templates' : 'main'}>
-          <aside className="panel">
-            <div className="panel-header">
-              <h3>階層ツリー</h3>
-              <button
-                className="help-btn"
-                onClick={() => setHelpModal('glossary')}
-                title="用語集"
-                aria-label="用語集を開く"
-              >?</button>
-            </div>
-            <div className="panel-body" style={{ padding: 0 }}>
-              <TreePanel
-                tree={tree}
-                selectedId={selectedId}
-                onSelect={handleSelect}
-                errorIds={errorIds}
-              />
-            </div>
-          </aside>
-
+        <Stack spacing={2} sx={{ p: 2, height: 'calc(100vh - 72px)' }}>
+          {inputError ? (
+            <Alert severity="error" data-testid="csv-input-error">
+              {inputError}
+            </Alert>
+          ) : null}
+          {outputError ? (
+            <Alert severity="error" data-testid="output-error">
+              {outputError}
+            </Alert>
+          ) : null}
           {view === 'templates' ? (
-            <TemplatesView
-              rows={rows}
-              onApplyTemplate={(next) => { setRows(next); recompute(next); }}
-              expertMode={expertMode}
-            />
+            <Paper variant="outlined" sx={{ minHeight: 0, flex: 1, overflow: 'auto' }}>
+              <TemplatesView
+                rows={rows}
+                onApplyTemplate={(nextRows) => setRows(nextRows)}
+                expertMode
+              />
+            </Paper>
           ) : (
-            <Workspace
-              rows={rows}
-              tree={tree}
-              selectedId={selectedId}
-              inspectorId={inspectorId}
-              onSelect={handleSelect}
-              onRowSelect={handleRowSelect}
-              searchTerm={searchTerm}
-              setSearchTerm={setSearchTerm}
-              errorMap={errorMap}
-              view={view}
-              expertMode={expertMode}
-              onGenerateOutput={handleGenerateOutput}
-            />
-          )}
-
-          <aside className="panel inspector-panel">
-            <div className="panel-header">
-              <h3>インスペクタ</h3>
-              <button
-                className="help-btn"
-                onClick={() => setHelpModal('glossary')}
-                title="用語集"
-                aria-label="用語集を開く"
-              >?</button>
-            </div>
-            <div className="panel-body">
-              <Inspector
-                row={selectedRow}
-                onChange={handleChange}
-                fieldErrors={fieldErrors}
-                descendantCount={descendantCount}
-                expertMode={expertMode}
-              />
-            </div>
-          </aside>
-        </main>
-
-        <footer className="statusbar">
-          <span className="stat">
-            <span className="stat-dot" style={{ color: 'var(--text-faint)' }} />
-            {rows.length} 行 / {tree.length} ルート
-          </span>
-          <span
-            className="stat"
-            onClick={() => setIssuesOpen(true)}
-            style={{ cursor: 'pointer' }}
-          >
-            <span className={`stat-dot ${issues.length === 0 ? 'ok' : 'err'}`} />
-            <span className={issues.length === 0 ? 'ok' : 'err'}>
-              {issues.length === 0 ? 'すべて検証OK' : `${issues.length}件のエラー`}
-            </span>
-          </span>
-          <span className="stat">
-            <span className="stat-dot ok" />
-            <span className="ok">ローカル処理</span>
-          </span>
-          <span className="right" style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            <label style={{ fontSize: 11, color: 'var(--text-faint)', display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer' }}>
-              <input
-                type="checkbox"
-                checked={expertMode}
-                onChange={(e) => setExpertMode(e.target.checked)}
-                style={{ cursor: 'pointer' }}
-              />
-              エキスパートモード
-            </label>
-            <span style={{ fontSize: 11, color: 'var(--text-faint)' }}>アクセント:</span>
-            {(['slate', 'emerald', 'amber', 'graphite'] as AccentKey[]).map((a) => (
-              <button
-                key={a}
-                onClick={() => setAccent(a)}
-                title={a}
-                style={{
-                  width: 14, height: 14, borderRadius: '50%',
-                  background: ACCENTS[a]['--accent'],
-                  border: accent === a ? '2px solid var(--text)' : '2px solid transparent',
-                  cursor: 'pointer', padding: 0,
-                }}
-              />
-            ))}
-            <button
-              className="btn btn-ghost btn-sm"
-              data-testid="csv-export-button"
-              onClick={() => downloadFile(exportCsv(rows), 'building-model.csv', 'text/csv;charset=utf-8')}
-              style={{ fontSize: 11 }}
+            <Box
+              sx={{
+                display: 'grid',
+                gridTemplateColumns: '300px minmax(420px, 1fr) minmax(320px, 0.8fr)',
+                gap: 2,
+                minHeight: 0,
+                flex: 1,
+              }}
             >
-              <span className="ic">↓</span> CSV保存
-            </button>
-          </span>
-        </footer>
-      </div>
+              <Paper variant="outlined" sx={{ p: 2, minHeight: 0, overflow: 'auto' }}>
+                <Typography variant="subtitle1" gutterBottom>
+                  階層ツリー
+                </Typography>
+                <SimpleTreeView
+                  data-testid="tree"
+                  selectedItems={selectedId}
+                  expandedItems={expandedItems}
+                  onSelectedItemsChange={(_, id) => {
+                    if (typeof id === 'string') setSelectedId(id);
+                  }}
+                  onExpandedItemsChange={(_, ids) => setExpandedItems(ids)}
+                >
+                  <TreeItem itemId="root" label={<span data-testid="tree-item-root">すべて</span>}>
+                    {tree.map(renderTreeNode)}
+                  </TreeItem>
+                </SimpleTreeView>
+              </Paper>
+
+              <Paper
+                variant="outlined"
+                sx={{ p: 2, minHeight: 0, display: 'flex', flexDirection: 'column' }}
+              >
+                <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
+                  <Typography variant="subtitle1">CSV</Typography>
+                  <TextField
+                    size="small"
+                    placeholder="検索"
+                    value={search}
+                    inputProps={{ 'data-testid': 'grid-search' }}
+                    onChange={(event) => setSearch(event.target.value)}
+                    sx={{ ml: 'auto', maxWidth: 240 }}
+                  />
+                  <Chip label={`${scopedRows.length}行 / ${csvColumns.length}列`} size="small" />
+                </Stack>
+                <Box data-testid="grid-csv" sx={{ minHeight: 0, flex: 1 }}>
+                  <DataGrid
+                    rows={scopedRows}
+                    columns={csvColumns}
+                    getRowId={(row) => row.__rowId}
+                    disableRowSelectionOnClick
+                    onRowClick={(params) => setSelectedId(params.row.id)}
+                    getRowClassName={(params) =>
+                      issueFields.has(params.row.id) ? 'row-error' : ''
+                    }
+                    getCellClassName={(params) =>
+                      issueFields.get(params.row.id)?.has(params.field) ? 'cell-error' : ''
+                    }
+                  />
+                </Box>
+              </Paper>
+
+              <Paper
+                variant="outlined"
+                sx={{ p: 2, minHeight: 0, display: 'flex', flexDirection: 'column' }}
+              >
+                <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
+                  <Typography variant="subtitle1">インスペクタ</Typography>
+                  <ButtonGroup size="small" sx={{ ml: 'auto' }}>
+                    <Button
+                      variant={editMode === 'csv' ? 'contained' : 'outlined'}
+                      onClick={() => setEditMode('csv')}
+                    >
+                      参照
+                    </Button>
+                    <Button
+                      variant={editMode === 'model' ? 'contained' : 'outlined'}
+                      onClick={() => setEditMode('model')}
+                    >
+                      編集
+                    </Button>
+                  </ButtonGroup>
+                </Stack>
+                {selectedRow ? (
+                  <>
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                      {findNode(tree, selectedId)?.name ?? selectedRow.name ?? selectedId}
+                    </Typography>
+                    <Box data-testid="inspector-panel" sx={{ minHeight: 0, flex: 1 }}>
+                      <DataGrid
+                        rows={propertyRows}
+                        columns={propertyColumns.map((column) => ({
+                          ...column,
+                          editable: column.field === 'value' && editMode === 'model',
+                        }))}
+                        disableRowSelectionOnClick
+                        processRowUpdate={(nextRow) => {
+                          updateSelectedProperty(nextRow.property, String(nextRow.value ?? ''));
+                          return nextRow;
+                        }}
+                        getCellClassName={(params) =>
+                          params.field === 'value' &&
+                          issueFields.get(selectedId)?.has(params.row.property)
+                            ? 'cell-error'
+                            : ''
+                        }
+                      />
+                    </Box>
+                  </>
+                ) : (
+                  <Alert severity="info">ツリーまたはCSV行からリソースを選択してください。</Alert>
+                )}
+              </Paper>
+            </Box>
+          )}
+        </Stack>
+      </Box>
 
       <IssuesDrawer
         open={issuesOpen}
-        issues={issues}
+        issues={allIssues}
         onClose={() => setIssuesOpen(false)}
-        onJump={(id) => { handleSelect(id); setIssuesOpen(false); }}
+        onJump={(rowId) => {
+          setSelectedId(rowId);
+          setIssuesOpen(false);
+        }}
       />
 
-      <HelpModal open={!!helpModal} view={helpModal} onClose={() => setHelpModal(null)} />
-    </>
+      <Dialog open={preview !== null} onClose={() => setPreview(null)} fullWidth maxWidth="md">
+        <DialogTitle>{preview?.title} プレビュー</DialogTitle>
+        <DialogContent>
+          <Box component="pre" sx={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>
+            {preview?.content}
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setPreview(null)}>閉じる</Button>
+        </DialogActions>
+      </Dialog>
+    </ThemeProvider>
   );
 }

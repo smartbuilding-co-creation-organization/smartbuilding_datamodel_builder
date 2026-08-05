@@ -34,11 +34,11 @@ describe('sample debug csv', () => {
   it('exports hierarchy relations for equipment and points', () => {
     const rows = parseCsv(loadSample(), { schema });
     const rdf = exportRdf(rows, { schema });
-    expect(rdf).toContain('sbco:locatedIn');
-    expect(rdf).toContain('sbco:hasPoint');
+    expect(rdf).toContain('rec:locatedIn');
+    expect(rdf).toContain('rec:hasPoint');
 
     const yaml = exportYaml(rows, { schema });
-    expect(yaml).toContain('locatedIn:');
-    expect(yaml).toContain('hasPoint:');
+    expect(yaml).toContain('"locatedIn":');
+    expect(yaml).toContain('"hasPoint":');
   });
 });

@@ -4,5 +4,10 @@ dist
 .vite
 .DS_Store
 *.log
-./apps/web/test-results/
+apps/web/test-results/
+apps/web/playwright-report/
+apps/web/blob-report/
+coverage/
 .env
+.env.*
+!.env.example
