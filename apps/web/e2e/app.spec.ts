@@ -20,6 +20,27 @@ async function selectFormat(page: Page, format: string) {
   await page.getByRole('option', { name: format, exact: true }).click();
 }
 
+test('shows the onboarding screen on a fresh visit and can proceed to the sample data', async ({
+  page,
+}) => {
+  await page.goto('./');
+
+  await expect(page.getByRole('heading', { name: /建物のデータモデルを/ })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'サンプルデータで試す' })).toBeVisible();
+  await expect(page.getByTestId('csv-input')).toBeAttached();
+
+  await page.getByRole('button', { name: 'CSV仕様を見る' }).click();
+  await expect(page.getByRole('dialog')).toBeVisible();
+  await expect(page.getByRole('dialog')).toContainText('CSV仕様');
+  await page.getByRole('button', { name: '閉じる' }).click();
+  await expect(page.getByRole('dialog')).toBeHidden();
+
+  await page.getByRole('button', { name: 'サンプルデータで試す' }).click();
+  await expect(page.getByTestId('tree')).toBeVisible();
+  await expect(page.getByTestId('grid-csv')).toBeVisible();
+  await expect(page.getByRole('heading', { name: /建物のデータモデルを/ })).toBeHidden();
+});
+
 test('loads CSV under the Pages subpath and exposes every column in the virtualized grid', async ({
   page,
 }) => {

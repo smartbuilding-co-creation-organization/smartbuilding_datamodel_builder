@@ -39,6 +39,8 @@ import schema from '../../../schema/building_model.schema.json';
 import shaclText from '../../../schema/building_model.shacl.ttl?raw';
 import { TemplatesView } from './components/TemplatesView';
 import { IssuesDrawer } from './components/IssuesDrawer';
+import { HelpModal } from './components/HelpModal';
+import { Welcome } from './components/Welcome';
 import { SAMPLE_ROWS } from './data/sampleRows';
 import { useAppStore } from './state/store';
 import { buildTheme } from './theme';
@@ -127,6 +129,7 @@ export default function App() {
   const [outputError, setOutputError] = useState('');
   const [outputBusy, setOutputBusy] = useState(false);
   const [preview, setPreview] = useState<{ title: string; content: string } | null>(null);
+  const [helpModal, setHelpModal] = useState<'csv' | 'glossary' | null>(null);
 
   const plugins = useMemo(() => getOutputPlugins(), []);
   const formats = useMemo(
@@ -295,6 +298,20 @@ export default function App() {
     if (!selectedRow) return;
     updateModelRow(selectedRow.id, { ...selectedRow, [property]: value });
   };
+
+  if (rows.length === 0) {
+    return (
+      <ThemeProvider theme={theme}>
+        <CssBaseline />
+        <Welcome
+          onLoadSample={loadSample}
+          onUploadFile={(file) => void handleFile(file)}
+          onShowHelp={() => setHelpModal('csv')}
+        />
+        <HelpModal open={helpModal !== null} view={helpModal} onClose={() => setHelpModal(null)} />
+      </ThemeProvider>
+    );
+  }
 
   return (
     <ThemeProvider theme={theme}>
