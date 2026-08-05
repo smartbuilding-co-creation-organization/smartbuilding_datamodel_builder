@@ -144,6 +144,41 @@ describe('validate', () => {
     expect(issues.some((issue) => issue.code === 'hierarchy_missing')).toBe(true);
     expect(issues.some((issue) => issue.field === 'site')).toBe(true);
   });
+
+  it('keeps the literal id/parentId graph authoritative when pointId/deviceId differ from id', () => {
+    // Rows that carry both an explicit id/parentId hierarchy and separate
+    // business identifiers (pointId/deviceId) must be linked and reported
+    // using the literal id, since that is what the tree and UI navigation
+    // key on. Preferring pointId/deviceId here previously produced false
+    // "parent not found" errors and issue.rowId values the UI could not
+    // navigate to.
+    const rows = [
+      { id: 'room-1', kind: 'space', name: 'Room 1', parentId: '', deviceId: '', pointId: '' },
+      {
+        id: 'dev-1',
+        kind: 'device',
+        name: 'Device 1',
+        deviceId: 'DEV-BUSINESS-1',
+        parentId: 'room-1',
+        pointId: '',
+      },
+      {
+        id: 'pt-1',
+        kind: 'point',
+        name: 'Point 1',
+        pointId: 'PT-BUSINESS-1',
+        parentId: 'dev-1',
+        deviceId: '',
+      },
+    ];
+    const { issues } = validate(rows);
+
+    expect(issues.some((issue) => issue.code === 'parent_missing')).toBe(false);
+    for (const issue of issues) {
+      expect(issue.rowId).not.toBe('DEV-BUSINESS-1');
+      expect(issue.rowId).not.toBe('PT-BUSINESS-1');
+    }
+  });
 });
 
 describe('validation fixtures', () => {
