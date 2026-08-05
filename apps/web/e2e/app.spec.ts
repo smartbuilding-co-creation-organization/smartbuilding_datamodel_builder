@@ -88,7 +88,6 @@ test('edits through DataGrid and preserves Tree selection and expansion after re
   await expect(room).toBeVisible();
 
   await page.getByTestId('grid-csv').locator('[role="row"][data-id="PT001__0"]').click();
-  await page.getByRole('button', { name: '編集', exact: true }).click();
   const nameCell = page
     .getByTestId('inspector-panel')
     .locator('[role="row"][data-id="name"] [role="gridcell"][data-field="value"]');
@@ -143,7 +142,6 @@ test('shows kind as a read-only Class in the Inspector', async ({ page }) => {
   const classValueCell = inspector.locator('[data-id="kind"] [data-field="value"]');
   await expect(classValueCell).toHaveText('PointExt');
 
-  await page.getByRole('button', { name: '編集', exact: true }).click();
   await classValueCell.dblclick();
   await expect(inspector.locator('.MuiDataGrid-cell--editing')).toHaveCount(0);
 });
@@ -164,6 +162,16 @@ test('shows the property description as a tooltip instead of a persistent column
   // tooltip is wired to the right content without fighting hover timing.
   const nameProperty = inspector.locator('[data-id="name"] [data-field="property"] span');
   await expect(nameProperty).toHaveAttribute('aria-label', 'Machine or Human-readable name');
+
+  // The hoverable tooltip target must cover the whole cell, not just the
+  // short property text — hovering near the cell's far edge (well past
+  // "name"'s few characters) must still trigger it.
+  const nameCell = inspector.locator('[data-id="name"] [data-field="property"]');
+  await nameCell.scrollIntoViewIfNeeded();
+  const box = await nameCell.boundingBox();
+  if (!box) throw new Error('name property cell has no bounding box');
+  await page.mouse.move(box.x + box.width - 15, box.y + box.height / 2);
+  await expect(page.getByRole('tooltip')).toContainText('Machine or Human-readable name');
 });
 
 test('highlights an Issue-referenced field even when the row never had that column', async ({
