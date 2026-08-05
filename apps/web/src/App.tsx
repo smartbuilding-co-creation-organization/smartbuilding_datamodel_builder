@@ -29,6 +29,7 @@ import {
   getSchemaPropertyDescription,
   normalizeCsvHeader,
   parseCsv,
+  resetHeaderFromRows,
   runOutputPlugin,
   type Issue,
   type Node,
@@ -242,6 +243,7 @@ export default function App() {
 
   const loadSample = () => {
     const sampleRows = addRowIds(SAMPLE_ROWS);
+    resetHeaderFromRows(sampleRows);
     const columns = collectColumns(sampleRows);
     setCsvColumnDefs(columns);
     setData(
