@@ -139,8 +139,22 @@ function literalFor(field: string, value: string): string {
   return literal;
 }
 
-function iriFor(baseIri: string, id: string): string {
+// encodeURIComponent leaves ! ~ * ' ( ) unescaped (they're "unreserved" in
+// older URI encoding tables), but Turtle's PN_LOCAL grammar doesn't accept
+// them unescaped, and a trailing/leading '.' is disallowed too. Prefixed
+// names (sbr:xyz) are only used when the encoded id avoids all of these,
+// so the shorthand never produces invalid Turtle; anything else falls back
+// to a full bracketed IRI, which has no such restriction.
+function isSafeTurtleLocalName(local: string): boolean {
+  if (!local || local.startsWith('.') || local.endsWith('.')) return false;
+  return !/[!~*'()]/.test(local);
+}
+
+function iriFor(baseIri: string, id: string, prefix?: string): string {
   const encoded = encodeURIComponent(id);
+  if (prefix && isSafeTurtleLocalName(encoded)) {
+    return `${prefix}:${encoded}`;
+  }
   return `<${baseIri}${encoded}>`;
 }
 
@@ -174,8 +188,10 @@ export function exportRdf(rows: RowRecord[], options: RdfOptions = {}): string {
     lines.push('');
   }
 
+  const resourcePrefix = includePrefixes ? 'sbr' : undefined;
+
   for (const resource of resources) {
-    const subject = iriFor(baseIri, resource.id);
+    const subject = iriFor(baseIri, resource.id, resourcePrefix);
     const className = resource.className || 'Resource';
     const required = schemaCache
       ? getRequiredPropsFromCache(schemaCache, className)
@@ -196,7 +212,9 @@ export function exportRdf(rows: RowRecord[], options: RdfOptions = {}): string {
 
     const relationsForResource = relationMap.get(resource.id) ?? [];
     for (const relation of relationsForResource) {
-      props.push(`${predicateFor(relation.predicate)} ${iriFor(baseIri, relation.objectId)}`);
+      props.push(
+        `${predicateFor(relation.predicate)} ${iriFor(baseIri, relation.objectId, resourcePrefix)}`,
+      );
     }
 
     lines.push(`${subject} ${props.join(' ;\n  ')} .`);

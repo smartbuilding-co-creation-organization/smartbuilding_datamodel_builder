@@ -398,11 +398,31 @@ describe('exportRdf', () => {
     const rdf = exportRdf(rows, { schema });
 
     expect(rdf).toContain('@prefix sbco: <https://www.sbco.or.jp/ont/> .');
-    expect(rdf).toContain('<https://www.sbco.or.jp/ont/resource/DEV001> a sbco:EquipmentExt ;');
-    expect(rdf).toContain('<https://www.sbco.or.jp/ont/resource/PT001> a sbco:PointExt ;');
+    expect(rdf).toContain('@prefix sbr: <https://www.sbco.or.jp/ont/resource/> .');
+    // Subjects/objects use the sbr: prefix instead of the full bracketed IRI
+    // whenever the percent-encoded local name is valid Turtle PN_LOCAL.
+    expect(rdf).toContain('sbr:DEV001 a sbco:EquipmentExt ;');
+    expect(rdf).toContain('sbr:PT001 a sbco:PointExt ;');
     expect(rdf).toContain('sbco:pointType "Temperature"');
-    expect(rdf).toContain('rec:hasPoint <https://www.sbco.or.jp/ont/resource/PT001>');
-    expect(rdf).toContain('rec:locatedIn <https://www.sbco.or.jp/ont/resource/room%3A');
+    expect(rdf).toContain('rec:hasPoint sbr:PT001');
+    expect(rdf).toContain('rec:locatedIn sbr:room%3A');
+    expect(rdf).not.toContain('<https://www.sbco.or.jp/ont/resource/DEV001>');
+  });
+
+  it('falls back to a full bracketed IRI when the local name is not valid Turtle PN_LOCAL', () => {
+    const rows = [{ id: "weird'id.", name: 'Weird' }];
+    const rdf = exportRdf(rows);
+    expect(rdf).toContain(
+      `<https://www.sbco.or.jp/ont/resource/${encodeURIComponent("weird'id.")}>`,
+    );
+    expect(rdf).not.toContain(`sbr:${encodeURIComponent("weird'id.")}`);
+  });
+
+  it('never emits sbr: prefixed names when prefixes are not declared', () => {
+    const rows = parseCsv(loadCsv('valid.csv'), { schema });
+    const rdf = exportRdf(rows, { schema, includePrefixes: false });
+    expect(rdf).not.toContain('sbr:');
+    expect(rdf).toContain('<https://www.sbco.or.jp/ont/resource/DEV001>');
   });
 
   it('percent-encodes unsafe and Unicode unknown headers in property IRIs', () => {
