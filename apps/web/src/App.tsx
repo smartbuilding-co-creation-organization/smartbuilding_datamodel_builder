@@ -31,6 +31,8 @@ import {
   normalizeCsvHeader,
   parseCsv,
   resetHeaderFromRows,
+  resolveRowId,
+  resolveRowName,
   runOutputPlugin,
   type Issue,
   type Node,
@@ -217,19 +219,21 @@ export default function App() {
   }, [selectedRow, issueFields, selectedId]);
   const propertyColumns = useMemo<GridColDef[]>(
     () => [
-      { field: 'property', headerName: 'プロパティ', minWidth: 150, flex: 0.8 },
-      { field: 'value', headerName: '値', minWidth: 180, flex: 1, editable: true },
       {
-        field: 'description',
-        headerName: '説明',
-        minWidth: 220,
-        flex: 1.2,
-        renderCell: (params) => (
-          <Tooltip title={params.value || ''}>
-            <span>{params.value}</span>
-          </Tooltip>
-        ),
+        field: 'property',
+        headerName: 'プロパティ',
+        minWidth: 160,
+        flex: 0.8,
+        renderCell: (params) =>
+          params.row.description ? (
+            <Tooltip title={params.row.description} placement="top-start">
+              <span>{params.value}</span>
+            </Tooltip>
+          ) : (
+            params.value
+          ),
       },
+      { field: 'value', headerName: '値', minWidth: 220, flex: 1.4, editable: true },
     ],
     [],
   );
@@ -257,10 +261,18 @@ export default function App() {
   };
 
   const loadSample = () => {
-    const sampleRows = addRowIds(SAMPLE_ROWS);
-    resetHeaderFromRows(sampleRows);
-    const columns = collectColumns(sampleRows);
+    const baseRows = addRowIds(SAMPLE_ROWS);
+    // Reset the header mapping from the pointlist.md-shaped columns only,
+    // before synthesizing id/name below, so CSV export doesn't pick up an
+    // "id" column that was never part of the source data (parseCsv() does
+    // the same auto-fill internally, after computing its header mapping).
+    resetHeaderFromRows(baseRows);
+    const columns = collectColumns(baseRows);
     setCsvColumnDefs(columns);
+    const sampleRows = baseRows.map((row) => {
+      const id = row.id || resolveRowId(row);
+      return { ...row, id, name: row.name || resolveRowName(row, id) };
+    });
     setData(
       sampleRows,
       columns.map((column) => column.field),

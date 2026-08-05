@@ -139,6 +139,24 @@ test('shows kind as a read-only Class in the Inspector', async ({ page }) => {
   await expect(inspector.locator('.MuiDataGrid-cell--editing')).toHaveCount(0);
 });
 
+test('shows the property description as a tooltip instead of a persistent column', async ({
+  page,
+}) => {
+  await loadCsv(page);
+  await page.getByTestId('grid-csv').locator('[role="row"][data-id="PT001__0"]').click();
+  const inspector = page.getByTestId('inspector-panel');
+
+  await expect(inspector.getByRole('columnheader', { name: '説明' })).toHaveCount(0);
+  await expect(inspector.getByRole('columnheader', { name: 'プロパティ' })).toBeVisible();
+  await expect(inspector.getByRole('columnheader', { name: '値' })).toBeVisible();
+
+  // MUI sets the Tooltip's title as aria-label on the child, independent of
+  // whether the visual popper is currently shown, so this checks the
+  // tooltip is wired to the right content without fighting hover timing.
+  const nameProperty = inspector.locator('[data-id="name"] [data-field="property"] span');
+  await expect(nameProperty).toHaveAttribute('aria-label', 'Machine or Human-readable name');
+});
+
 test('highlights an Issue-referenced field even when the row never had that column', async ({
   page,
 }) => {
@@ -196,6 +214,12 @@ test('loads the sample data cleanly and exports CSV matching the pointlist.md sh
   expect(columns).not.toContain('id');
   expect(columns).not.toContain('parentId');
   expect(columns).toContain('gatewayId');
+  await page.getByRole('button', { name: '閉じる', exact: true }).click();
+
+  // regression: selecting any node below root must still scope the CSV
+  // grid to that node's rows, not empty it out.
+  await page.getByTestId('tree').getByText('本館', { exact: true }).click();
+  await expect(page.getByTestId('grid-csv').locator('[role="row"][data-id]')).not.toHaveCount(0);
   expect(columns).toContain('pointId');
   expect(columns).toContain('pointName');
 });
