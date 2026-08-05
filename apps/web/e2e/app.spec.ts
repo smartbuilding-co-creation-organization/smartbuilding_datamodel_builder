@@ -115,6 +115,48 @@ test('blocks download and opens Issue Drawer when SHACL validation fails', async
   await expect(page.getByTestId('issues-drawer')).toBeVisible();
 });
 
+test('highlights the missing field an Issue points to and shows kind as a read-only Class', async ({
+  page,
+}) => {
+  await page.goto('./');
+  await page.getByRole('button', { name: 'サンプルデータで試す' }).click();
+
+  await page.getByTestId('validation-summary').click();
+  const drawer = page.getByTestId('issues-drawer');
+  await expect(drawer).toBeVisible();
+  await expect(drawer).not.toContainText("received 'room'");
+
+  const issue = drawer.getByText('pt-A101-temp / pointName');
+  await issue.locator('xpath=following-sibling::button[contains(text(),"対象を表示")]').click();
+
+  const inspector = page.getByTestId('inspector-panel');
+
+  // The kind/Class row sits near the top, before any scrolling.
+  const classCell = inspector.locator('[data-id="kind"] [data-field="property"]');
+  await expect(classCell).toHaveText('Class');
+  const classValueCell = inspector.locator('[data-id="kind"] [data-field="value"]');
+  await expect(classValueCell).toHaveText('PointExt');
+
+  // The virtualized grid only renders rows near the viewport; scroll to
+  // reach pointName, which sits further down the property list.
+  const scroller = inspector.locator('.MuiDataGrid-virtualScroller');
+  await scroller.evaluate((el) => {
+    el.scrollTop = el.scrollHeight;
+  });
+
+  const pointNameCell = inspector.locator('[data-id="pointName"] [data-field="value"]');
+  await expect(pointNameCell).toBeVisible();
+  await expect(pointNameCell).toHaveClass(/cell-error/);
+  await expect(pointNameCell).toHaveCSS('background-color', 'rgb(251, 234, 231)');
+
+  await page.getByRole('button', { name: '編集', exact: true }).click();
+  await scroller.evaluate((el) => {
+    el.scrollTop = 0;
+  });
+  await classValueCell.dblclick();
+  await expect(inspector.locator('.MuiDataGrid-cell--editing')).toHaveCount(0);
+});
+
 test('rejects over-limit input atomically and keeps the existing model', async ({ page }) => {
   await loadCsv(page);
   await expect(page.getByTestId('grid-csv').locator('[role="row"][data-id]')).toHaveCount(5);

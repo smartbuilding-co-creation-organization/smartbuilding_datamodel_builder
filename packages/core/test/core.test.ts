@@ -24,6 +24,7 @@ import {
   getLastHeader,
   getSchemaPropertyDescription,
   hasHierarchySignalChange,
+  KIND_TO_CLASS,
   parseCsv,
   parseDeviceTemplateYaml,
   resetHeaderFromRows,
@@ -179,6 +180,26 @@ describe('validate', () => {
       expect(issue.rowId).not.toBe('DEV-BUSINESS-1');
       expect(issue.rowId).not.toBe('PT-BUSINESS-1');
     }
+  });
+
+  it('accepts every kind alias that tree.ts/resource-graph.ts resolve to a class', () => {
+    // KIND_TO_CLASS (constants.ts) accepts aliases like "room" and "level"
+    // that the canonical schema/mapping.md names ("space", "floor") don't
+    // cover. The kind validator must accept the same set, or rows the rest
+    // of the app treats as valid get a false "invalid kind" error.
+    const rows = Object.keys(KIND_TO_CLASS).map((kind, index) => ({
+      id: `row-${index}`,
+      kind,
+      name: `Row ${index}`,
+    }));
+    const { issues } = validate(rows);
+    expect(issues.some((issue) => issue.field === 'kind')).toBe(false);
+  });
+
+  it('still rejects a kind value with no known class mapping', () => {
+    const rows = [{ id: 'row-1', kind: 'not-a-real-kind', name: 'Row 1' }];
+    const { issues } = validate(rows);
+    expect(issues.some((issue) => issue.field === 'kind')).toBe(true);
   });
 });
 

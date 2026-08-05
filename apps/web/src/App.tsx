@@ -27,6 +27,7 @@ import {
   getLastHeader,
   getOutputPlugins,
   getSchemaPropertyDescription,
+  KIND_TO_CLASS,
   normalizeCsvHeader,
   parseCsv,
   resetHeaderFromRows,
@@ -189,20 +190,31 @@ export default function App() {
     () => modelRows.find((row) => row.id === selectedId),
     [modelRows, selectedId],
   );
-  const propertyRows = useMemo(
-    () =>
-      selectedRow
-        ? Object.entries(selectedRow)
-            .filter(([property]) => property !== '__rowId')
-            .map(([property, value]) => ({
-              id: property,
-              property,
-              value,
-              description: getSchemaPropertyDescription(schema, selectedRow.kind, property) ?? '',
-            }))
-        : [],
-    [selectedRow],
-  );
+  const propertyRows = useMemo(() => {
+    if (!selectedRow) return [];
+    const describe = (property: string) =>
+      getSchemaPropertyDescription(schema, selectedRow.kind, property) ?? '';
+    const toRow = (property: string, value: string) =>
+      property === 'kind'
+        ? {
+            id: property,
+            property: 'Class',
+            value: KIND_TO_CLASS[value.toLowerCase()] ?? value,
+            description: 'RDFクラス。ノードの種別から自動的に決まります。',
+          }
+        : { id: property, property, value, description: describe(property) };
+
+    const rows = Object.entries(selectedRow)
+      .filter(([property]) => property !== '__rowId')
+      .map(([property, value]) => toRow(property, value));
+
+    const existingKeys = new Set(Object.keys(selectedRow));
+    for (const field of issueFields.get(selectedId) ?? []) {
+      if (existingKeys.has(field)) continue;
+      rows.push(toRow(field, ''));
+    }
+    return rows;
+  }, [selectedRow, issueFields, selectedId]);
   const propertyColumns = useMemo<GridColDef[]>(
     () => [
       { field: 'property', headerName: 'プロパティ', minWidth: 150, flex: 0.8 },
@@ -535,13 +547,14 @@ export default function App() {
                           editable: column.field === 'value' && editMode === 'model',
                         }))}
                         disableRowSelectionOnClick
+                        isCellEditable={(params) => params.row.id !== 'kind'}
                         processRowUpdate={(nextRow) => {
-                          updateSelectedProperty(nextRow.property, String(nextRow.value ?? ''));
+                          updateSelectedProperty(nextRow.id, String(nextRow.value ?? ''));
                           return nextRow;
                         }}
                         getCellClassName={(params) =>
                           params.field === 'value' &&
-                          issueFields.get(selectedId)?.has(params.row.property)
+                          issueFields.get(selectedId)?.has(params.row.id)
                             ? 'cell-error'
                             : ''
                         }

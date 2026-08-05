@@ -83,6 +83,17 @@ export function buildTheme(scaleKey: UiScaleKey = 'compact') {
           columnHeaders: {
             backgroundColor: '#f6f7f9',
           },
+          cell: {
+            '&.cell-error': {
+              backgroundColor: 'var(--error-soft)',
+              boxShadow: 'inset 2px 0 0 var(--error)',
+            },
+          },
+          row: {
+            '&.row-error': {
+              backgroundColor: 'var(--error-soft)',
+            },
+          },
         },
       },
     },
