@@ -2,8 +2,17 @@
 import { getRequiredPropsFromCache, SchemaRoot, buildSchemaCache } from './schema-mapping';
 import { inferRowKind, listMissingHierarchyParents, normalizeValue } from './row-utils';
 import { Issue, RowRecord } from './types';
+import { KIND_TO_CLASS } from './constants';
 
-const KindSchema = z.enum(['site', 'building', 'floor', 'space', 'device', 'point']);
+// Accept every alias tree.ts/resource-graph.ts resolve to a class (e.g. "room",
+// "level"), not just the canonical schema/mapping.md names. Otherwise rows the
+// rest of the app treats as valid get flagged here as an "invalid" kind.
+const KindSchema = z.string().refine(
+  (value) => Object.prototype.hasOwnProperty.call(KIND_TO_CLASS, value.toLowerCase()),
+  (value) => ({
+    message: `Invalid kind value: "${value}". Expected one of: ${Object.keys(KIND_TO_CLASS).join(', ')}`,
+  }),
+);
 
 const POINTLIST_REQUIRED_FIELDS = [
   'gatewayId',

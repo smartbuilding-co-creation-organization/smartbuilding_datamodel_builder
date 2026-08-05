@@ -24,6 +24,7 @@ import {
   getLastHeader,
   getSchemaPropertyDescription,
   hasHierarchySignalChange,
+  KIND_TO_CLASS,
   parseCsv,
   parseDeviceTemplateYaml,
   resetHeaderFromRows,
@@ -116,6 +117,45 @@ describe('buildTree (hierarchy csv)', () => {
     expect(equipment?.kind).toBe('EquipmentExt');
     expect(equipment?.children).toHaveLength(0);
   });
+
+  it('gives distinct, meaningful node ids to differently-named non-ASCII sites/buildings/rooms', () => {
+    // makeSlug() used to strip all non-ASCII characters, so every
+    // Japanese-only name collapsed to the empty string and fell back to
+    // "unnamed" — colliding across genuinely different entities and
+    // leaking into RDF/YAML subject ids with no semantic meaning.
+    const rows = [
+      {
+        site: '本社キャンパス',
+        building: '本館',
+        level: '1F',
+        installationArea: '会議室',
+        deviceId: 'AC-1',
+        deviceName: 'エアコン',
+        pointId: 'PT-1',
+        pointName: '室温',
+      },
+      {
+        site: '大阪サイト',
+        building: '別館',
+        level: '2F',
+        installationArea: 'オフィス',
+        deviceId: 'AC-2',
+        deviceName: 'エアコン2',
+        pointId: 'PT-2',
+        pointName: '室温2',
+      },
+    ];
+    const tree = buildTree(rows);
+
+    const site1 = tree.find((node) => node.name === '本社キャンパス');
+    const site2 = tree.find((node) => node.name === '大阪サイト');
+    expect(site1?.id).not.toBe('site:unnamed');
+    expect(site2?.id).not.toBe('site:unnamed');
+    expect(site1?.id).not.toBe(site2?.id);
+
+    const building1 = site1?.children.find((node) => node.name === '本館');
+    expect(building1?.id).not.toContain('unnamed');
+  });
 });
 
 describe('validate', () => {
@@ -179,6 +219,26 @@ describe('validate', () => {
       expect(issue.rowId).not.toBe('DEV-BUSINESS-1');
       expect(issue.rowId).not.toBe('PT-BUSINESS-1');
     }
+  });
+
+  it('accepts every kind alias that tree.ts/resource-graph.ts resolve to a class', () => {
+    // KIND_TO_CLASS (constants.ts) accepts aliases like "room" and "level"
+    // that the canonical schema/mapping.md names ("space", "floor") don't
+    // cover. The kind validator must accept the same set, or rows the rest
+    // of the app treats as valid get a false "invalid kind" error.
+    const rows = Object.keys(KIND_TO_CLASS).map((kind, index) => ({
+      id: `row-${index}`,
+      kind,
+      name: `Row ${index}`,
+    }));
+    const { issues } = validate(rows);
+    expect(issues.some((issue) => issue.field === 'kind')).toBe(false);
+  });
+
+  it('still rejects a kind value with no known class mapping', () => {
+    const rows = [{ id: 'row-1', kind: 'not-a-real-kind', name: 'Row 1' }];
+    const { issues } = validate(rows);
+    expect(issues.some((issue) => issue.field === 'kind')).toBe(true);
   });
 });
 
@@ -338,11 +398,31 @@ describe('exportRdf', () => {
     const rdf = exportRdf(rows, { schema });
 
     expect(rdf).toContain('@prefix sbco: <https://www.sbco.or.jp/ont/> .');
-    expect(rdf).toContain('<https://www.sbco.or.jp/ont/resource/DEV001> a sbco:EquipmentExt ;');
-    expect(rdf).toContain('<https://www.sbco.or.jp/ont/resource/PT001> a sbco:PointExt ;');
+    expect(rdf).toContain('@prefix sbr: <https://www.sbco.or.jp/ont/resource/> .');
+    // Subjects/objects use the sbr: prefix instead of the full bracketed IRI
+    // whenever the percent-encoded local name is valid Turtle PN_LOCAL.
+    expect(rdf).toContain('sbr:DEV001 a sbco:EquipmentExt ;');
+    expect(rdf).toContain('sbr:PT001 a sbco:PointExt ;');
     expect(rdf).toContain('sbco:pointType "Temperature"');
-    expect(rdf).toContain('rec:hasPoint <https://www.sbco.or.jp/ont/resource/PT001>');
-    expect(rdf).toContain('rec:locatedIn <https://www.sbco.or.jp/ont/resource/room%3A');
+    expect(rdf).toContain('rec:hasPoint sbr:PT001');
+    expect(rdf).toContain('rec:locatedIn sbr:room%3A');
+    expect(rdf).not.toContain('<https://www.sbco.or.jp/ont/resource/DEV001>');
+  });
+
+  it('falls back to a full bracketed IRI when the local name is not valid Turtle PN_LOCAL', () => {
+    const rows = [{ id: "weird'id.", name: 'Weird' }];
+    const rdf = exportRdf(rows);
+    expect(rdf).toContain(
+      `<https://www.sbco.or.jp/ont/resource/${encodeURIComponent("weird'id.")}>`,
+    );
+    expect(rdf).not.toContain(`sbr:${encodeURIComponent("weird'id.")}`);
+  });
+
+  it('never emits sbr: prefixed names when prefixes are not declared', () => {
+    const rows = parseCsv(loadCsv('valid.csv'), { schema });
+    const rdf = exportRdf(rows, { schema, includePrefixes: false });
+    expect(rdf).not.toContain('sbr:');
+    expect(rdf).toContain('<https://www.sbco.or.jp/ont/resource/DEV001>');
   });
 
   it('percent-encodes unsafe and Unicode unknown headers in property IRIs', () => {
@@ -352,6 +432,36 @@ describe('exportRdf', () => {
       '<https://www.sbco.or.jp/ont/property/%E6%82%AA%E6%84%8F%3E%E3%81%82%E3%82%8B%20%E5%88%97>',
     );
     expect(rdf).not.toContain('悪意>ある 列');
+  });
+
+  it('keeps non-ASCII site/building names distinguishable in subject IRIs instead of "unnamed"', () => {
+    const rows = [
+      {
+        site: '本社キャンパス',
+        building: '本館',
+        level: '1F',
+        installationArea: '会議室',
+        deviceId: 'AC-1',
+        deviceName: 'エアコン',
+        pointId: 'PT-1',
+        pointName: '室温',
+      },
+      {
+        site: '大阪サイト',
+        building: '別館',
+        level: '2F',
+        installationArea: 'オフィス',
+        deviceId: 'AC-2',
+        deviceName: 'エアコン2',
+        pointId: 'PT-2',
+        pointName: '室温2',
+      },
+    ];
+    const rdf = exportRdf(rows);
+
+    expect(rdf).not.toContain('unnamed');
+    expect(rdf).toContain(encodeURIComponent('site:本社キャンパス'));
+    expect(rdf).toContain(encodeURIComponent('site:大阪サイト'));
   });
 });
 

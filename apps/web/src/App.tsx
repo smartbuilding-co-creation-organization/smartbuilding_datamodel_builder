@@ -27,9 +27,12 @@ import {
   getLastHeader,
   getOutputPlugins,
   getSchemaPropertyDescription,
+  KIND_TO_CLASS,
   normalizeCsvHeader,
   parseCsv,
   resetHeaderFromRows,
+  resolveRowId,
+  resolveRowName,
   runOutputPlugin,
   type Issue,
   type Node,
@@ -189,35 +192,48 @@ export default function App() {
     () => modelRows.find((row) => row.id === selectedId),
     [modelRows, selectedId],
   );
-  const propertyRows = useMemo(
-    () =>
-      selectedRow
-        ? Object.entries(selectedRow)
-            .filter(([property]) => property !== '__rowId')
-            .map(([property, value]) => ({
-              id: property,
-              property,
-              value,
-              description: getSchemaPropertyDescription(schema, selectedRow.kind, property) ?? '',
-            }))
-        : [],
-    [selectedRow],
-  );
+  const propertyRows = useMemo(() => {
+    if (!selectedRow) return [];
+    const describe = (property: string) =>
+      getSchemaPropertyDescription(schema, selectedRow.kind, property) ?? '';
+    const toRow = (property: string, value: string) =>
+      property === 'kind'
+        ? {
+            id: property,
+            property: 'Class',
+            value: KIND_TO_CLASS[value.toLowerCase()] ?? value,
+            description: 'RDFクラス。ノードの種別から自動的に決まります。',
+          }
+        : { id: property, property, value, description: describe(property) };
+
+    const rows = Object.entries(selectedRow)
+      .filter(([property]) => property !== '__rowId')
+      .map(([property, value]) => toRow(property, value));
+
+    const existingKeys = new Set(Object.keys(selectedRow));
+    for (const field of issueFields.get(selectedId) ?? []) {
+      if (existingKeys.has(field)) continue;
+      rows.push(toRow(field, ''));
+    }
+    return rows;
+  }, [selectedRow, issueFields, selectedId]);
   const propertyColumns = useMemo<GridColDef[]>(
     () => [
-      { field: 'property', headerName: 'プロパティ', minWidth: 150, flex: 0.8 },
-      { field: 'value', headerName: '値', minWidth: 180, flex: 1, editable: true },
       {
-        field: 'description',
-        headerName: '説明',
-        minWidth: 220,
-        flex: 1.2,
-        renderCell: (params) => (
-          <Tooltip title={params.value || ''}>
-            <span>{params.value}</span>
-          </Tooltip>
-        ),
+        field: 'property',
+        headerName: 'プロパティ',
+        minWidth: 160,
+        flex: 0.8,
+        renderCell: (params) =>
+          params.row.description ? (
+            <Tooltip title={params.row.description} placement="top-start">
+              <span>{params.value}</span>
+            </Tooltip>
+          ) : (
+            params.value
+          ),
       },
+      { field: 'value', headerName: '値', minWidth: 220, flex: 1.4, editable: true },
     ],
     [],
   );
@@ -245,10 +261,18 @@ export default function App() {
   };
 
   const loadSample = () => {
-    const sampleRows = addRowIds(SAMPLE_ROWS);
-    resetHeaderFromRows(sampleRows);
-    const columns = collectColumns(sampleRows);
+    const baseRows = addRowIds(SAMPLE_ROWS);
+    // Reset the header mapping from the pointlist.md-shaped columns only,
+    // before synthesizing id/name below, so CSV export doesn't pick up an
+    // "id" column that was never part of the source data (parseCsv() does
+    // the same auto-fill internally, after computing its header mapping).
+    resetHeaderFromRows(baseRows);
+    const columns = collectColumns(baseRows);
     setCsvColumnDefs(columns);
+    const sampleRows = baseRows.map((row) => {
+      const id = row.id || resolveRowId(row);
+      return { ...row, id, name: row.name || resolveRowName(row, id) };
+    });
     setData(
       sampleRows,
       columns.map((column) => column.field),
@@ -275,15 +299,19 @@ export default function App() {
       });
       const nextIssues = result.issues ?? [];
       setOutputIssues(nextIssues);
-      if (nextIssues.some(isBlockingIssue)) {
-        setOutputError('検証エラーがあるため、ダウンロードを中止しました。');
-        setIssuesOpen(true);
-        return;
-      }
+      const blocking = nextIssues.some(isBlockingIssue);
       if (download) {
+        if (blocking) {
+          setOutputError('検証エラーがあるため、ダウンロードを中止しました。');
+          setIssuesOpen(true);
+          return;
+        }
         downloadFile(result.content, `building-model.${result.extension}`, result.mimeType);
       } else {
         setPreview({ title: selectedPlugin.label, content: result.content });
+        if (blocking) {
+          setOutputError('検証エラーがあります。内容を確認してください。');
+        }
       }
     } catch (error) {
       setOutputError(
@@ -324,9 +352,6 @@ export default function App() {
             </Typography>
             <Button variant="contained" onClick={() => fileInputRef.current?.click()}>
               CSVを読み込む
-            </Button>
-            <Button variant="outlined" onClick={loadSample}>
-              サンプル
             </Button>
             <input
               ref={fileInputRef}
@@ -378,21 +403,23 @@ export default function App() {
                 </MenuItem>
               ))}
             </TextField>
-            <TextField
-              select
-              size="small"
-              label="シリアライザ"
-              value={selectedPlugin?.serializer ?? ''}
-              data-testid="output-serializer-select"
-              onChange={(event) => setOutputSerializer(event.target.value)}
-              sx={{ minWidth: 150 }}
-            >
-              {serializers.map((plugin) => (
-                <MenuItem key={plugin.id} value={plugin.serializer}>
-                  {plugin.serializer}
-                </MenuItem>
-              ))}
-            </TextField>
+            {serializers.length > 1 ? (
+              <TextField
+                select
+                size="small"
+                label="シリアライザ"
+                value={selectedPlugin?.serializer ?? ''}
+                data-testid="output-serializer-select"
+                onChange={(event) => setOutputSerializer(event.target.value)}
+                sx={{ minWidth: 150 }}
+              >
+                {serializers.map((plugin) => (
+                  <MenuItem key={plugin.id} value={plugin.serializer}>
+                    {plugin.serializer}
+                  </MenuItem>
+                ))}
+              </TextField>
+            ) : null}
             <Button
               variant="outlined"
               disabled={rows.length === 0 || outputBusy}
@@ -535,13 +562,14 @@ export default function App() {
                           editable: column.field === 'value' && editMode === 'model',
                         }))}
                         disableRowSelectionOnClick
+                        isCellEditable={(params) => params.row.id !== 'kind'}
                         processRowUpdate={(nextRow) => {
-                          updateSelectedProperty(nextRow.property, String(nextRow.value ?? ''));
+                          updateSelectedProperty(nextRow.id, String(nextRow.value ?? ''));
                           return nextRow;
                         }}
                         getCellClassName={(params) =>
                           params.field === 'value' &&
-                          issueFields.get(selectedId)?.has(params.row.property)
+                          issueFields.get(selectedId)?.has(params.row.id)
                             ? 'cell-error'
                             : ''
                         }
@@ -570,7 +598,11 @@ export default function App() {
       <Dialog open={preview !== null} onClose={() => setPreview(null)} fullWidth maxWidth="md">
         <DialogTitle>{preview?.title} プレビュー</DialogTitle>
         <DialogContent>
-          <Box component="pre" sx={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>
+          <Box
+            component="pre"
+            data-testid="output-preview-content"
+            sx={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}
+          >
             {preview?.content}
           </Box>
         </DialogContent>
