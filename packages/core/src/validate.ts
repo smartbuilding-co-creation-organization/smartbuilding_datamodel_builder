@@ -44,12 +44,14 @@ function hasKey(row: RowRecord, key: string): boolean {
 }
 
 function resolveIdKey(row: RowRecord): string {
+  if (row.id) return 'id';
   if (hasKey(row, 'pointId') || hasKey(row, 'pointName')) return 'pointId';
   if (hasKey(row, 'deviceId') || hasKey(row, 'deviceName')) return 'deviceId';
   return 'id';
 }
 
 function resolveNameKey(row: RowRecord): string {
+  if (row.name) return 'name';
   if (hasKey(row, 'pointName') || hasKey(row, 'pointId')) return 'pointName';
   if (hasKey(row, 'deviceName') || hasKey(row, 'deviceId')) return 'deviceName';
   return 'name';
