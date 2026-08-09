@@ -1,0 +1,67 @@
+name: Sync vendored schema from smartbuilding_datamodels
+
+# Fired by smartbuilding_datamodels' CI (`notify-builder-sync` job) via repository_dispatch once
+# its generated OWL/SHACL/JSON Schema artifacts change on `main`. Also runnable manually. Pulls the
+# latest output/*.ttl + schema.json from that repo and opens a PR here so a human reviews the diff
+# before it lands — this never pushes directly to main.
+on:
+  repository_dispatch:
+    types: [datamodels-schema-updated]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: sync-schema-${{ github.workflow }}
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout smartbuilding_datamodel_builder
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+
+      - name: Checkout smartbuilding_datamodels
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          repository: smartbuilding-co-creation-organization/smartbuilding_datamodels
+          ref: main
+          path: .datamodels-upstream
+          persist-credentials: false
+
+      - name: Copy generated artifacts into schema/
+        run: |
+          set -euo pipefail
+          cp .datamodels-upstream/output/building_model.owl.ttl schema/building_model.owl.ttl
+          cp .datamodels-upstream/output/building_model.shacl.ttl schema/building_model.shacl.ttl
+          cp .datamodels-upstream/output/building_model.schema.json schema/building_model.schema.json
+          cp .datamodels-upstream/schema/building_model_shacl.yaml schema/building_model_shacl.yaml
+          rm -rf .datamodels-upstream
+
+      # Pinned to the @v8 floating tag (the action's own recommended reference), not a resolved
+      # commit SHA like this repo's other workflows — verify and re-pin to a SHA per this repo's
+      # usual convention when reviewing this workflow for the first time.
+      - name: Open pull request if the vendored schema changed
+        uses: peter-evans/create-pull-request@v8
+        with:
+          commit-message: "chore(schema): sync vendored schema from smartbuilding_datamodels"
+          title: "chore(schema): sync vendored schema from smartbuilding_datamodels"
+          body: |
+            Automated sync of `schema/building_model.owl.ttl`, `schema/building_model.shacl.ttl`,
+            `schema/building_model.schema.json`, and `schema/building_model_shacl.yaml` from the
+            latest `main` of
+            [`smartbuilding_datamodels`](https://github.com/smartbuilding-co-creation-organization/smartbuilding_datamodels).
+
+            Review the diff before merging — in particular check `schema/mapping.md` and
+            `packages/core/src/rdf.ts` (`REC_FIELDS`/`BRICK_FIELDS`/`SBCO_FIELDS`) still match any
+            class/property vocabulary changes.
+          branch: sync/datamodels-schema
+          delete-branch: true
+          labels: |
+            schema-sync

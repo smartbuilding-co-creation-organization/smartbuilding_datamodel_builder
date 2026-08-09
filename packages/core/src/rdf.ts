@@ -77,14 +77,20 @@ const BRICK_FIELDS = new Set([
 ]);
 
 const SBCO_FIELDS = new Set([
+  'deviceIdBacnet',
   'deviceType',
   'entries',
   'flag',
+  'gatewayId',
   'id',
   'installationArea',
+  'instanceNoBacnet',
+  'interval',
   'key',
+  'localId',
   'maxPresValue',
   'minPresValue',
+  'objectTypeBacnet',
   'panel',
   'pointSpecification',
   'pointType',
@@ -92,6 +98,7 @@ const SBCO_FIELDS = new Set([
   'targetArea',
   'unit',
   'value',
+  'writable',
 ]);
 
 const DATE_FIELDS = new Set(['commissioningDate', 'installationDate', 'turnoverDate']);
