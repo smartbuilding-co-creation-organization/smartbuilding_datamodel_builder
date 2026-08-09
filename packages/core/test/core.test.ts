@@ -407,6 +407,28 @@ describe('exportRdf', () => {
     expect(rdf).toContain('rec:hasPoint sbr:PT001');
     expect(rdf).toContain('rec:locatedIn sbr:room%3A');
     expect(rdf).not.toContain('<https://www.sbco.or.jp/ont/resource/DEV001>');
+
+    // SBCO-specific point/device fields (valid.csv carries all of these) emit clean sbco:
+    // predicates instead of falling back to a full <.../property/...> IRI.
+    expect(rdf).toContain('sbco:gatewayId "GW001"');
+    expect(rdf).toContain('sbco:localId "LOCAL001"');
+    expect(rdf).toContain('sbco:writable "false"');
+    expect(rdf).toContain('sbco:interval "60"');
+    expect(rdf).toContain('sbco:deviceIdBacnet "BAC001"');
+    expect(rdf).toContain('sbco:objectTypeBacnet "Analog-Input"');
+    expect(rdf).toContain('sbco:instanceNoBacnet "1001"');
+    const unknownPropertyBase = 'https://www.sbco.or.jp/ont/property/';
+    for (const field of [
+      'gatewayId',
+      'localId',
+      'writable',
+      'interval',
+      'deviceIdBacnet',
+      'objectTypeBacnet',
+      'instanceNoBacnet',
+    ]) {
+      expect(rdf).not.toContain(`${unknownPropertyBase}${field}`);
+    }
   });
 
   it('falls back to a full bracketed IRI when the local name is not valid Turtle PN_LOCAL', () => {
