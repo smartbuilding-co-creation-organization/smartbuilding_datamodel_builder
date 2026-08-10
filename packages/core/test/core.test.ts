@@ -525,6 +525,22 @@ describe('output plugins', () => {
     expect(result.content).toContain('sbco:EquipmentExt');
   });
 
+  it('preserves the synthesized parent link through the RDF output plugin (#25)', async () => {
+    // valid.csv has no explicit parentId column — the Equipment->Point relationship is
+    // synthesized by buildResourceGraph from the Site/Building/Floor columns. Going through
+    // runOutputPlugin (buildOutputRows -> exportRdf), unlike calling exportRdf(rows) directly
+    // on the freshly parsed rows, used to drop that computed parentId and silently orphan
+    // every point (rec:hasPoint count of 0).
+    const rows = parseCsv(loadCsv('valid.csv'), { schema });
+    const pointCount = rows.filter((row) => Boolean(row.pointType)).length;
+    expect(pointCount).toBeGreaterThan(0);
+
+    const result = await runOutputPlugin('RDF', 'Turtle', { rows, schema });
+    const hasPointCount = (result.content.match(/rec:hasPoint/g) ?? []).length;
+    expect(hasPointCount).toBe(pointCount);
+    expect(result.content).toContain('rec:hasPoint sbr:PT001');
+  });
+
   it('merges edited model rows into output and omits blank values', async () => {
     const rows = parseCsv(loadCsv('valid.csv'), { schema });
     const modelRows = Array.from(buildResourceModelMap(rows).values()).map((row) => {
