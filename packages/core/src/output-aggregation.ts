@@ -41,7 +41,18 @@ export function buildOutputRows(rows: RowRecord[]): RowRecord[] {
   for (const resource of resources) {
     const baseRow = baseById.get(resource.id);
     if (baseRow) {
-      outputRows.push(mergeRowValues(baseRow, resource.row ?? {}));
+      const mergedRow = mergeRowValues(baseRow, resource.row ?? {});
+      // resource.parentId is the graph-computed parent (explicit column or synthesized
+      // from Site/Building/Level/Room/Device columns) — it lives on the ResourceNode, not
+      // in row/resource.row, and parentId is filtered out of mergeRowValues as an internal
+      // key. Without restoring it here, every row that came from the original CSV (i.e. every
+      // row with a baseRow) loses its parent link in the output, so downstream RDF export has
+      // no hierarchy edge to emit for it (only synthesized rows, which never have a baseRow,
+      // kept theirs via resourceRowFromResource).
+      if (resource.parentId) {
+        mergedRow.parentId = resource.parentId;
+      }
+      outputRows.push(mergedRow);
       continue;
     }
     outputRows.push(resourceRowFromResource(resource));
