@@ -406,9 +406,7 @@ describe('exportRdf', () => {
     expect(rdf).toContain('sbr:PT-001 a sbco:PointExt ;');
     expect(rdf).toContain('sbco:building "THX"');
     expect(rdf).not.toContain('<https://www.sbco.or.jp/ont/property/building>');
-    expect(rdf).toContain(
-      '<https://www.sbco.or.jp/ont/property/extra> "kept-as-unknown"',
-    );
+    expect(rdf).toContain('<https://www.sbco.or.jp/ont/property/extra> "kept-as-unknown"');
   });
 
   it('emits RDF with class and parent relationships', () => {
