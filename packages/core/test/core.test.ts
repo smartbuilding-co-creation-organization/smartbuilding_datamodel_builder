@@ -393,6 +393,24 @@ describe('CSV input limits', () => {
 });
 
 describe('exportRdf', () => {
+  it('maps the point-list building column to the SBCO building predicate (#30)', () => {
+    const rows = parseCsv(
+      [
+        'site,building,floor,installation_area,device_id,device_name,point_id,point_name,extra',
+        'Tokyo,THX,3F,Room 301,DEV-001,AHU-1,PT-001,Supply Air Temperature,kept-as-unknown',
+      ].join('\n'),
+    );
+
+    const rdf = exportRdf(rows);
+
+    expect(rdf).toContain('sbr:PT-001 a sbco:PointExt ;');
+    expect(rdf).toContain('sbco:building "THX"');
+    expect(rdf).not.toContain('<https://www.sbco.or.jp/ont/property/building>');
+    expect(rdf).toContain(
+      '<https://www.sbco.or.jp/ont/property/extra> "kept-as-unknown"',
+    );
+  });
+
   it('emits RDF with class and parent relationships', () => {
     const rows = parseCsv(loadCsv('valid.csv'), { schema });
     const rdf = exportRdf(rows, { schema });
@@ -523,6 +541,21 @@ describe('output plugins', () => {
     const result = await runOutputPlugin('RDF', 'Turtle', { rows, schema });
     expect(result.extension).toBe('ttl');
     expect(result.content).toContain('sbco:EquipmentExt');
+  });
+
+  it('maps the point-list building column to sbco:building through the RDF plugin (#30)', async () => {
+    const rows = parseCsv(
+      [
+        'site,building,floor,installation_area,device_id,device_name,point_id,point_name',
+        'Tokyo,THX,3F,Room 301,DEV-001,AHU-1,PT-001,Supply Air Temperature',
+      ].join('\n'),
+    );
+
+    const result = await runOutputPlugin('RDF', 'Turtle', { rows });
+
+    expect(result.content).toContain('sbr:PT-001 a sbco:PointExt ;');
+    expect(result.content).toContain('sbco:building "THX"');
+    expect(result.content).not.toContain('<https://www.sbco.or.jp/ont/property/building>');
   });
 
   it('preserves the synthesized parent link through the RDF output plugin (#25)', async () => {

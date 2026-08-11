@@ -705,6 +705,27 @@
   - E) styles.css の余白関連 className を削減し、状態表現クラス（row-error 等）のみ残す
 - 実行すべきコマンド（最低限）: `pnpm lint`, `pnpm typecheck`, `pnpm test:e2e`
 
+40) Issue #30: PointExt の `building` を `sbco:building` として RDF 出力 (Done)
+- 目的: ポイントリスト CSV の `building` 列を未知プロパティではなく SBCO 正規述語として出力し、Building OS 側でポイントの Building メタデータを解決できるようにする。
+- 背景:
+  - `packages/core/src/rdf.ts` の `SBCO_FIELDS` に `building` がなく、`predicateFor()` が `<https://www.sbco.or.jp/ont/property/building>` へフォールバックする。
+  - Building OS は `sbco:building` を参照するため、現状ではテレメトリ保存時の Parquet パーティションが `building_id=unknown` になる。
+- 変更対象（パス）: `packages/core/src/rdf.ts`, `packages/core/test/core.test.ts`
+- 実装タスク:
+  - A) `SBCO_FIELDS` に `building` を追加し、CSV ヘッダー正規化後の `building` を `sbco:building` にマッピングする。
+  - B) `exportRdf()` の回帰テストで、`building=THX` を持つ PointExt に `sbco:building "THX"` が出力され、未知プロパティ IRI の `property/building` が出力されないことを確認する。
+  - C) RDF output plugin（`runOutputPlugin('RDF', 'Turtle', ...)`）の回帰テストで同じ述語マッピングを確認する。
+  - D) 既存の未知列（例: `extra`）が引き続き `UNKNOWN_PROPERTY_BASE` 配下へ出力されることをテストで明示する。
+- 受入基準:
+  - [ ] `building=THX` を含む CSV から、PointExt に `sbco:building "THX"` が生成される
+  - [ ] `<https://www.sbco.or.jp/ont/property/building>` は生成されない
+  - [ ] 既存の未知フィールドは引き続き `UNKNOWN_PROPERTY_BASE` 配下へ出力される
+  - [ ] RDF の直接出力経路と RDF output plugin 経路の双方に回帰テストがある
+  - [ ] `pnpm lint`、`pnpm typecheck`、`pnpm test` が成功する
+- 非目標:
+  - CSV の階層構築、Building リソース（`rec:Building`）の生成ロジック、および UI/E2E の変更は行わない
+- 実行すべきコマンド（最低限）: `pnpm lint`, `pnpm typecheck`, `pnpm test`
+
 ## 5. リスクと軽減策
 - DataGrid 編集の罠
   - [ ] `processRowUpdate` と編集イベントの差分を把握する
