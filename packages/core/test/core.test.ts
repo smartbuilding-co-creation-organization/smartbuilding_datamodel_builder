@@ -428,8 +428,8 @@ describe('exportRdf', () => {
     // predicates instead of falling back to a full <.../property/...> IRI.
     expect(rdf).toContain('sbco:gatewayId "GW001"');
     expect(rdf).toContain('sbco:localId "LOCAL001"');
-    expect(rdf).toContain('sbco:writable "false"');
-    expect(rdf).toContain('sbco:interval "60"');
+    expect(rdf).toContain('sbco:writable "false"^^xsd:boolean');
+    expect(rdf).toContain('sbco:interval "60"^^xsd:integer');
     expect(rdf).toContain('sbco:deviceIdBacnet "BAC001"');
     expect(rdf).toContain('sbco:objectTypeBacnet "Analog-Input"');
     expect(rdf).toContain('sbco:instanceNoBacnet "1001"');
@@ -445,6 +445,28 @@ describe('exportRdf', () => {
     ]) {
       expect(rdf).not.toContain(`${unknownPropertyBase}${field}`);
     }
+  });
+
+  it('serializes writable/interval/size as spec-valid xsd:boolean/xsd:integer literals (#27)', () => {
+    // Raw point-list CSVs carry casing/tokens like "TRUE"/"FALSE" for booleans -- valid Turtle
+    // syntax with a bare string literal, but not a valid xsd:boolean *value* (whose lexical
+    // space is only true/false/1/0), so SHACL's sh:datatype check on the current datamodels
+    // schema flagged every point as a violation until this normalized through isTruthyValue
+    // instead of echoing the raw CSV token.
+    const rows = [
+      {
+        id: 'PT-BOOL',
+        kind: 'PointExt',
+        name: 'Bool Point',
+        writable: 'TRUE',
+        interval: '300',
+        size: '42',
+      },
+    ];
+    const rdf = exportRdf(rows);
+    expect(rdf).toContain('sbco:writable "true"^^xsd:boolean');
+    expect(rdf).toContain('sbco:interval "300"^^xsd:integer');
+    expect(rdf).toContain('rec:size "42"^^xsd:integer');
   });
 
   it('falls back to a full bracketed IRI when the local name is not valid Turtle PN_LOCAL', () => {
