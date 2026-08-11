@@ -14,8 +14,14 @@ export const PROPERTY_HINTS: Record<string, PropertyHint> = {
   site: { label: 'サイト', desc: '敷地・拠点名（例: 本社キャンパス）。' },
   building: { label: '建物', desc: '建物名（例: 本館）。' },
   floor: { label: 'フロア', desc: '階層（例: 1F, B1）。' },
-  installationArea: { label: '設置エリア', desc: '部屋番号やゾーン（例: 101, 会議室A）。' },
-  installation_area: { label: '設置エリア', desc: '部屋番号やゾーン（例: 101, 会議室A）。' },
+  installationArea: {
+    label: '設置エリア',
+    desc: '部屋番号やゾーン（例: 101, 会議室A）。「-」/空欄は未設定扱いでRoomが生成されず、ビルOS取込には実際の部屋名が必要です。',
+  },
+  installation_area: {
+    label: '設置エリア',
+    desc: '部屋番号やゾーン（例: 101, 会議室A）。「-」/空欄は未設定扱いでRoomが生成されず、ビルOS取込には実際の部屋名が必要です。',
+  },
   deviceId: { label: 'デバイスID', desc: '機器のシステム上のID。' },
   device_id: { label: 'デバイスID', desc: '機器のシステム上のID。' },
   deviceName: { label: 'デバイス名', desc: '機器の表示名。' },

@@ -57,6 +57,27 @@ BIMの階層構造から抽出することが望ましいが、プロジェク�
 仕様決定がなされた段階で設置位置については、確定しているはずなので、ポイントリストに直接記述をする。  
 Spatial information should ideally be extracted from the BIM hierarchical structure. However, if BIM development is difficult due to project progress, the installation location should be determined at the specification stage and directly described in the point list.
 
+#### `installation_area` が `-`（ハイフン）・空欄の場合の挙動 / Behavior when `installation_area` is `-` or blank
+
+`installation_area` に `-` または `－`（全角ハイフン）を指定した場合、および空欄の場合は、Room（部屋）が
+**未設定**として扱われ、Roomノードは生成されません。この結果、`floor` の情報がある場合、階層は次のようになります
+（Roomを経由しません）:
+
+```
+Site → Building → Level → Equipment → Point
+```
+
+ビルOS（Building OS）は現状、Equipment が Level に直接ぶら下がる構造（Roomを経由しない階層）を有効な階層として
+受理しません。ビルOSへ取り込むデータでは、`installation_area` に実際の部屋・ゾーンを表す値（例: `101`,
+`会議室A`）を指定してください。
+
+*English*: A value of `-`/`－` (or a blank cell) in `installation_area` is treated as **unset**, not as a Room
+name — no Room node is generated for that point. When `floor` information is present, the resulting hierarchy
+becomes `Site → Building → Level → Equipment → Point` (no Room in between) instead of the usual
+`... → Level → Room → Equipment → Point`. Building OS does not currently accept Equipment attached directly
+under Level without an intervening Room, so data intended for Building OS ingestion must supply a real
+room/zone value in `installation_area` rather than `-` or leaving it blank.
+
 ### ポイント種別 (point_type)
 機器やポイントから取得できるテレメトリのフォーマットを参照するためのプロファイル名、またはテンプレート名。
 具体的な定義については、スキーマファイル等で当該タイプについては別途定義される。

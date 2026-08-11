@@ -83,6 +83,13 @@ export function HelpModal({ open, view, onClose }: Props) {
                 <code>installationArea</code>
               </li>
             </ul>
+            <p>
+              <code>installationArea</code> が <code>-</code>（ハイフン）または空欄の場合、Room
+              は未設定として扱われ生成されません。<code>floor</code> がある場合は Equipment が Level
+              直下になります（Site → Building → Level → Equipment → Point）。ビルOSはこの Room
+              を経由しない階層を受理しないため、ビルOSへ取り込むデータには実際の部屋・ゾーン名を
+              指定してください。
+            </p>
             <h3>任意カラム</h3>
             <p>
               <code>interval</code>, <code>unit</code>, <code>scale</code>, <code>labels</code>,{' '}
