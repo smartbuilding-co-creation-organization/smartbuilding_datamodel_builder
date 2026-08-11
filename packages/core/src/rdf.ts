@@ -116,7 +116,13 @@ const INTEGER_FIELDS = new Set([
   'intervalCapability',
   'size',
 ]);
-const DECIMAL_FIELDS = new Set(['area', 'capacity', 'weight']);
+// area/capacity are deliberately NOT here even though they look numeric: the synced schema
+// declares rec:area/rec:capacity as sh:nodeKind sh:IRI, sh:class rec:ArchitectureArea/
+// rec:ArchitectureCapacity -- i.e. object properties pointing at a value+unit node, not scalar
+// literals. This tool doesn't construct that node shape (pre-existing gap, out of scope here),
+// so they fall through to a plain untyped string literal like before -- tagging them
+// `^^xsd:decimal` would assert a datatype the schema doesn't allow at all.
+const DECIMAL_FIELDS = new Set(['weight']);
 const FLOAT_FIELDS = new Set(['maxPresValue', 'minPresValue', 'scale']);
 // Boolean-valued fields normalize through isTruthyValue (row-utils.ts) rather than echoing the
 // raw CSV token, since xsd:boolean's lexical space is only true/false/1/0 -- a raw "FALSE" or

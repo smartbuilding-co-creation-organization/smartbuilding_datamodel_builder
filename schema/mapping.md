@@ -73,12 +73,18 @@ typed literal (`^^xsd:*`) for fields the schema declares with a non-string `rang
 
 - `xsd:date`: `commissioningDate`, `installationDate`, `turnoverDate`
 - `xsd:integer`: `levelNumber`, `operationalStageCount`, `interval`, `intervalCapability`, `size`
-- `xsd:decimal`: `area`, `capacity`, `weight`
+- `xsd:decimal`: `weight`
 - `xsd:float`: `maxPresValue`, `minPresValue`, `scale`
 - `xsd:boolean`: `writable`, `flag` — normalized through `isTruthyValue` (`row-utils.ts`) rather
   than echoing the raw CSV token: xsd:boolean's lexical space is only `true`/`false`/`1`/`0`, so a
   raw `"FALSE"`/`"Y"` is valid Turtle syntax but not a spec-valid boolean *value*
   (smartbuilding_datamodel_builder#27).
+
+**Not decimal-typed despite looking numeric**: `area`/`capacity` are `rec:` fields but the schema
+declares them `sh:nodeKind sh:IRI` / `sh:class rec:ArchitectureArea` / `rec:ArchitectureCapacity`
+— object properties pointing at a value+unit node, not scalar literals. This tool doesn't
+construct that node shape, so they fall through to a plain untyped string literal (same as any
+other unmodeled field) rather than being tagged with a datatype the schema doesn't allow at all.
 
 A field the schema declares numeric/boolean/date but isn't in one of these sets will still emit a
 plain string literal and fail SHACL's `sh:datatype` check on that field — keep this list in sync
