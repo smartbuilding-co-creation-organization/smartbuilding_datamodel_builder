@@ -5,6 +5,8 @@ description: 'A LinkML schema for sites, buildings, spaces, equipment, and point
   used in smart-building data exchanges.
 
   '
+license: https://creativecommons.org/licenses/by/4.0/
+version: 0.1.0
 default_prefix: sbco
 default_range: string
 prefixes:
@@ -31,23 +33,115 @@ types:
     
 enums:
   UnitEnum:
-    description: Allowed measurement units
+    description: >-
+      Allowed measurement units. Each permissible value is a canonical key; the `text`
+      annotation carries its display symbol and `legacy_symbols` lists the raw point-list
+      tokens (Japanese/legacy variants included, e.g. from CSV `unit` columns) that normalize
+      to it (#35). This enum intentionally does not accept those raw tokens directly — mapping
+      a raw token to one of these keys is a deliberate, documented normalization step upstream
+      of this vocabulary (see README "sbco:unit 語彙と正規化"), not implicit SHACL coercion, so
+      an unrecognized unit stays a visible, reported mismatch instead of being silently
+      rewritten. The vocabulary itself is still provisional pending SBCO/GUTP working-group
+      agreement (#36), so scripts/postprocess_shacl.py downgrades sbco:unit's `sh:in`
+      constraint to sh:Warning severity: an out-of-vocabulary unit is reported but does not
+      block an otherwise-valid import.
     permissible_values:
       celsius:
-        description: Degree Celsius
+        description: Degree Celsius (temperature)
         annotations:
         - tag: text
           value: °C
+        - tag: legacy_symbols
+          value: "℃, °C, C"
       percent:
-        description: Percent
+        description: Percent (dimensionless ratio, for example relative humidity or valve/damper position)
         annotations:
         - tag: text
           value: '%'
+        - tag: legacy_symbols
+          value: "%, ％, ％RH, %RH"
       ppm:
-        description: Parts per million
+        description: Parts per million (gas concentration)
         annotations:
         - tag: text
           value: ppm
+      kilowatt_hour:
+        description: Kilowatt hour (energy)
+        annotations:
+        - tag: text
+          value: kWh
+        - tag: legacy_symbols
+          value: "KWH, kWh, kwh"
+      megajoule:
+        description: Megajoule (energy)
+        annotations:
+        - tag: text
+          value: MJ
+        - tag: legacy_symbols
+          value: "MJ"
+      megajoule_per_hour:
+        description: Megajoule per hour (energy rate)
+        annotations:
+        - tag: text
+          value: MJ/h
+        - tag: legacy_symbols
+          value: "MJ/h, MJ/H"
+      kilowatt:
+        description: Kilowatt (power)
+        annotations:
+        - tag: text
+          value: kW
+        - tag: legacy_symbols
+          value: "Kw, KW, kw"
+      ampere:
+        description: Ampere (electric current)
+        annotations:
+        - tag: text
+          value: A
+        - tag: legacy_symbols
+          value: "A"
+      cubic_meter:
+        description: Cubic meter (volume)
+        annotations:
+        - tag: text
+          value: m³
+        - tag: legacy_symbols
+          value: "m3, m^3"
+      cubic_meter_per_hour:
+        description: Cubic meter per hour (volumetric flow)
+        annotations:
+        - tag: text
+          value: m³/h
+        - tag: legacy_symbols
+          value: "m3/h, m^3/h"
+      degree:
+        description: Degree (angle)
+        annotations:
+        - tag: text
+          value: °
+        - tag: legacy_symbols
+          value: "°, deg"
+      watt_per_square_meter:
+        description: Watt per square meter (irradiance)
+        annotations:
+        - tag: text
+          value: W/m²
+        - tag: legacy_symbols
+          value: "W/m2, W/m^2"
+      meter_per_second:
+        description: Meter per second (speed, for example wind or air velocity)
+        annotations:
+        - tag: text
+          value: m/s
+        - tag: legacy_symbols
+          value: "m/s"
+      millimeter_per_hour:
+        description: Millimeter per hour (precipitation rate)
+        annotations:
+        - tag: text
+          value: mm/h
+        - tag: legacy_symbols
+          value: "mm/h"
   PointSpecificationEnum:
     description: Point specification categories for equipment point lists
     annotations:
@@ -507,16 +601,80 @@ slots:
     description: Scale factor for raw value conversion
     range: float
 
+  writable:
+    description: "Whether the point value can be written (commanded)"
+    range: boolean
+    annotations:
+      - tag: description_ja
+        value: "ポイントの値を書き込み（制御）できるかどうか"
+
+  interval:
+    description: "Polling or reporting interval in seconds"
+    range: integer
+    annotations:
+      - tag: description_ja
+        value: "ポーリングまたはレポートの間隔（秒）"
+
+  gatewayId:
+    description: "Identifier of the gateway device managing this point"
+    range: string
+    annotations:
+      - tag: description_ja
+        value: "このポイントを管理するゲートウェイデバイスの識別子"
+
+  localId:
+    description: "Local identifier for this point within the gateway or system"
+    range: string
+    annotations:
+      - tag: description_ja
+        value: "ゲートウェイまたはシステム内でのポイントのローカル識別子"
+
+  supplier:
+    description: "Supplier or vendor of the device associated with this point"
+    range: string
+    annotations:
+      - tag: description_ja
+        value: "このポイントに関連するデバイスのサプライヤーまたはベンダー"
+
+  deviceIdBacnet:
+    description: "BACnet device identifier"
+    range: string
+    annotations:
+      - tag: description_ja
+        value: "BACnetデバイス識別子"
+
+  instanceNoBacnet:
+    description: "BACnet object instance number"
+    range: string
+    annotations:
+      - tag: description_ja
+        value: "BACnetオブジェクトインスタンス番号"
+
+  labels:
+    description: "Labels or tags associated with this point"
+    range: string
+    multivalued: true
+    annotations:
+      - tag: description_ja
+        value: "このポイントに関連するラベルまたはタグ"
+
+  objectTypeBacnet:
+    description: "BACnet object type (e.g., Analog-Input, Binary-Output)"
+    range: string
+    annotations:
+      - tag: description_ja
+        value: "BACnetオブジェクトタイプ（例：Analog-Input、Binary-Output）"
+
 
   geometry:
     description: Polygon representing the spatial extent of this Space.
-    range: Geometry
+    range: GeometryInfo
     multivalued: false
     slot_uri: rec:geometry
 
   georeference:
     description: A georeference creates a relationship between the local coordinate system used within a building (e.g., measured in meters) and a geographic coordinate system (e.g., lat, long, alt), such that locally placed Spaces can be resolved and rendered in that geographic coordinate system (e.g., for mapping purposes).
-    range: Georeference
+    range: GeoreferenceInfo
     multivalued: false
     slot_uri: rec:georeference
 
@@ -535,6 +693,7 @@ slots:
       - range: OutdoorSpace
 
   isPartOf:
+    description: The subject is a part of the entity given by the object.
     range: Any
     multivalued: false
     slot_uri: rec:isPartOf
@@ -1114,7 +1273,18 @@ classes:
       - unit
       - maxPresValue       # max_pres_value → maxPresValue
       - minPresValue       # min_pres_value → minPresValue
-      - scale      
+      - scale
+      - writable
+      - interval
+      - gatewayId
+      - localId
+      - supplier
+      - installationArea
+      - targetArea
+      - deviceIdBacnet
+      - instanceNoBacnet
+      - labels
+      - objectTypeBacnet
 
     slot_usage:
       isPointOf:
@@ -1123,7 +1293,10 @@ classes:
           - range: EquipmentExt
 
   KeyStringMapEntry:
-    description: map(string -> string) の1エントリ
+    description: One entry in a map from strings to strings.
+    annotations:
+      - tag: description_ja
+        value: map(string -> string) の1エントリ
     slots:
     - key
     - value
@@ -1134,7 +1307,10 @@ classes:
         required: true
 
   KeyBoolMapEntry:
-    description: map(string -> boolean) の1エントリ
+    description: One entry in a map from strings to booleans.
+    annotations:
+      - tag: description_ja
+        value: map(string -> boolean) の1エントリ
     slots:
     - key
     - flag
@@ -1145,7 +1321,10 @@ classes:
         required: true
 
   KeyMapOfStringMapEntry:
-    description: map(string -> map(string -> string)) の1エントリ
+    description: One entry in a map from strings to string-to-string maps.
+    annotations:
+      - tag: description_ja
+        value: map(string -> map(string -> string)) の1エントリ
     slots:
     - key
     - entries
@@ -1242,20 +1421,20 @@ classes:
       - customTags
       - customProperties
 
-  Geometry:
+  GeometryInfo:
     is_a: Information
     class_uri: rec:Geometry
-    description: "REC Geometry のプレースホルダ（詳細は別途拡張）"
+    description: Placeholder for REC Geometry; details can be supplied by extensions.
     annotations:
       - tag: description_ja
         value: "ジオメトリ情報のプレースホルダ"
     exact_mappings:
       - rec:Geometry
 
-  Georeference:
+  GeoreferenceInfo:
     is_a: Information
     class_uri: rec:Georeference
-    description: "REC Georeference のプレースホルダ（詳細は別途拡張）"
+    description: Placeholder for REC Georeference; details can be supplied by extensions.
     annotations:
       - tag: description_ja
         value: "地理参照情報のプレースホルダ"
