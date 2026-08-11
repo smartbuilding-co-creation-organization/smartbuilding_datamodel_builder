@@ -77,6 +77,7 @@ const BRICK_FIELDS = new Set([
 ]);
 
 const SBCO_FIELDS = new Set([
+  'building',
   'deviceIdBacnet',
   'deviceType',
   'entries',
