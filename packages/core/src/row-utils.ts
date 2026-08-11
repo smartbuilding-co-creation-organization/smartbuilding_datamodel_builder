@@ -23,6 +23,17 @@ export function normalizeValue(value: string | undefined): string {
   return (value ?? '').toString().trim();
 }
 
+const TRUTHY_TOKENS = new Set(['y', 'yes', 'true', '1', 'rw', 'w']);
+
+// Point-list CSVs encode booleans (writable, flag, ...) with whatever casing/token the source
+// system used (TRUE/FALSE, Y/N, RW, 1/0, ...) -- this is the single place that decides what
+// counts as true, shared by anything that both reads it for logic (e.g. wot.ts's read-only
+// check) and anything that must emit a spec-valid xsd:boolean lexical form ("true"/"false")
+// for RDF/SHACL (rdf.ts).
+export function isTruthyValue(value: string | undefined): boolean {
+  return TRUTHY_TOKENS.has(normalizeValue(value).toLowerCase());
+}
+
 function normalizeHierarchyValue(value: string | undefined): string {
   const trimmed = normalizeValue(value);
   if (!trimmed) return '';

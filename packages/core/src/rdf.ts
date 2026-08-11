@@ -3,6 +3,7 @@ import { buildSchemaCache, getRequiredPropsFromCache, SchemaRoot } from './schem
 import { RowRecord } from './types';
 import { collectOutputFields, resolveOutputValue } from './output-utils';
 import { getOriginalHeaderName } from './csv';
+import { isTruthyValue } from './row-utils';
 
 type RdfOptions = {
   baseIri?: string;
@@ -103,9 +104,30 @@ const SBCO_FIELDS = new Set([
 ]);
 
 const DATE_FIELDS = new Set(['commissioningDate', 'installationDate', 'turnoverDate']);
-const INTEGER_FIELDS = new Set(['levelNumber', 'operationalStageCount']);
-const DECIMAL_FIELDS = new Set(['area', 'capacity', 'size', 'weight']);
+// datamodels' schema (range: integer/boolean) is the source of truth for these -- see
+// smartbuilding_datamodel_builder#27: `interval`/`writable` used to serialize as plain string
+// literals, which SHACL's sh:datatype check on the current schema flags as a violation (1,865
+// points x 2 fields = 3,730 violations on the THX fixture). `size` was miscategorized under
+// DECIMAL_FIELDS below even though the schema declares it integer.
+const INTEGER_FIELDS = new Set([
+  'levelNumber',
+  'operationalStageCount',
+  'interval',
+  'intervalCapability',
+  'size',
+]);
+// area/capacity are deliberately NOT here even though they look numeric: the synced schema
+// declares rec:area/rec:capacity as sh:nodeKind sh:IRI, sh:class rec:ArchitectureArea/
+// rec:ArchitectureCapacity -- i.e. object properties pointing at a value+unit node, not scalar
+// literals. This tool doesn't construct that node shape (pre-existing gap, out of scope here),
+// so they fall through to a plain untyped string literal like before -- tagging them
+// `^^xsd:decimal` would assert a datatype the schema doesn't allow at all.
+const DECIMAL_FIELDS = new Set(['weight']);
 const FLOAT_FIELDS = new Set(['maxPresValue', 'minPresValue', 'scale']);
+// Boolean-valued fields normalize through isTruthyValue (row-utils.ts) rather than echoing the
+// raw CSV token, since xsd:boolean's lexical space is only true/false/1/0 -- a raw "FALSE" or
+// "Y" survives Turtle syntax but is not a valid xsd:boolean value.
+const BOOLEAN_FIELDS = new Set(['writable', 'flag']);
 const REC_CLASSES = new Set(['Site', 'Building', 'Level', 'Room', 'Space', 'Zone', 'OutdoorSpace']);
 const STRUCTURED_FIELDS = new Set(['customProperties', 'customTags', 'identifiers']);
 
@@ -139,6 +161,7 @@ function predicateFor(field: string): string {
 }
 
 function literalFor(field: string, value: string): string {
+  if (BOOLEAN_FIELDS.has(field)) return `"${isTruthyValue(value)}"^^xsd:boolean`;
   const literal = `"${escapeLiteral(value)}"`;
   if (DATE_FIELDS.has(field)) return `${literal}^^xsd:date`;
   if (INTEGER_FIELDS.has(field)) return `${literal}^^xsd:integer`;

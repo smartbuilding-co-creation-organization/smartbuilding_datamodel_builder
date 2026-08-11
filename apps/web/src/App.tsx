@@ -204,9 +204,18 @@ export default function App() {
           }
         : { id: property, property, value, description: describe(property) };
 
-    const rows = Object.entries(selectedRow)
+    // Pull `name` to the front (stable sort -- everything else, including the synthesized
+    // `kind` row that intentionally sorts last, keeps its existing relative order). Without
+    // this, `name`'s position falls out of the schema JSON's alphabetical property order
+    // (Object.entries(selectedRow)), so once a formerly-hidden-in-customProperties field like
+    // `name` had ~15 other PointExt properties (deviceIdBacnet, gatewayId, installationArea,
+    // interval, ...) sort before it alphabetically, it fell outside the virtualized DataGrid's
+    // initially-rendered rows (smartbuilding_datamodel_builder#27's schema sync surfaced many
+    // more formal properties).
+    const orderedEntries = Object.entries(selectedRow)
       .filter(([property]) => property !== '__rowId')
-      .map(([property, value]) => toRow(property, value));
+      .sort(([a], [b]) => (a === 'name' ? -1 : b === 'name' ? 1 : 0));
+    const rows = orderedEntries.map(([property, value]) => toRow(property, value));
 
     const existingKeys = new Set(Object.keys(selectedRow));
     for (const field of issueFields.get(selectedId) ?? []) {

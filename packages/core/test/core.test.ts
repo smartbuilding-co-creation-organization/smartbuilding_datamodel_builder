@@ -428,8 +428,8 @@ describe('exportRdf', () => {
     // predicates instead of falling back to a full <.../property/...> IRI.
     expect(rdf).toContain('sbco:gatewayId "GW001"');
     expect(rdf).toContain('sbco:localId "LOCAL001"');
-    expect(rdf).toContain('sbco:writable "false"');
-    expect(rdf).toContain('sbco:interval "60"');
+    expect(rdf).toContain('sbco:writable "false"^^xsd:boolean');
+    expect(rdf).toContain('sbco:interval "60"^^xsd:integer');
     expect(rdf).toContain('sbco:deviceIdBacnet "BAC001"');
     expect(rdf).toContain('sbco:objectTypeBacnet "Analog-Input"');
     expect(rdf).toContain('sbco:instanceNoBacnet "1001"');
@@ -445,6 +445,28 @@ describe('exportRdf', () => {
     ]) {
       expect(rdf).not.toContain(`${unknownPropertyBase}${field}`);
     }
+  });
+
+  it('serializes writable/interval/size as spec-valid xsd:boolean/xsd:integer literals (#27)', () => {
+    // Raw point-list CSVs carry casing/tokens like "TRUE"/"FALSE" for booleans -- valid Turtle
+    // syntax with a bare string literal, but not a valid xsd:boolean *value* (whose lexical
+    // space is only true/false/1/0), so SHACL's sh:datatype check on the current datamodels
+    // schema flagged every point as a violation until this normalized through isTruthyValue
+    // instead of echoing the raw CSV token.
+    const rows = [
+      {
+        id: 'PT-BOOL',
+        kind: 'PointExt',
+        name: 'Bool Point',
+        writable: 'TRUE',
+        interval: '300',
+        size: '42',
+      },
+    ];
+    const rdf = exportRdf(rows);
+    expect(rdf).toContain('sbco:writable "true"^^xsd:boolean');
+    expect(rdf).toContain('sbco:interval "300"^^xsd:integer');
+    expect(rdf).toContain('rec:size "42"^^xsd:integer');
   });
 
   it('falls back to a full bracketed IRI when the local name is not valid Turtle PN_LOCAL', () => {
@@ -652,6 +674,32 @@ describe('output plugins', () => {
     expect(rdfResult.issues).toEqual([]);
   });
 
+  it('produces zero writable/interval SHACL datatype violations against the current schema (#27)', async () => {
+    // End-to-end regression for #27: a real THX-scale point list (1,865 points) run through
+    // parseCsv -> RDF output plugin -> the current datamodels SHACL produced 3,730 blocking
+    // sh:datatype violations (writable + interval), because both serialized as plain string
+    // literals instead of xsd:boolean/xsd:integer. This CSV isn't vendored here, so this
+    // exercises the same pipeline against a smaller fixture with the same shapes of values
+    // (an uppercase CSV boolean token, a numeric interval) that triggered it.
+    const shapeText = readFileSync(
+      path.resolve(__dirname, '../../../schema/building_model.shacl.ttl'),
+      'utf-8',
+    );
+    const rows = parseCsv(
+      [
+        'gateway_id,device_id,device_name,point_type,point_id,point_name,writable,interval',
+        'GW001,DEV001,Sensor 1,Temperature,PT001,Room Temperature,TRUE,300',
+      ].join('\n'),
+      { schema },
+    );
+    const result = await runOutputPlugin('RDF', 'Turtle', { rows, schema, shacl: { shapeText } });
+
+    const datatypeIssues = (result.issues ?? []).filter((issue) =>
+      issue.sourceConstraintComponent?.includes('DatatypeConstraintComponent'),
+    );
+    expect(datatypeIssues).toEqual([]);
+  });
+
   it('supports SHACL Core datatype, pattern, cardinality and severity', async () => {
     const shape = `
       @prefix sh: <http://www.w3.org/ns/shacl#> .
@@ -692,15 +740,31 @@ describe('schema mapping', () => {
       ]),
     );
 
-    const custom = point?.customProperties ? JSON.parse(point.customProperties) : {};
-    expect(custom.gatewayId).toBe('GW001');
+    // gatewayId/localId/writable/interval/deviceIdBacnet/objectTypeBacnet/instanceNoBacnet are
+    // formal PointExt schema properties (datamodels #34/#36, synced into schema/*.json here for
+    // #27) -- buildSchemaCache (schema-mapping.ts) derives "known property" straight from the
+    // schema JSON's $defs.PointExt.properties, so these map to direct row fields rather than
+    // customProperties. They used to land in customProperties only because the vendored schema
+    // copy predated #34.
+    expect(point?.gatewayId).toBe('GW001');
+    expect(point?.localId).toBe('LOCAL001');
+    expect(point?.writable).toBe('false');
+    expect(point?.interval).toBe('60');
+    expect(point?.deviceIdBacnet).toBe('BAC001');
+    expect(point?.objectTypeBacnet).toBe('Analog-Input');
+    expect(point?.instanceNoBacnet).toBe('1001');
     expect(point?.deviceId).toBe('DEV001');
     expect(point?.deviceName).toBe('Temperature Sensor 01');
+
+    // deviceType/description are EquipmentExt-level in the schema, not PointExt -- for a Point
+    // row they still fall outside the known-property set and bucket under customProperties.
+    const custom = point?.customProperties ? JSON.parse(point.customProperties) : {};
     expect(custom.deviceType).toBe('Sensor');
-    expect(custom.writable).toBe('false');
-    expect(custom.interval).toBe('60');
     expect(custom.description).toBe('Room 101 temperature sensor');
     expect(custom.extra).toBe('alpha');
+    expect(custom.gatewayId).toBeUndefined();
+    expect(custom.writable).toBeUndefined();
+    expect(custom.interval).toBeUndefined();
     expect(custom.deviceId).toBeUndefined();
     expect(custom.deviceName).toBeUndefined();
     expect(custom.tags).toBeUndefined();
@@ -728,14 +792,24 @@ describe('schema mapping (pointlist)', () => {
       ]),
     );
 
-    const custom = point?.customProperties ? JSON.parse(point.customProperties) : {};
-    expect(custom.gatewayId).toBe('GW001');
+    // See the "schema mapping" block above for why these are now direct fields, not
+    // customProperties, since the #27 schema sync.
+    expect(point?.gatewayId).toBe('GW001');
+    expect(point?.localId).toBe('LOCAL001');
+    expect(point?.writable).toBe('false');
+    expect(point?.interval).toBe('60');
+    expect(point?.deviceIdBacnet).toBe('BAC001');
+    expect(point?.objectTypeBacnet).toBe('Analog-Input');
+    expect(point?.instanceNoBacnet).toBe('1001');
     expect(point?.deviceId).toBe('DEV001');
     expect(point?.deviceName).toBe('Temperature Sensor 01');
+
+    const custom = point?.customProperties ? JSON.parse(point.customProperties) : {};
     expect(custom.deviceType).toBe('Sensor');
-    expect(custom.writable).toBe('false');
-    expect(custom.interval).toBe('60');
     expect(custom.description).toBe('Room 101 temperature sensor');
+    expect(custom.gatewayId).toBeUndefined();
+    expect(custom.writable).toBeUndefined();
+    expect(custom.interval).toBeUndefined();
   });
 });
 

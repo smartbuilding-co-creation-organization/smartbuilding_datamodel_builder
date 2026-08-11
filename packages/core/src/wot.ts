@@ -1,6 +1,6 @@
 import { buildResourceGraph, ResourceNode, ResourceRelation } from './resource-graph';
 import { RowRecord } from './types';
-import { normalizeValue } from './row-utils';
+import { isTruthyValue, normalizeValue } from './row-utils';
 
 const TD_CONTEXT = 'https://www.w3.org/2022/wot/td/v1.1';
 const SBCO_NS = 'https://www.sbco.or.jp/ont/';
@@ -63,11 +63,6 @@ function thingIdFor(className: string, id: string): string {
   return `urn:sbco:${className}:${id}`;
 }
 
-function isTruthyWritable(value: string): boolean {
-  const v = value.toLowerCase();
-  return v === 'y' || v === 'yes' || v === 'true' || v === '1' || v === 'rw' || v === 'w';
-}
-
 function inferDataSchemaType(row?: RowRecord): string {
   const objType = normalizeValue(row?.objectTypeBacnet).toLowerCase();
   const ptype = normalizeValue(row?.pointType).toLowerCase();
@@ -91,7 +86,7 @@ function buildPropertyAffordance(
   opts: { asThingModel: boolean },
 ): WotPropertyAffordance {
   const row = point.row ?? {};
-  const readOnly = !isTruthyWritable(normalizeValue(row.writable));
+  const readOnly = !isTruthyValue(row.writable);
 
   const prop: WotPropertyAffordance = {
     '@type': `${SBCO_PREFIX}:${point.className}`,
