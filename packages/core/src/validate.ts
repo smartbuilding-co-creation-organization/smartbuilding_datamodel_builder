@@ -118,6 +118,16 @@ export function validate(rows: RowRecord[], options: ValidateOptions = {}): { is
   const idCounts = new Map<string, number>();
   const schemaCache = options.schema ? buildSchemaCache(options.schema) : undefined;
 
+  // Mirrors buildTree()'s (tree.ts) own mode switch: any row carrying an explicit parentId
+  // puts the WHOLE dataset into explicit id/kind/parentId graph mode, where -- unlike the
+  // Site/Building/Level/Room-column hierarchy-signal format -- there is no structural way to
+  // synthesize a row's class from other columns. A row in that mode whose kind can't be
+  // resolved (not an explicit KIND_TO_CLASS alias, not inferrable via inferRowKind's
+  // point/device signals) silently becomes generic sbco:Resource in RDF export, and every
+  // relation touching it silently degrades to a generic rec:hasPart instead of
+  // hasPoint/locatedIn/hasPart-between-spaces (smartbuilding_datamodel_builder#34).
+  const explicitGraphMode = normalizedRows.some((row) => normalizeValue(row.parentId));
+
   for (const row of normalizedRows) {
     const schemaRow = {
       ...row,
@@ -142,6 +152,16 @@ export function validate(rows: RowRecord[], options: ValidateOptions = {}): { is
     if (row.id) {
       ids.add(row.id);
       idCounts.set(row.id, (idCounts.get(row.id) ?? 0) + 1);
+    }
+
+    if (explicitGraphMode && !normalizeValue(row.kind) && !inferRowKind(row)) {
+      addIssue({
+        code: 'kind_unresolved',
+        message:
+          'kindを判定できません。空欄のままだとsbco:Resourceに分類され、上位・下位ノードとの関係もrec:hasPartへ縮退します。kind列に種別を指定してください。',
+        rowId: rowIdForIssue(row),
+        field: 'kind',
+      });
     }
 
     if (schemaCache) {
