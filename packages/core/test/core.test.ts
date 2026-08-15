@@ -240,6 +240,45 @@ describe('validate', () => {
     const { issues } = validate(rows);
     expect(issues.some((issue) => issue.field === 'kind')).toBe(true);
   });
+
+  it('flags a row with no resolvable kind in an explicit id/parentId graph (#34)', () => {
+    // An explicit id/kind/parentId graph CSV (e.g. re-imported from an external system) with a
+    // blank kind for a spatial node. Unlike the Site/Building/Level/Room-column hierarchy-signal
+    // format, there is no structural way to infer what a kind-less row in this mode should be:
+    // resource-graph.ts's resolveClassName() silently falls back to generic sbco:Resource, and
+    // every relation touching it silently degrades to rec:hasPart instead of hasPoint/locatedIn.
+    const rows = [
+      { id: 'bldg-1', name: 'Building One', kind: '', parentId: '' },
+      { id: 'room-1', name: 'Room 101', kind: '', parentId: 'bldg-1' },
+      { id: 'dev-1', name: 'Device One', kind: 'device', parentId: 'room-1' },
+      { id: 'pt-1', name: 'Point One', kind: 'point', parentId: 'dev-1' },
+    ];
+    const { issues } = validate(rows);
+
+    expect(
+      issues.some((issue) => issue.code === 'kind_unresolved' && issue.rowId === 'bldg-1'),
+    ).toBe(true);
+    expect(
+      issues.some((issue) => issue.code === 'kind_unresolved' && issue.rowId === 'room-1'),
+    ).toBe(true);
+    // Device/Point rows infer cleanly from their own kind, or via inferRowKind's
+    // deviceId/pointId-style signals — no false positive for them.
+    expect(
+      issues.some((issue) => issue.code === 'kind_unresolved' && issue.rowId === 'dev-1'),
+    ).toBe(false);
+    expect(issues.some((issue) => issue.code === 'kind_unresolved' && issue.rowId === 'pt-1')).toBe(
+      false,
+    );
+  });
+
+  it('does not flag kind-less rows in the hierarchy-signal (pointlist.md) format', () => {
+    // The standard point-list CSV format never has a kind column at all -- Building/Level/Room
+    // are synthesized from Site/Building/Floor columns (tree.ts's buildHierarchyTree). None of
+    // these rows carry an explicit parentId, so explicitGraphMode must stay false here.
+    const rows = parseCsv(loadCsv('valid.csv'), { schema });
+    const { issues } = validate(rows);
+    expect(issues.some((issue) => issue.code === 'kind_unresolved')).toBe(false);
+  });
 });
 
 describe('validation fixtures', () => {
@@ -592,6 +631,62 @@ describe('output plugins', () => {
     const hasPointCount = (result.content.match(/rec:hasPoint/g) ?? []).length;
     expect(hasPointCount).toBe(pointCount);
     expect(result.content).toContain('rec:hasPoint sbr:PT001');
+  });
+
+  it('guarantees the Building OS hierarchy path A shape for a point-list CSV (#34)', async () => {
+    // Building OS's REC-to-SBCO materializer requires exactly this spatial path:
+    // rec:Building -rec:hasPart-> rec:Level -rec:hasPart-> rec:Room
+    //   <-rec:locatedIn- sbco:EquipmentExt -rec:hasPoint-> sbco:PointExt
+    // A point-list CSV (Site/Building/Floor/installation_area columns, no explicit kind or
+    // parentId) is the documented, canonical input shape -- this locks in that it never
+    // degrades to the generic sbco:Resource + rec:hasPart fallback (#34).
+    const rows = parseCsv(loadCsv('valid.csv'), { schema });
+    const result = await runOutputPlugin('RDF', 'Turtle', { rows, schema });
+    const content = result.content;
+
+    expect(content).not.toContain('sbco:Resource');
+    expect(content).toMatch(/a rec:Building/);
+    expect(content).toMatch(/a rec:Level/);
+    expect(content).toMatch(/a rec:Room/);
+    expect(content).toMatch(/a sbco:EquipmentExt/);
+    expect(content).toMatch(/a sbco:PointExt/);
+
+    const hasPointCount = (content.match(/rec:hasPoint/g) ?? []).length;
+    const pointCount = rows.filter((row) => Boolean(row.pointType)).length;
+    expect(hasPointCount).toBe(pointCount);
+    // Every Equipment->Point edge must be hasPoint, never the generic hasPart fallback --
+    // count hasPart occurrences and confirm none of them sit on an EquipmentExt subject.
+    const equipmentBlocks = content
+      .split(/\n\n/)
+      .filter((block) => block.includes('a sbco:EquipmentExt'));
+    for (const block of equipmentBlocks) {
+      expect(block).not.toContain('rec:hasPart');
+      expect(block).toContain('rec:locatedIn');
+    }
+  });
+
+  it('preserves a resource-graph-resolved kind through the output-row round trip (#34)', async () => {
+    // An explicit id/kind/parentId graph CSV (not the hierarchy-signal format) where every row
+    // *does* carry a resolvable kind. Before #34's fix, buildOutputRows() restored parentId onto
+    // merged rows but not kind -- so exportRdf()'s own internal buildResourceGraph() call (a
+    // second pass over buildOutputRows' output, now carrying parentId on every row) had to
+    // re-derive each row's class via inferRowKind()'s point/device-only heuristic instead of
+    // trusting what buildResourceGraph already resolved once. This fixture's Room row has none of
+    // those signals, so it's a case that heuristic genuinely cannot rescue.
+    const rows = [
+      { id: 'bldg-1', name: 'Building One', kind: 'building', parentId: '' },
+      { id: 'room-1', name: 'Room 101', kind: 'room', parentId: 'bldg-1' },
+      { id: 'dev-1', name: 'Device One', kind: 'device', parentId: 'room-1' },
+      { id: 'pt-1', name: 'Point One', kind: 'point', parentId: 'dev-1' },
+    ];
+    const result = await runOutputPlugin('RDF', 'Turtle', { rows });
+    const content = result.content;
+
+    expect(content).not.toContain('sbco:Resource');
+    expect(content).toContain('sbr:room-1 a rec:Room');
+    expect(content).toContain('rec:locatedIn sbr:room-1');
+    expect(content).toContain('rec:hasPoint sbr:pt-1');
+    expect(content).not.toMatch(/sbr:dev-1[^.]*rec:hasPart/s);
   });
 
   it('merges edited model rows into output and omits blank values', async () => {

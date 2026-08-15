@@ -42,15 +42,21 @@ export function buildOutputRows(rows: RowRecord[]): RowRecord[] {
     const baseRow = baseById.get(resource.id);
     if (baseRow) {
       const mergedRow = mergeRowValues(baseRow, resource.row ?? {});
-      // resource.parentId is the graph-computed parent (explicit column or synthesized
-      // from Site/Building/Level/Room/Device columns) — it lives on the ResourceNode, not
-      // in row/resource.row, and parentId is filtered out of mergeRowValues as an internal
-      // key. Without restoring it here, every row that came from the original CSV (i.e. every
-      // row with a baseRow) loses its parent link in the output, so downstream RDF export has
-      // no hierarchy edge to emit for it (only synthesized rows, which never have a baseRow,
-      // kept theirs via resourceRowFromResource).
+      // resource.parentId and resource.className are the graph-computed parent/type --
+      // synthesized from Site/Building/Level/Room/Device columns, or resolved from an explicit
+      // kind column -- but they live on the ResourceNode, not in row/resource.row, and both
+      // `parentId`/`kind` are filtered out of mergeRowValues as internal keys. Every output row
+      // downstream (RDF/YAML export, buildResourceModelMap) re-derives its own resource graph
+      // from these rows via buildResourceGraph(rows) rather than reusing this pass's resources,
+      // so without restoring both here, that second pass has to re-guess `kind` per row
+      // (resource-graph.ts's `node.kind ?? inferRowKind(row)` -- a heuristic that only
+      // recognizes point/device signals, not space/equipment.ext ones) instead of trusting what
+      // was already correctly resolved once. See smartbuilding_datamodel_builder#34.
       if (resource.parentId) {
         mergedRow.parentId = resource.parentId;
+      }
+      if (!normalizeValue(mergedRow.kind)) {
+        mergedRow.kind = resource.className;
       }
       outputRows.push(mergedRow);
       continue;
