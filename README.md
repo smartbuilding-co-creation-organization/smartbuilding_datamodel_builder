@@ -53,6 +53,17 @@ const result = await runOutputPlugin('RDF', 'Turtle', {
 
 同期戻り値を前提にしていた内部利用コードは、`await` または Promise chain へ移行してください。
 
+## CLI での利用
+
+UI を使わずに CSV を任意フォーマットへ変換したい場合は、`apps/cli`（`@repo/cli`）のコマンドラインツールを使えます。ロジックは `packages/core` をそのまま利用しており、変換結果は Web UI の出力と同一です。
+
+```bash
+pnpm cli -- --input sample/debug-sample.csv --format RDF --serializer Turtle --out out.ttl
+pnpm cli -- --list-formats
+```
+
+詳細なオプションは [apps/cli/README.md](apps/cli/README.md) を参照してください。
+
 ## ローカル開発
 
 Node.js 22 と pnpm 9.15.9 を使用します。
@@ -92,7 +103,7 @@ gitleaks detect --source . --redact --log-opts=--all
 
 最新版および一つ前の安定版 Chrome / Edge / Firefox / Safari を対象とします。自動 E2E は Chromium で実行します。
 
-- npm package としての公開、サーバー保存、共同編集には対応しません。
+- npm package としての公開、サーバー保存、共同編集には対応しません（`apps/cli` はこのモノレポ内でのローカル実行専用で、単体パッケージとしての公開は行いません）。
 - 20,000 行を超えるデータ、Excel ファイル、ドラッグ&ドロップによる階層変更には対応しません。
 - 未知列の意味検証は行いません。RDF では安全な custom predicate として保持します。
 - 出力先システム固有の制約は、各システムへの import 前にも確認してください。
@@ -101,6 +112,7 @@ gitleaks detect --source . --redact --log-opts=--all
 
 ```text
 apps/web/          Vite + React + MUI + Zustand UI / Playwright E2E
+apps/cli/          CSV → 任意フォーマット出力の CLI（@repo/core をそのまま利用）
 packages/core/     CSV、Tree、検証、Resource model、serializer、output plugin
 packages/fixtures/ 再利用可能な匿名テスト CSV
 schema/            JSON Schema、OWL、SHACL、mapping 文書
