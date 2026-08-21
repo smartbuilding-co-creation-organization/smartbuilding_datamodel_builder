@@ -248,6 +248,30 @@
 - 必須項目欠損、階層親欠損、`parent_id` 参照不整合、未知列保持、意味検証候補をそれぞれ確認できる CSV が存在する。
 - 追加 fixture の代表ケースが unit test で読み込み・検証される。
 
+## 2.10 CLI: CSV → 任意フォーマット出力（Done）
+
+### 目的
+- `apps/web` の UI を使わずに、CSV ファイルを受け取って `packages/core` の出力プラグイン（CSV/JSON(Tree)/JSON-LD/RDF-Turtle/YAML/DTDL×2/WoT×2）のいずれかの形式に変換できるコマンドラインツールを提供する。
+- UI 由来の編集・調整機能（Inspector 等）は対象外とし、「CSV 読み込み→検証→指定フォーマットで出力」の最小経路のみを実装する。
+
+### 設計方針
+- 新規ワークスペース `apps/cli`（`@repo/cli`）を追加し、`@repo/core` を `workspace:*` 依存として利用する。パース/検証/変換ロジックは新規実装せず、`parseCsv` / `validate` / `getOutputPlugins` / `runOutputPlugin` をそのまま呼び出す。
+- 引数解析は `node:util` の `parseArgs`（Node 標準）のみを用い、commander/yargs 等の新規依存は追加しない。
+- 実行は `tsx` によるオンザフライ実行とし、ビルド成果物（`bin` 配布）は用意しない。ルートに `pnpm cli -- ...` の委譲スクリプトを追加する。
+- 出力ブロック判定は `apps/web/src/App.tsx` の `isBlockingIssue`（`severity === undefined || 'violation'`）と同じ基準を `runOutputPlugin` の戻り値 `issues` に適用する。既定ではブロックし、`--allow-issues` 指定時のみ警告扱いで書き込みを継続する。
+
+### 対象パス
+- `apps/cli/`（新規）
+- ルート `package.json`（`cli` スクリプト追加、`test` スクリプトを `pnpm -r --if-present test` に変更）
+- `README.md`（CLI 利用セクション追加）
+
+### 受入基準
+- `pnpm cli -- --input <csv> --format <format> [--serializer <name>] [--out <path>]` で CSV から指定フォーマットのファイル/標準出力が得られる。
+- `--list-formats` で `getOutputPlugins()` 相当の一覧が確認できる。
+- serializer が一意に定まらない format（DTDL/WoT）で `--serializer` 未指定時にエラーメッセージと選択肢が表示される。
+- RDF/YAML 出力で SHACL violation がある場合、既定では書き込みがブロックされ、`--allow-issues` で書き込める。
+- `apps/cli/test/cli.test.ts`（vitest）で上記の代表ケースが検証される。
+
 ## 3. マイルストーン（M0〜M3）
 
 ### M0: リポジトリ健全性

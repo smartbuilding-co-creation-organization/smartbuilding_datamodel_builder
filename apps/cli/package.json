@@ -1,0 +1,22 @@
+{
+  "name": "@repo/cli",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "license": "Apache-2.0",
+  "scripts": {
+    "start": "tsx src/index.ts",
+    "test": "vitest run",
+    "lint": "eslint \"src/**/*.ts\" \"test/**/*.ts\"",
+    "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
+    "format:check": "prettier --check \"src/**/*.ts\" \"test/**/*.ts\"",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@repo/core": "workspace:*"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.2",
+    "vitest": "^3.2.4"
+  }
+}

@@ -8,10 +8,11 @@
     "dev": "pnpm -C apps/web dev",
     "build": "pnpm -C apps/web build",
     "preview": "pnpm -C apps/web preview",
-    "test": "pnpm -C packages/core test",
+    "test": "pnpm -r --if-present test",
     "test:e2e": "pnpm -C apps/web test:e2e",
     "playwright:install": "pnpm -C apps/web exec playwright install chromium",
     "playwright:install-deps": "pnpm -C apps/web exec playwright install --with-deps chromium",
+    "cli": "tsx apps/cli/src/index.ts",
     "lint": "pnpm -r lint",
     "format": "pnpm -r format",
     "format:check": "pnpm -r format:check",
@@ -30,6 +31,7 @@
     "globals": "^15.0.0",
     "postcss": "^8.5.23",
     "prettier": "^3.2.5",
+    "tsx": "^4.19.2",
     "typescript": "^5.4.5"
   },
   "engines": {
