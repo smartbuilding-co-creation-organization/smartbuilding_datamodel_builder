@@ -94,6 +94,12 @@ export function HelpModal({ open, view, onClose }: Props) {
               データには実際の階・部屋・ゾーン名を指定してください。
             </p>
             <p>
+              同じ <code>deviceId</code> の行で <code>site</code> / <code>building</code> /{' '}
+              <code>floor</code> / <code>installationArea</code> の解決結果が食い違う場合、Equipment
+              は複数のノードに分かれ、元データに無い id（例: <code>DEV1__1</code>）が付きます。
+              この場合は <code>equipment_split</code> の warning を表示します。
+            </p>
+            <p>
               <code>site</code> / <code>building</code> が未設定の場合、および Point があって
               <code>deviceId</code> / <code>deviceName</code> がいずれも未設定の場合は、接続先が
               無いため行ごと出力から外れます。その行は RDF / YAML / DTDL / WoT / Tree JSON の

@@ -358,6 +358,7 @@
 - 未設定 Level のプレースホルダ自動生成。
 - ビルOS 側 Ingress の受理条件そのものの変更。
 - `schema/` 配下の vendored shapes の編集。
+- `validate()` の `hierarchy_missing` が返す `field`（`site` / `building` / `device`）の列名化。`device` は実際の列名（`deviceId`）ではないため UI が空のプロパティ行を合成するが、本タスクで新設した Issue ではなく既存の挙動のため、別タスクで扱う。
 
 ## 2.13 単位表記の語彙合意（Issue #39）
 
