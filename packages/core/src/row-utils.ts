@@ -134,6 +134,29 @@ export function lacksLevelSignal(row: RowRecord): boolean {
   return !signals.level;
 }
 
+// Which column an Issue about this hierarchy signal should point at. issue.field addresses a
+// grid column -- apps/web highlights the cell by it and synthesizes a property row when the row
+// has no such key -- so it has to be the column this CSV actually carries ("floor" in the
+// pointlist.md format, "level" in a CSV that spells it that way), not the logical signal name.
+const HIERARCHY_FIELD_FALLBACKS = {
+  site: 'site',
+  building: 'building',
+  level: 'floor',
+  room: 'installationArea',
+  device: 'deviceId',
+  point: 'pointId',
+} as const;
+
+export function resolveHierarchyField(
+  row: RowRecord,
+  group: keyof typeof HIERARCHY_SIGNAL_GROUPS,
+): string {
+  for (const key of HIERARCHY_SIGNAL_GROUPS[group]) {
+    if (key in row) return key;
+  }
+  return HIERARCHY_FIELD_FALLBACKS[group];
+}
+
 export function hasHierarchySignals(rows: RowRecord[]): boolean {
   return rows.some((row) => {
     const signals = resolveHierarchySignals(row);

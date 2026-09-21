@@ -57,6 +57,10 @@ Equipment が Building 直下になる行は `buildingos_level_missing` とし�
 で報告します。RDF としては妥当なためダウンロードはブロックしませんが、ビルOS はこれらの
 階層を受理しません。
 
+同じ `device_id` の行で site / building / floor / installation_area の解決結果が食い違う場合、
+Equipment は複数のノードに分かれ、元データに無い id（例: `DEV1__1`）が付きます。この場合は
+`equipment_split`（`warning`）として報告します。
+
 出力 API は非同期です。
 
 ```ts

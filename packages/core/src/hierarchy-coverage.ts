@@ -4,6 +4,8 @@ import {
   lacksLevelSignal,
   lacksRoomSignal,
   normalizeValue,
+  resolveHierarchyField,
+  resolveHierarchySignals,
   resolveRowId,
 } from './row-utils';
 import { resolveTreeMode } from './tree';
@@ -19,6 +21,7 @@ export const MAX_ROW_ISSUES = 200;
 export const ROW_DROPPED = 'row_dropped';
 export const BUILDINGOS_ROOM_MISSING = 'buildingos_room_missing';
 export const BUILDINGOS_LEVEL_MISSING = 'buildingos_level_missing';
+export const EQUIPMENT_SPLIT = 'equipment_split';
 
 const DROP_REASON_LABELS: Record<HierarchyDropReason | 'id', string> = {
   site: 'site 未設定',
@@ -132,6 +135,7 @@ export function checkHierarchyCoverage(rows: RowRecord[]): Issue[] {
     for (const check of BUILDINGOS_SHAPE_CHECKS) {
       issues.push(...checkBuildingOsShape(rows, check));
     }
+    issues.push(...checkEquipmentSplit(rows));
   }
 
   return issues;
@@ -147,7 +151,7 @@ export function checkHierarchyCoverage(rows: RowRecord[]): Issue[] {
  */
 type BuildingOsShapeCheck = {
   code: string;
-  field: string;
+  field: 'level' | 'room';
   applies: (row: RowRecord) => boolean;
   summary: (count: string) => string;
   perRow: string;
@@ -157,6 +161,7 @@ const BUILDINGOS_SHAPE_CHECKS: BuildingOsShapeCheck[] = [
   {
     code: BUILDINGOS_LEVEL_MISSING,
     field: 'level',
+    // resolveHierarchyField() turns this into the column this CSV carries (floor / level / ...).
     applies: lacksLevelSignal,
     summary: (count) =>
       `${count} 行は floor が未設定のため Level が生成されず、Room または Equipment が Building に直接ぶら下がります。` +
@@ -166,13 +171,13 @@ const BUILDINGOS_SHAPE_CHECKS: BuildingOsShapeCheck[] = [
   },
   {
     code: BUILDINGOS_ROOM_MISSING,
-    field: 'installationArea',
+    field: 'room',
     applies: lacksRoomSignal,
     summary: (count) =>
       `${count} 行は installation_area が未設定のため Room が生成されず、Equipment が直上の空間` +
       `（Level、無ければ Building）に直接ぶら下がります。ビルOS はこの階層を受理しません。`,
     perRow:
-      'installation_area が未設定のため Room が生成されません（Site → Building → Level → Equipment → Point）。',
+      'installation_area が未設定のため Room が生成されず、Equipment が直上の空間（Level、無ければ Building）に直接ぶら下がります。',
   },
 ];
 
@@ -202,7 +207,83 @@ function checkBuildingOsShape(rows: RowRecord[], check: BuildingOsShapeCheck): I
       severity: 'warning',
       message: check.perRow,
       rowId: rowIdForIssue(row),
-      field: check.field,
+      field: resolveHierarchyField(row, check.field),
+    });
+  }
+
+  return issues;
+}
+
+/**
+ * Rows of one device that resolve to different places in the graph.
+ *
+ * buildHierarchyTree() keys an Equipment by its parent as well as its device id, so rows of the
+ * same device that disagree about site/building/floor/installation_area become two nodes --
+ * `DEV1` and `DEV1__1`, an id no input row carries. Before #40 a row with no floor was dropped
+ * and blocked the output, so this could only happen through a room disagreement; now that an
+ * unset floor keeps the row, it must not be the case nothing reports.
+ */
+function describeSpace(row: RowRecord): string {
+  const signals = resolveHierarchySignals(row);
+  return [
+    signals.site,
+    signals.building,
+    signals.level || '(階なし)',
+    signals.room || '(部屋なし)',
+  ].join(' / ');
+}
+
+function checkEquipmentSplit(rows: RowRecord[]): Issue[] {
+  const firstSpaceByDevice = new Map<string, string>();
+  const conflictingRows: { row: RowRecord; device: string; space: string; first: string }[] = [];
+
+  for (const row of rows) {
+    if (getHierarchyDropReasons(row).length > 0) continue;
+    const signals = resolveHierarchySignals(row);
+    const device = signals.deviceId || signals.deviceName;
+    if (!device) continue;
+
+    const space = describeSpace(row);
+    const first = firstSpaceByDevice.get(device);
+    if (first === undefined) {
+      firstSpaceByDevice.set(device, space);
+      continue;
+    }
+    if (first !== space) {
+      conflictingRows.push({ row, device, space, first });
+    }
+  }
+
+  if (conflictingRows.length === 0) return [];
+
+  const devices = Array.from(new Set(conflictingRows.map((entry) => entry.device)));
+  const named = devices.slice(0, 5).join(', ');
+  const shown = Math.min(conflictingRows.length, MAX_ROW_ISSUES);
+  const withheld = conflictingRows.length - shown;
+
+  const issues: Issue[] = [
+    {
+      code: EQUIPMENT_SPLIT,
+      severity: 'warning',
+      message:
+        `${devices.length.toLocaleString('ja-JP')} 件の device で行ごとに空間の解決結果が異なるため、` +
+        `Equipment が複数のノードに分かれます（${named}${devices.length > 5 ? ' ほか' : ''}）。` +
+        `分裂したノードには元データに存在しない id（例: DEV1__1）が付きます。` +
+        (withheld > 0
+          ? `行単位のIssueは先頭 ${shown.toLocaleString('ja-JP')} 件のみ表示しています（残り ${withheld.toLocaleString('ja-JP')} 件は省略）。`
+          : ''),
+    },
+  ];
+
+  for (const entry of conflictingRows.slice(0, shown)) {
+    issues.push({
+      code: EQUIPMENT_SPLIT,
+      severity: 'warning',
+      message:
+        `device "${entry.device}" は他の行では ${entry.first} に解決されますが、この行は ${entry.space} です。` +
+        `別の Equipment ノードとして出力されます。`,
+      rowId: rowIdForIssue(entry.row),
+      field: resolveHierarchyField(entry.row, 'device'),
     });
   }
 

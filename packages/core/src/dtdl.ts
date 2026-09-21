@@ -78,7 +78,10 @@ const CLASS_EXTRA_PROPS: Record<string, DtdlProperty[]> = {
 
 const CLASS_RELATIONS: Record<string, DtdlRelationship[]> = {
   Site: [{ '@type': 'Relationship', name: 'hasPart', target: dtmiFor('Building') }],
-  Building: [{ '@type': 'Relationship', name: 'hasPart', target: dtmiFor('Level') }],
+  // Untargeted: a Building holds Levels, but a row with no floor puts its Room (or, with no
+  // installation_area either, its Equipment) directly under the Building (#40), and a target
+  // of Level would contradict the relationships exported beside this interface.
+  Building: [{ '@type': 'Relationship', name: 'hasPart' }],
   Level: [{ '@type': 'Relationship', name: 'hasPart', target: dtmiFor('Room') }],
   Room: [
     { '@type': 'Relationship', name: 'hasPart' },

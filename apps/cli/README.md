@@ -47,6 +47,8 @@ Rows read: 34895 -> rows in output: 31364 (dropped: 3531); resources emitted: 72
 
 `installation_area` が未設定で Equipment が直上の空間の直下になる行は `buildingos_room_missing`（`warning`）、`floor` が未設定で Room または Equipment が Building 直下になる行は `buildingos_level_missing`（`warning`）として報告する。いずれも RDF としては妥当なため書き込みはブロックしないが、ビルOS はこれらの階層を受理しない。
 
+同じ `device_id` の行で空間の解決結果が食い違い、Equipment が複数ノードに分裂する場合は `equipment_split`（`warning`）として報告する。
+
 行単位の Issue は先頭 200 件で打ち切るが、サマリの Issue には常に正確な総数と省略件数が入る。
 
 ### 例
