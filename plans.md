@@ -310,7 +310,7 @@
 - `floor` が `-`/空欄のときの挙動が `pointlist.md` と UI ヘルプに日英併記で記載される。
 - `packages/core/test/core.test.ts` と `apps/cli/test/cli.test.ts` の unit、`apps/web/e2e/app.spec.ts` の E2E で上記の代表ケースが検証される。
 
-## 2.12 floor 未設定行の出力継続（Issue #40）
+## 2.12 floor 未設定行の出力継続（Issue #40、Done）
 
 ### 目的
 - `floor`（level）が未設定というだけで行が RDF/YAML/DTDL/WoT/Tree JSON から丸ごと消える現状を改め、Issue #34 で確認済みの設計意図（`sbco:floor` は階層成立の必須条件ではない）と実装を一致させる。
@@ -359,6 +359,11 @@
 - ビルOS 側 Ingress の受理条件そのものの変更。
 - `schema/` 配下の vendored shapes の編集。
 - `validate()` の `hierarchy_missing` が返す `field`（`site` / `building` / `device`）の列名化。`device` は実際の列名（`deviceId`）ではないため UI が空のプロパティ行を合成するが、本タスクで新設した Issue ではなく既存の挙動のため、別タスクで扱う。
+
+### 結果（#42、2026-09-21 マージ）
+- 受入基準はすべて満たした。3,271 行（うち floor 未設定 1,803 行）の検証で、出力 PointExt が 1,468 → 3,271 になり、SHACL violation は 0 件。
+- 副作用の対応として `equipment_split`（warning）を追加し、`row_dropped` を含む全 Issue の `field` を実列名に解決するようにした。DTDL の `Building` interface からは `hasPart` の `Level` 固定 target を外した。
+- 残課題（別タスク）: 上記非目標の `validate()` の `field` 列名化。`MAX_ROW_ISSUES` はチェック単位のため、複数診断が同時に出る入力では行単位 Issue が最大 800 件になる。
 
 ## 2.13 単位表記の語彙合意（Issue #39）
 
@@ -485,7 +490,7 @@ Open Issue 13 件を現行 `main`（`aa50beb`）のコードに突き合わせ�
 
 | Issue | 判定 | 根拠 |
 | --- | --- | --- |
-| #40 tree.ts が floor 欠落行を破棄 | 要対応 | `row-utils.ts` の `getHierarchyDropReasons()` が `level` 未設定をドロップ理由に含め、`tree.ts` の `buildHierarchyTree()` が該当行を `continue` する。2.11 で `row_dropped` 報告は入ったが提案 A は未対応 → 2.12 として起票 |
+| #40 tree.ts が floor 欠落行を破棄 | 対応済（#42） | `row-utils.ts` の `getHierarchyDropReasons()` が `level` 未設定をドロップ理由に含め、`tree.ts` の `buildHierarchyTree()` が該当行を `continue` していた。2.12 として起票し、#42 で level を任意化。3,271 行（うち floor 未設定 1,803 行）の検証で出力 PointExt が 1,468 → 3,271 になることを確認 |
 | #39 unit の許容値不足 | 要合意 | 列挙は vendored な `schema/building_model.shacl.ttl`。`sync-schema.yml` が上流生成物で上書きするため、本リポジトリ単独では決着しない → 2.13 として起票 |
 | #5 ライセンスと第三者帰属 | 対応済 | `LICENSE` / `NOTICE` / `THIRD_PARTY_NOTICES.md` と README のライセンス節 |
 | #6 SHACL 準拠範囲とグラフ検証 | 対応済 | `packages/core/src/shacl.ts` が `rdf-validate-shacl` で生成 RDF を検証し、focus node / result path / severity / constraint component を `Issue` に保持する |
