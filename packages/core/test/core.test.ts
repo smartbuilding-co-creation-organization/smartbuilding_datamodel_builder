@@ -1754,6 +1754,44 @@ describe('consequences of an optional Level (#40)', () => {
     expect(split.filter((issue) => issue.rowId).map((issue) => issue.rowId)).toEqual(['PT002']);
   });
 
+  it('does not flag equipment identified only by name, which the tree scopes by space', () => {
+    // With no device_id the tree keys the Equipment by its parent
+    // (equipment:room:.../AHU), so one "AHU" per room is two properly distinct nodes with no
+    // __N suffix -- nothing split, nothing to warn about. Only an explicit device_id collides
+    // and picks up the synthetic suffix.
+    const rows = parseCsv(
+      csvOf(
+        'GW1,,AHU,Equipment,S1,B1,1F,R1,Temperature,Measurement,PT001,T1,false,L1',
+        'GW1,,AHU,Equipment,S1,B1,1F,R2,Temperature,Measurement,PT002,T2,false,L2',
+      ),
+      { schema },
+    );
+
+    expect(checkHierarchyCoverage(rows).filter((issue) => issue.code === EQUIPMENT_SPLIT)).toEqual(
+      [],
+    );
+  });
+
+  it('points row_dropped at the column the row actually uses, like the warnings do', () => {
+    // Same rule as the Building OS warnings: issue.field addresses a grid column, and
+    // "device" is not one (the columns are device_id / device_name).
+    const rows = parseCsv(
+      csvOf(
+        'GW1,,,Sensor,S1,B1,1F,Room101,Temperature,Measurement,PT001,Temp,false,L1',
+        'GW1,DEV2,Sensor 2,Sensor,,B1,1F,Room102,Temperature,Measurement,PT002,Temp,false,L2',
+      ),
+      { schema },
+    );
+
+    const dropped = checkHierarchyCoverage(rows).filter(
+      (issue) => issue.code === ROW_DROPPED && issue.rowId,
+    );
+    expect(dropped.map((issue) => [issue.rowId, issue.field])).toEqual([
+      ['PT001', 'deviceId'],
+      ['PT002', 'site'],
+    ]);
+  });
+
   it('does not flag a device whose rows agree, nor the shipped fixtures', () => {
     const rows = parseCsv(
       csvOf(

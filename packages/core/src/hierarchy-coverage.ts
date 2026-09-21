@@ -33,6 +33,7 @@ const DROP_REASON_LABELS: Record<HierarchyDropReason | 'id', string> = {
 export type UnrepresentedRow = {
   rowId?: string;
   reasons: (HierarchyDropReason | 'id')[];
+  row: RowRecord;
 };
 
 function rowIdForIssue(row: RowRecord): string | undefined {
@@ -58,7 +59,7 @@ export function listUnrepresentedRows(rows: RowRecord[]): UnrepresentedRow[] {
     // never becomes a node, so it cannot reach any graph-derived output.
     for (const row of rows) {
       if (!resolveRowId(row)) {
-        dropped.push({ rowId: rowIdForIssue(row), reasons: ['id'] });
+        dropped.push({ rowId: rowIdForIssue(row), reasons: ['id'], row });
       }
     }
     return dropped;
@@ -67,7 +68,7 @@ export function listUnrepresentedRows(rows: RowRecord[]): UnrepresentedRow[] {
   for (const row of rows) {
     const reasons = getHierarchyDropReasons(row);
     if (reasons.length > 0) {
-      dropped.push({ rowId: rowIdForIssue(row), reasons });
+      dropped.push({ rowId: rowIdForIssue(row), reasons, row });
     }
   }
   return dropped;
@@ -126,7 +127,10 @@ export function checkHierarchyCoverage(rows: RowRecord[]): Issue[] {
         severity: 'violation',
         message: `階層を解決できないため出力に含まれません（${summarizeReasons([row])}）。`,
         rowId: row.rowId,
-        field: row.reasons[0] === 'id' ? 'id' : row.reasons[0],
+        // Same rule as the Building OS warnings below: issue.field addresses a grid column, so
+        // the drop reason has to be resolved to one ("device" is not a column; device_id is).
+        // 'id' has no signal group -- it is the literal id column of an explicit-graph CSV.
+        field: row.reasons[0] === 'id' ? 'id' : resolveHierarchyField(row.row, row.reasons[0]),
       });
     }
   }
@@ -164,10 +168,10 @@ const BUILDINGOS_SHAPE_CHECKS: BuildingOsShapeCheck[] = [
     // resolveHierarchyField() turns this into the column this CSV carries (floor / level / ...).
     applies: lacksLevelSignal,
     summary: (count) =>
-      `${count} 行は floor が未設定のため Level が生成されず、Room または Equipment が Building に直接ぶら下がります。` +
+      `${count} 行は floor（level）が未設定のため Level が生成されず、Room または Equipment が Building に直接ぶら下がります。` +
       `ビルOS はこの階層を受理しません。`,
     perRow:
-      'floor が未設定のため Level が生成されません（Site → Building → Room → Equipment → Point）。',
+      'floor（level）が未設定のため Level が生成されません（Site → Building → Room → Equipment → Point）。',
   },
   {
     code: BUILDINGOS_ROOM_MISSING,
@@ -240,7 +244,10 @@ function checkEquipmentSplit(rows: RowRecord[]): Issue[] {
   for (const row of rows) {
     if (getHierarchyDropReasons(row).length > 0) continue;
     const signals = resolveHierarchySignals(row);
-    const device = signals.deviceId || signals.deviceName;
+    // Only an explicit device_id splits: with a name alone, tree.ts keys the Equipment by its
+    // parent (equipment:room:.../AHU), so one "AHU" per room is two deliberately distinct
+    // nodes, not one device torn in half.
+    const device = signals.deviceId;
     if (!device) continue;
 
     const space = describeSpace(row);
@@ -266,7 +273,7 @@ function checkEquipmentSplit(rows: RowRecord[]): Issue[] {
       code: EQUIPMENT_SPLIT,
       severity: 'warning',
       message:
-        `${devices.length.toLocaleString('ja-JP')} 件の device で行ごとに空間の解決結果が異なるため、` +
+        `${devices.length.toLocaleString('ja-JP')} 件の device_id で行ごとに空間の解決結果が異なるため、` +
         `Equipment が複数のノードに分かれます（${named}${devices.length > 5 ? ' ほか' : ''}）。` +
         `分裂したノードには元データに存在しない id（例: DEV1__1）が付きます。` +
         (withheld > 0
@@ -280,7 +287,7 @@ function checkEquipmentSplit(rows: RowRecord[]): Issue[] {
       code: EQUIPMENT_SPLIT,
       severity: 'warning',
       message:
-        `device "${entry.device}" は他の行では ${entry.first} に解決されますが、この行は ${entry.space} です。` +
+        `device_id "${entry.device}" は他の行では ${entry.first} に解決されますが、この行は ${entry.space} です。` +
         `別の Equipment ノードとして出力されます。`,
       rowId: rowIdForIssue(entry.row),
       field: resolveHierarchyField(entry.row, 'device'),
