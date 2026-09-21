@@ -488,7 +488,7 @@ Open Issue 13 件を現行 `main`（`aa50beb`）のコードに突き合わせ�
 | #11 本番ビルドとデプロイ経路 | 対応済 | `vite.config.ts` の base 切り替えと `pages.yml`（CI 成功後のみ deploy）。`main@aa50beb` の Deploy GitHub Pages が success |
 | #12 README の更新 | 対応済 | README が現行 UI・入力上限・SHACL・`row_dropped`・CLI・制約を記載する |
 | #13 CI 品質ゲート | 対応済 | `ci.yml` が frozen install / lint / format:check / typecheck / test / build / audit / gitleaks / E2E を実行し、Actions を SHA 固定する |
-| #14 依存更新と脆弱性監査 | 対応済 | `dependabot.yml`（npm / github-actions 週次）、CI の `pnpm audit --audit-level high`、`package.json` の overrides |
+| #14 依存更新と脆弱性監査 | 対応済（運用継続） | `dependabot.yml`（npm / github-actions 週次）、CI の `pnpm audit --audit-level high`、`package.json` の overrides。2026-09-21 時点で browserslist / fast-uri / js-yaml に新規 high advisory が出て CI が赤になったため overrides を引き上げた。advisory DB は日々更新されるため、この項目は「仕組みが動いている」状態を維持する運用タスクとして継続する |
 | #15 リポジトリ衛生 | 対応済 | `.gitignore` の Playwright 成果物除外（追跡 0 件）、`SECURITY.md` / `CONTRIBUTING.md` / `CODE_OF_CONDUCT.md`、`docs/public-release-audit.md` の gitleaks 全履歴結果 |
 | #16 公開準備トラッキング | 子 Issue 待ち | 子 Issue #5〜#15 は上記のとおり対応済。残るのは deploy 済み Pages の smoke test と各 Issue の close 判断のみ |
 
