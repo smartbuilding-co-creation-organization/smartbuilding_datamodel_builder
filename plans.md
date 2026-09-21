@@ -310,6 +310,74 @@
 - `floor` が `-`/空欄のときの挙動が `pointlist.md` と UI ヘルプに日英併記で記載される。
 - `packages/core/test/core.test.ts` と `apps/cli/test/cli.test.ts` の unit、`apps/web/e2e/app.spec.ts` の E2E で上記の代表ケースが検証される。
 
+## 2.12 floor 未設定行の出力継続（Issue #40）
+
+### 目的
+- `floor`（level）が未設定というだけで行が RDF/YAML/DTDL/WoT/Tree JSON から丸ごと消える現状を改め、Issue #34 で確認済みの設計意図（`sbco:floor` は階層成立の必須条件ではない）と実装を一致させる。
+- 実データ（THX 棟 3,271 行のうち 1,803 行が floor 未設定）で、floor を持たないカテゴリ（CO2 センサー、WiFi 人数カウント等）がカテゴリごと欠落する状態を解消する。
+
+### 現状確認
+- `packages/core/src/row-utils.ts` の `getHierarchyDropReasons()` は `site` / `building` と同格で `level` 未設定をドロップ理由に含める。
+- `packages/core/src/tree.ts` の `buildHierarchyTree()` は `getHierarchyDropReasons(row).length > 0` の行を `continue` でスキップするため、該当行は tree に載らず、tree 由来の全形式から消える。
+- 2.11（Issue #38）で `hierarchy-coverage.ts` を追加済みのため、消えた行は `row_dropped`（violation）として報告され、既定では出力がブロックされる。したがって「無言のデータ欠落」は解消済みだが、Issue #40 の提案 A（level を必須にしない）は未対応であり、floor が無いデータは `--allow-issues` を付けても出力に含められない。
+- `schema/building_model.shacl.ttl` の `rec:BuildingShape` は `rec:hasPart` の対象として `rec:Room` を許容する（`sh:or` に `rec:Room` を含む）。Building 直下に Room を置く形は vendored SHACL 上は妥当である。
+- `installation_area` 未設定時は既に `buildingos_room_missing`（warning）で「出力はするがビルOS は受理しない」形として扱っている。level についても同じ扱いに揃えられる。
+
+### 設計方針
+- `getHierarchyDropReasons()` のドロップ条件を `site` / `building`（および point 行の device 欠落）に限定し、`level` を外す。
+- `buildHierarchyTree()` は level が未設定の場合に Level ノードを生成せず、Room（無ければ Equipment）を Building 直下に接続する。`installation_area` 未設定時の既存の振る舞い（Room を挟まない）と同じ考え方に揃える。
+- 未設定の Level をプレースホルダとして自動生成しない（2.3 の方針を維持する）。
+- 出力には含めるがビルOS が受理しない形であることを示すため、`hierarchy-coverage.ts` に `buildingos_level_missing`（warning）を追加する。`buildingos_room_missing` と同じくサマリ Issue と行単位 Issue（`MAX_ROW_ISSUES` で打ち切り）を返し、出力はブロックしない。
+- `validate()` の `hierarchy_missing` は、`listMissingHierarchyParents()` から level を外し、行の生死と診断の意味を一致させる。
+- `apps/cli` の構造検証 Issue の見出し `Validation warnings:` は、violation を含み得るため `Validation issues:` に改める（Issue #40 提案 C）。
+- `schema/building_model.shacl.ttl` は vendored のため編集しない。
+
+### 対象パス
+- `packages/core/src/row-utils.ts` / `tree.ts` / `hierarchy-coverage.ts` / `validate.ts` / `index.ts`
+- `apps/cli/src/index.ts`
+- `README.md` / `pointlist.md` / `apps/web/src/components/HelpModal.tsx`
+- `packages/core/test/core.test.ts` / `apps/cli/test/cli.test.ts`
+
+### 受入基準
+- `site` / `building` があり `floor` が `-` / 空欄の行が、RDF / YAML / DTDL / WoT / Tree JSON に出力される（`row_dropped` にならない）。
+- 該当行の階層が `Site → Building → Room → Equipment → Point` になり、Level ノードが生成されない。`installation_area` も未設定なら `Site → Building → Equipment → Point` になる。
+- 該当行に `buildingos_level_missing`（warning）が出力され、出力はブロックされない。件数サマリと行単位 Issue の打ち切り件数を含む。
+- `site` または `building` が未設定の行、および point があって device が無い行は、従来どおり `row_dropped`（violation）でブロックされる。
+- 生成 RDF が `schema/building_model.shacl.ttl` の SHACL 検証を violation 0 件で通る。
+- `floor` 未設定時の挙動が `pointlist.md` と UI ヘルプに日英併記で更新される。
+- `pnpm lint` / `pnpm format:check` / `pnpm typecheck` / `pnpm test` / `pnpm build` が成功する。
+
+### 非目標
+- 未設定 Level のプレースホルダ自動生成。
+- ビルOS 側 Ingress の受理条件そのものの変更。
+- `schema/` 配下の vendored shapes の編集。
+
+## 2.13 単位表記の語彙合意（Issue #39）
+
+### 目的
+- HVAC 系ポイントリストで一般的な `degC` / 無次元 `1` / `W` が `unit` の列挙に無く、1 点あたり 1 件の warning（1,930 点で 1,930 件）が出る状態を解消する。
+
+### 現状確認
+- 列挙は `schema/building_model.shacl.ttl` の `unit` に対する `sh:in`（14 種）。
+- `schema/` 配下は `.github/workflows/sync-schema.yml` が `smartbuilding_datamodels` の生成物を取り込むため、本リポジトリ側で列挙を編集しても次回同期で上書きされる。列挙の変更は上流リポジトリでの合意と変更が前提になる。
+- warning のみで出力はブロックされないため、実験は完走しており緊急度は低い（Issue #39 の報告どおり）。
+
+### 論点（合意が必要な項目）
+- 表記の正規化をどの層で行うか（上流の `sh:in` に別名を追加する / 本リポジトリの取り込み時に正規化する / UCUM へ寄せる）。
+- 無次元量（ダンパ開度、PMV、部分負荷率などの 0〜1 の比）の表現。`percent` は 0〜100 のスケールを含意するため流用できない。
+- スケール違い（`W` と `kW`）を `unit` と `scale` 列のどちらで表現するか。決めた場合はルールを文書化する。
+
+### 設計方針（暫定）
+- 語彙そのものの変更は `smartbuilding_datamodels` 側の Issue として起票し、合意まで本リポジトリの `schema/` は編集しない。
+- 合意までの緩和策として、本リポジトリ側で単位の別名正規化層（`degC` → `celsius` 等）を入れるかどうかは、合意内容が決まるまで着手しない（3 リポジトリ共有語彙のため、片側だけ動かすと nexus-gateway の契約と golden テストが壊れる）。
+
+### 受入基準
+- 上記 3 論点について、`smartbuilding_datamodels` / `nexus-gateway` / 本リポジトリの間で合意結果が文書化されている。
+- 合意結果に沿った実装（上流の列挙更新、または本リポジトリの正規化層）が入り、HVAC ポイントリストで unit 由来の warning が 0 件になる。
+
+### 非目標
+- 合意前に本リポジトリの `schema/building_model.shacl.ttl` を直接編集すること。
+
 ## 3. マイルストーン（M0〜M3）
 
 ### M0: リポジトリ健全性
@@ -401,6 +469,32 @@
 - [ ] Issue #5〜#15 の受入基準と Pages smoke test を確認し、M4 を Completed にして Issue #16 を閉じる
 
 ローカルの Pages 相当 subpath smoke test までは完了。実際の deployed smoke test と Issue #16 の close は、変更の main 反映と Pages deploy 後に実施する。
+
+#### 2026-09-21 Issue 棚卸し
+
+Open Issue 13 件を現行 `main`（`aa50beb`）のコードに突き合わせた結果。判定基準は
+[docs/issue-triage-workflow.md](docs/issue-triage-workflow.md) の 4 分類による。
+
+| Issue | 判定 | 根拠 |
+| --- | --- | --- |
+| #40 tree.ts が floor 欠落行を破棄 | 要対応 | `row-utils.ts` の `getHierarchyDropReasons()` が `level` 未設定をドロップ理由に含め、`tree.ts` の `buildHierarchyTree()` が該当行を `continue` する。2.11 で `row_dropped` 報告は入ったが提案 A は未対応 → 2.12 として起票 |
+| #39 unit の許容値不足 | 要合意 | 列挙は vendored な `schema/building_model.shacl.ttl`。`sync-schema.yml` が上流生成物で上書きするため、本リポジトリ単独では決着しない → 2.13 として起票 |
+| #5 ライセンスと第三者帰属 | 対応済 | `LICENSE` / `NOTICE` / `THIRD_PARTY_NOTICES.md` と README のライセンス節 |
+| #6 SHACL 準拠範囲とグラフ検証 | 対応済 | `packages/core/src/shacl.ts` が `rdf-validate-shacl` で生成 RDF を検証し、focus node / result path / severity / constraint component を `Issue` に保持する |
+| #7 MUI/zustand と UI アーキテクチャ | 対応済 | `App.tsx` が MUI `DataGrid` / `SimpleTreeView` を使用し、`apps/web/src/state/store.ts` の zustand store を `useAppStore()` で参照する。README とも一致する |
+| #8 Playwright の可搬化 | 対応済 | `apps/web/playwright.config.ts` に `executablePath` と `--no-sandbox` が無く、CI は `pnpm playwright:install-deps` で標準導入する |
+| #9 インジェクション対策と入力上限 | 対応済 | `csv.ts` の `escapeSpreadsheetFormula()` と `CsvInputLimits`、`rdf.ts` の percent-encode、`yaml.ts` の `yaml` パッケージ経由の直列化 |
+| #10 UI 出力のプラグイン統合 | 対応済 | `App.tsx` は `runOutputPlugin()` のみを呼び、失敗時に簡易文字列へフォールバックしない |
+| #11 本番ビルドとデプロイ経路 | 対応済 | `vite.config.ts` の base 切り替えと `pages.yml`（CI 成功後のみ deploy）。`main@aa50beb` の Deploy GitHub Pages が success |
+| #12 README の更新 | 対応済 | README が現行 UI・入力上限・SHACL・`row_dropped`・CLI・制約を記載する |
+| #13 CI 品質ゲート | 対応済 | `ci.yml` が frozen install / lint / format:check / typecheck / test / build / audit / gitleaks / E2E を実行し、Actions を SHA 固定する |
+| #14 依存更新と脆弱性監査 | 対応済 | `dependabot.yml`（npm / github-actions 週次）、CI の `pnpm audit --audit-level high`、`package.json` の overrides |
+| #15 リポジトリ衛生 | 対応済 | `.gitignore` の Playwright 成果物除外（追跡 0 件）、`SECURITY.md` / `CONTRIBUTING.md` / `CODE_OF_CONDUCT.md`、`docs/public-release-audit.md` の gitleaks 全履歴結果 |
+| #16 公開準備トラッキング | 子 Issue 待ち | 子 Issue #5〜#15 は上記のとおり対応済。残るのは deploy 済み Pages の smoke test と各 Issue の close 判断のみ |
+
+- 「対応済」13 件の受入基準は M4 の Issue 別受入基準としてチェック済みであり、本棚卸しで
+  現行コードとの一致を再確認した。close は報告者の確認を経て行う。
+- deploy 済み Pages の smoke test は本リポジトリの CI 外（公開 URL への手動アクセス）で行う。
 
 ## 4. タスクバックログ（優先順）
 

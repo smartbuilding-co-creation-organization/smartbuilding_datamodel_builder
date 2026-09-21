@@ -58,6 +58,7 @@
   - SHOULD Playwright は `locator` + `expect` の待機を基本にする。
 
 ## 5. 作業フロー
+- MUST GitHub Issue 起点の作業は `docs/issue-triage-workflow.md` の手順（トリアージ → plans.md へのバックログ化 → TDD → PR → codex review → マージ → ブランチ削除）に従う。
 - MUST plans.md から対象タスクを選択して着手する。
 - MUST タスクの「目的・受入基準・対象パス」を明確にしてから実装する。
 - SHOULD ブランチ命名は以下の形式を推奨する。
