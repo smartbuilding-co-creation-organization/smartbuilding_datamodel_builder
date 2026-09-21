@@ -6,6 +6,8 @@ Thank you for contributing to Building Model CSV Explorer. By submitting a contr
 
 Use Node.js 22 and pnpm 9.15.9. Read `AGENTS.md` and choose or add a task in `plans.md` before changing code.
 
+When the work starts from a GitHub issue, follow `docs/issue-triage-workflow.md`: triage the issue against the current code, record it in `plans.md`, write the failing test first, then open one pull request per intent.
+
 ```bash
 corepack enable
 pnpm install --frozen-lockfile
