@@ -85,17 +85,25 @@ export function HelpModal({ open, view, onClose }: Props) {
             </ul>
             <p>
               <code>installationArea</code> が <code>-</code>（ハイフン）または空欄の場合、Room
-              は未設定として扱われ生成されません。<code>floor</code> がある場合は Equipment が Level
-              直下になります（Site → Building → Level → Equipment → Point）。ビルOSはこの Room
-              を経由しない階層を受理しないため、ビルOSへ取り込むデータには実際の部屋・ゾーン名を
-              指定してください。
+              は未設定として扱われ生成されず、Equipment が直上の空間（Level、無ければ Building）
+              の直下になります。<code>floor</code> が <code>-</code>（ハイフン）または空欄の場合も
+              同様に Level が生成されず、Room または Equipment が Building 直下になります （Site →
+              Building → Room → Equipment → Point）。行そのものは出力に含まれますが、
+              ビルOSはこれらの階層を受理しないため <code>buildingos_room_missing</code> /{' '}
+              <code>buildingos_level_missing</code> の warning を表示します。ビルOSへ取り込む
+              データには実際の階・部屋・ゾーン名を指定してください。
             </p>
             <p>
-              <code>floor</code> が <code>-</code>（ハイフン）または空欄の場合は、Level 以下が
-              まるごと生成されません。その行の Equipment と Point は RDF / YAML / DTDL / WoT / Tree
-              JSON のいずれにも出力されないため、出力はブロックされます。
+              同じ <code>deviceId</code> の行で <code>site</code> / <code>building</code> /{' '}
+              <code>floor</code> / <code>installationArea</code> の解決結果が食い違う場合、Equipment
+              は複数のノードに分かれ、元データに無い id（例: <code>DEV1__1</code>）が付きます。
+              この場合は <code>equipment_split</code> の warning を表示します。
+            </p>
+            <p>
               <code>site</code> / <code>building</code> が未設定の場合、および Point があって
-              <code>deviceId</code> / <code>deviceName</code> がいずれも未設定の場合も同じです。
+              <code>deviceId</code> / <code>deviceName</code> がいずれも未設定の場合は、接続先が
+              無いため行ごと出力から外れます。その行は RDF / YAML / DTDL / WoT / Tree JSON の
+              いずれにも出力されないため、出力はブロックされます。
             </p>
             <h3>任意カラム</h3>
             <p>

@@ -9,7 +9,9 @@ import {
   buildTemplatesZip,
   buildDeviceTemplatesFromCsv,
   buildResourceModelMap,
+  BUILDINGOS_LEVEL_MISSING,
   BUILDINGOS_ROOM_MISSING,
+  EQUIPMENT_SPLIT,
   checkHierarchyCoverage,
   CsvInputLimitError,
   DEFAULT_CSV_INPUT_LIMITS,
@@ -326,8 +328,11 @@ describe('validation fixtures', () => {
     );
 
     expect(Array.from(hierarchyFields)).toEqual(
-      expect.arrayContaining(['site', 'building', 'level', 'device']),
+      expect.arrayContaining(['site', 'building', 'device']),
     );
+    // An unset floor no longer decides whether the row exists (#40), so it is not reported
+    // as a missing parent either -- hierarchy-coverage.ts warns about it instead.
+    expect(hierarchyFields.has('level')).toBe(false);
   });
 
   it('covers parent id reference, duplicate id, and cycle failures', () => {
@@ -1446,12 +1451,11 @@ describe('hierarchy coverage (#B-01)', () => {
   const mixedCsv = [HEADER, OK, NO_ROOM, NO_FLOOR, NO_DEVICE].join('\n') + '\n';
 
   it('reports the same rows buildTree drops, for the same reasons', () => {
-    // floor="-" is normalized to "unset" by normalizeHierarchyValue, so it reads as a
-    // missing level -- the middle link of the chain, which takes Room/Equipment/Point
-    // with it.
-    expect(getHierarchyDropReasons({ site: 'S', building: 'B', floor: '-' })).toEqual(['level']);
-    expect(getHierarchyDropReasons({ site: 'S', building: 'B', floor: '－' })).toEqual(['level']);
-    expect(getHierarchyDropReasons({ site: 'S', building: 'B', floor: '' })).toEqual(['level']);
+    // floor="-" is normalized to "unset" by normalizeHierarchyValue, but an unset level no
+    // longer drops the row (#40): the Room attaches to the Building instead.
+    expect(getHierarchyDropReasons({ site: 'S', building: 'B', floor: '-' })).toEqual([]);
+    expect(getHierarchyDropReasons({ site: 'S', building: 'B', floor: '－' })).toEqual([]);
+    expect(getHierarchyDropReasons({ site: 'S', building: 'B', floor: '' })).toEqual([]);
     expect(
       getHierarchyDropReasons({ site: 'S', building: 'B', floor: '1F', pointId: 'PT1' }),
     ).toEqual(['device']);
@@ -1470,7 +1474,7 @@ describe('hierarchy coverage (#B-01)', () => {
     // it clears must be present.
     const rows = parseCsv(mixedCsv, { schema });
     const dropped = new Set(listUnrepresentedRows(rows).map((row) => row.rowId));
-    expect(dropped).toEqual(new Set(['PT003', 'PT004']));
+    expect(dropped).toEqual(new Set(['PT004']));
 
     const inTree = new Set<string>();
     const visit = (nodes: ReturnType<typeof buildTree>) => {
@@ -1480,7 +1484,7 @@ describe('hierarchy coverage (#B-01)', () => {
       }
     };
     visit(buildTree(rows));
-    for (const id of ['PT001', 'PT002']) expect(inTree.has(id)).toBe(true);
+    for (const id of ['PT001', 'PT002', 'PT003']) expect(inTree.has(id)).toBe(true);
     for (const id of dropped) expect(inTree.has(id as string)).toBe(false);
   });
 
@@ -1490,15 +1494,14 @@ describe('hierarchy coverage (#B-01)', () => {
     const summary = issues.find((issue) => issue.code === ROW_DROPPED && !issue.rowId);
 
     expect(summary?.severity).toBe('violation');
-    expect(summary?.message).toContain('入力 4 行のうち 2 行');
-    expect(summary?.message).toContain('出力に含まれるのは 2 行です');
-    expect(summary?.message).toContain('floor/level 未設定 1件');
+    expect(summary?.message).toContain('入力 4 行のうち 1 行');
+    expect(summary?.message).toContain('出力に含まれるのは 3 行です');
     expect(summary?.message).toContain('device_id/device_name 未設定 1件');
     // Nothing was withheld at this size, so no truncation notice.
     expect(summary?.message).not.toContain('省略');
 
     const perRow = issues.filter((issue) => issue.code === ROW_DROPPED && issue.rowId);
-    expect(perRow.map((issue) => issue.rowId).sort()).toEqual(['PT003', 'PT004']);
+    expect(perRow.map((issue) => issue.rowId).sort()).toEqual(['PT004']);
   });
 
   it('caps per-row issues but keeps the true totals in the summary', () => {
@@ -1510,7 +1513,7 @@ describe('hierarchy coverage (#B-01)', () => {
         ...Array.from(
           { length: overCap },
           (_, i) =>
-            `GW1,DEV${i},Sensor ${i},Sensor,S1,B1,-,Room1,Temperature,Measurement,PT9${i},Temp,false,L9${i}`,
+            `GW1,DEV${i},Sensor ${i},Sensor,,B1,1F,Room1,Temperature,Measurement,PT9${i},Temp,false,L9${i}`,
         ),
       ].join('\n') + '\n',
       { schema },
@@ -1553,12 +1556,272 @@ describe('hierarchy coverage (#B-01)', () => {
   });
 });
 
+describe('rows without a floor stay in the output (#40)', () => {
+  const HEADER =
+    'gateway_id,device_id,device_name,device_type,site,building,floor,installation_area,point_type,point_specification,point_id,point_name,writable,local_id';
+  const WITH_FLOOR =
+    'GW1,DEV1,Sensor 1,Sensor,S1,B1,1F,Room101,Temperature,Measurement,PT001,Temp,false,L1';
+  const NO_FLOOR =
+    'GW1,DEV3,Sensor 3,Sensor,S1,B1,-,Room103,Temperature,Measurement,PT003,Temp,false,L3';
+  const NO_FLOOR_NO_ROOM =
+    'GW1,DEV4,Sensor 4,Sensor,S1,B1,-,-,Temperature,Measurement,PT004,Temp,false,L4';
+  const csv = [HEADER, WITH_FLOOR, NO_FLOOR, NO_FLOOR_NO_ROOM].join('\n') + '\n';
+
+  const shapeText = readFileSync(
+    path.resolve(__dirname, '../../../schema/building_model.shacl.ttl'),
+    'utf-8',
+  );
+
+  const buildingOf = (rows: ReturnType<typeof parseCsv>) => {
+    const site = buildTree(rows).find((node) => node.name === 'S1');
+    return site?.children.find((node) => node.name === 'B1');
+  };
+
+  it('does not count an unset level as a reason to drop the row', () => {
+    // Issue #34 settled that sbco:floor is not a condition of the hierarchy, so a floor of
+    // "-" / "－" / blank must not decide whether the row exists at all.
+    expect(getHierarchyDropReasons({ site: 'S', building: 'B', floor: '-' })).toEqual([]);
+    expect(getHierarchyDropReasons({ site: 'S', building: 'B', floor: '－' })).toEqual([]);
+    expect(getHierarchyDropReasons({ site: 'S', building: 'B', floor: '' })).toEqual([]);
+
+    // site, building and a point's device link stay required: without them there is no
+    // anchor to hang the row off at all.
+    expect(getHierarchyDropReasons({ building: 'B', floor: '1F' })).toEqual(['site']);
+    expect(getHierarchyDropReasons({ site: 'S', floor: '1F' })).toEqual(['building']);
+    expect(getHierarchyDropReasons({ site: 'S', building: 'B', pointId: 'PT1' })).toEqual([
+      'device',
+    ]);
+  });
+
+  it('attaches the Room to the Building when floor is unset', () => {
+    const building = buildingOf(parseCsv(csv, { schema }));
+
+    const level = building?.children.find((node) => node.name === '1F');
+    expect(level?.kind).toBe('Level');
+    expect(level?.children.map((node) => node.name)).toEqual(['Room101']);
+
+    const room = building?.children.find((node) => node.name === 'Room103');
+    expect(room?.kind).toBe('Room');
+    expect(room?.children.map((node) => node.id)).toEqual(['DEV3']);
+    expect(
+      building?.children.some((node) => node.kind === 'Level' && node.name === 'Room103'),
+    ).toBe(false);
+  });
+
+  it('attaches the Equipment to the Building when both floor and installation_area are unset', () => {
+    const building = buildingOf(parseCsv(csv, { schema }));
+    const equipment = building?.children.find((node) => node.id === 'DEV4');
+
+    expect(equipment?.kind).toBe('EquipmentExt');
+    expect(equipment?.children.map((node) => node.id)).toEqual(['PT004']);
+  });
+
+  it('reports the missing Level as a Building OS warning, not as a dropped row', () => {
+    const issues = checkHierarchyCoverage(parseCsv(csv, { schema }));
+
+    expect(issues.filter((issue) => issue.code === ROW_DROPPED)).toEqual([]);
+
+    const levelIssues = issues.filter((issue) => issue.code === BUILDINGOS_LEVEL_MISSING);
+    expect(levelIssues.every((issue) => issue.severity === 'warning')).toBe(true);
+    expect(
+      levelIssues
+        .filter((issue) => issue.rowId)
+        .map((issue) => issue.rowId)
+        .sort(),
+    ).toEqual(['PT003', 'PT004']);
+    expect(levelIssues.find((issue) => !issue.rowId)?.message).toContain('2 行');
+  });
+
+  it('emits every row to RDF and still conforms to the vendored SHACL shapes', async () => {
+    const rows = parseCsv(csv, { schema });
+    const result = await runOutputPlugin('RDF', 'Turtle', { rows, schema, shacl: { shapeText } });
+
+    expect(result.content.match(/sbco:PointExt/g) ?? []).toHaveLength(3);
+    for (const pointId of ['PT001', 'PT003', 'PT004']) {
+      expect(result.content).toContain(pointId);
+    }
+    expect((result.issues ?? []).filter((issue) => issue.severity === 'violation')).toEqual([]);
+  });
+
+  it('stops reporting level as a missing hierarchy parent', () => {
+    const { issues } = validate(parseCsv(csv, { schema }), { schema });
+    const hierarchyFields = issues
+      .filter((issue) => issue.code === 'hierarchy_missing')
+      .map((issue) => issue.field);
+
+    expect(hierarchyFields).not.toContain('level');
+  });
+});
+
+describe('consequences of an optional Level (#40)', () => {
+  const HEADER =
+    'gateway_id,device_id,device_name,device_type,site,building,floor,installation_area,point_type,point_specification,point_id,point_name,writable,local_id';
+
+  const csvOf = (...lines: string[]) => [HEADER, ...lines].join('\n') + '\n';
+
+  it('does not pin the Building DTDL relationship to a Level target', () => {
+    // With no floor the twin graph emits building -> hasPart -> room, so an interface that
+    // declares hasPart's target as Level contradicts the relationships shipped beside it and
+    // Azure Digital Twins rejects the import.
+    const rows = parseCsv(
+      csvOf('GW1,DEV3,Sensor 3,Sensor,S1,B1,-,Room103,Temperature,Measurement,PT003,Temp,false,L3'),
+      { schema },
+    );
+
+    const graph = JSON.parse(exportDtdlTwinGraph(rows));
+    expect(graph.digitalTwinsGraph.relationships).toContainEqual(
+      expect.objectContaining({
+        $sourceId: 'building:site:S1/B1',
+        $targetId: 'room:building:site:S1/B1/Room103',
+        $relationshipName: 'hasPart',
+      }),
+    );
+
+    const interfaces = JSON.parse(exportDtdlInterfaces(rows));
+    const building = interfaces.find((entry: { '@id': string }) =>
+      entry['@id'].includes('Building'),
+    );
+    const hasPart = building.contents.find(
+      (entry: { '@type': string; name: string }) =>
+        entry['@type'] === 'Relationship' && entry.name === 'hasPart',
+    );
+    expect(hasPart).toBeDefined();
+    expect(hasPart.target).toBeUndefined();
+  });
+
+  it('points the warning at the column the row actually uses', () => {
+    // issue.field addresses a grid column: App.tsx highlights the cell by it and synthesizes a
+    // property row when the row lacks it, so a logical name no column carries shows an empty
+    // "level" property that is not in the CSV.
+    const pointlist = parseCsv(
+      csvOf('GW1,DEV3,Sensor 3,Sensor,S1,B1,-,-,Temperature,Measurement,PT003,Temp,false,L3'),
+      { schema },
+    );
+    const byCode = (rows: ReturnType<typeof parseCsv>, code: string) =>
+      checkHierarchyCoverage(rows).filter((issue) => issue.code === code && issue.rowId);
+
+    expect(byCode(pointlist, BUILDINGOS_LEVEL_MISSING).map((issue) => issue.field)).toEqual([
+      'floor',
+    ]);
+    expect(byCode(pointlist, BUILDINGOS_ROOM_MISSING).map((issue) => issue.field)).toEqual([
+      'installationArea',
+    ]);
+
+    // A CSV that spells the same signals with the other accepted column names must be
+    // highlighted on those columns instead.
+    const alternate = parseCsv(
+      ['site,building,level,room,device_id,point_id', 'S1,B1,,,DEV3,PT003'].join('\n') + '\n',
+    );
+    expect(byCode(alternate, BUILDINGOS_LEVEL_MISSING).map((issue) => issue.field)).toEqual([
+      'level',
+    ]);
+    expect(byCode(alternate, BUILDINGOS_ROOM_MISSING).map((issue) => issue.field)).toEqual([
+      'room',
+    ]);
+  });
+
+  it('describes the shape the row actually produced when no Level was generated', () => {
+    const rows = parseCsv(
+      csvOf('GW1,DEV3,Sensor 3,Sensor,S1,B1,-,-,Temperature,Measurement,PT003,Temp,false,L3'),
+      { schema },
+    );
+    const roomIssue = checkHierarchyCoverage(rows).find(
+      (issue) => issue.code === BUILDINGOS_ROOM_MISSING && issue.rowId,
+    );
+
+    // The row has no Level, so naming Level as the Equipment's parent is simply wrong.
+    expect(roomIssue?.message).not.toContain('Site → Building → Level → Equipment → Point');
+    expect(roomIssue?.message).toContain('直上の空間');
+  });
+
+  it('flags a device whose rows disagree about where it is', () => {
+    // An unset floor no longer drops the row, so two rows of one device can now resolve to
+    // different parents and buildHierarchyTree() splits it into DEV1 and DEV1__1 -- an id that
+    // exists in no input row. Before #40 the floorless row was a blocking row_dropped, so this
+    // must not become the silent case.
+    const rows = parseCsv(
+      csvOf(
+        'GW1,DEV1,Sensor 1,Sensor,S1,B1,1F,Room101,Temperature,Measurement,PT001,Temp,false,L1',
+        'GW1,DEV1,Sensor 1,Sensor,S1,B1,-,Room101,CO2_Concentration,Measurement,PT002,CO2,false,L2',
+      ),
+      { schema },
+    );
+
+    const split = checkHierarchyCoverage(rows).filter((issue) => issue.code === EQUIPMENT_SPLIT);
+    expect(split.length).toBeGreaterThan(0);
+    expect(split.every((issue) => issue.severity === 'warning')).toBe(true);
+    expect(split.find((issue) => !issue.rowId)?.message).toContain('DEV1');
+    expect(split.filter((issue) => issue.rowId).map((issue) => issue.rowId)).toEqual(['PT002']);
+  });
+
+  it('does not flag equipment identified only by name, which the tree scopes by space', () => {
+    // With no device_id the tree keys the Equipment by its parent
+    // (equipment:room:.../AHU), so one "AHU" per room is two properly distinct nodes with no
+    // __N suffix -- nothing split, nothing to warn about. Only an explicit device_id collides
+    // and picks up the synthetic suffix.
+    const rows = parseCsv(
+      csvOf(
+        'GW1,,AHU,Equipment,S1,B1,1F,R1,Temperature,Measurement,PT001,T1,false,L1',
+        'GW1,,AHU,Equipment,S1,B1,1F,R2,Temperature,Measurement,PT002,T2,false,L2',
+      ),
+      { schema },
+    );
+
+    expect(checkHierarchyCoverage(rows).filter((issue) => issue.code === EQUIPMENT_SPLIT)).toEqual(
+      [],
+    );
+  });
+
+  it('points row_dropped at the column the row actually uses, like the warnings do', () => {
+    // Same rule as the Building OS warnings: issue.field addresses a grid column, and
+    // "device" is not one (the columns are device_id / device_name).
+    const rows = parseCsv(
+      csvOf(
+        'GW1,,,Sensor,S1,B1,1F,Room101,Temperature,Measurement,PT001,Temp,false,L1',
+        'GW1,DEV2,Sensor 2,Sensor,,B1,1F,Room102,Temperature,Measurement,PT002,Temp,false,L2',
+      ),
+      { schema },
+    );
+
+    const dropped = checkHierarchyCoverage(rows).filter(
+      (issue) => issue.code === ROW_DROPPED && issue.rowId,
+    );
+    expect(dropped.map((issue) => [issue.rowId, issue.field])).toEqual([
+      ['PT001', 'deviceId'],
+      ['PT002', 'site'],
+    ]);
+  });
+
+  it('does not flag a device whose rows agree, nor the shipped fixtures', () => {
+    const rows = parseCsv(
+      csvOf(
+        'GW1,DEV1,Sensor 1,Sensor,S1,B1,1F,Room101,Temperature,Measurement,PT001,Temp,false,L1',
+        'GW1,DEV1,Sensor 1,Sensor,S1,B1,1F,Room101,CO2_Concentration,Measurement,PT002,CO2,false,L2',
+      ),
+      { schema },
+    );
+    expect(checkHierarchyCoverage(rows).filter((issue) => issue.code === EQUIPMENT_SPLIT)).toEqual(
+      [],
+    );
+
+    for (const csv of [loadCsv('valid.csv'), loadCsv('large.csv'), loadSampleCsv()]) {
+      expect(
+        checkHierarchyCoverage(parseCsv(csv, { schema })).filter(
+          (issue) => issue.code === EQUIPMENT_SPLIT,
+        ),
+      ).toEqual([]);
+    }
+  });
+});
+
 describe('output plugins fail closed on dropped rows (#B-01)', () => {
   const csv =
     [
       'gateway_id,device_id,device_name,device_type,site,building,floor,installation_area,point_type,point_specification,point_id,point_name,writable,local_id',
       'GW1,DEV1,Sensor 1,Sensor,S1,B1,1F,Room101,Temperature,Measurement,PT001,Temp,false,L1',
-      'GW1,DEV3,Sensor 3,Sensor,S1,B1,-,Room103,Temperature,Measurement,PT003,Temp,false,L3',
+      // No device_id/device_name: the point has no Equipment to sit under, so no
+      // graph-derived output can carry it.
+      'GW1,,,Sensor,S1,B1,1F,Room103,Temperature,Measurement,PT003,Temp,false,L3',
     ].join('\n') + '\n';
 
   const shapeText = readFileSync(

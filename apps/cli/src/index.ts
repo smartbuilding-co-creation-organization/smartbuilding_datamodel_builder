@@ -225,7 +225,7 @@ export async function runCli(
 
   const { issues: structuralIssues } = validate(rows, { schema });
   if (structuralIssues.length > 0) {
-    io.stderr.write('Validation warnings:\n');
+    io.stderr.write('Validation issues:\n');
     for (const issue of structuralIssues) {
       io.stderr.write(`  ${formatIssue(issue)}\n`);
     }

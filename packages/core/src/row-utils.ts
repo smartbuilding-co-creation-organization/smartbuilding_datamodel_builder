@@ -85,7 +85,7 @@ export function resolveHierarchySignals(row: RowRecord): {
   };
 }
 
-export type HierarchyDropReason = 'site' | 'building' | 'level' | 'device';
+export type HierarchyDropReason = 'site' | 'building' | 'device';
 
 // The exact condition under which tree.ts's buildHierarchyTree() skips a whole input row --
 // not an approximation of it. buildTree() drops such a row entirely (no Site/Building/Level/
@@ -96,13 +96,19 @@ export type HierarchyDropReason = 'site' | 'building' | 'level' | 'device';
 //
 // Note this is about hierarchy SIGNALS, not raw cell values: normalizeHierarchyValue() already
 // folded "-" / "－" / blank into "unset", so a floor of "-" reaches here as a missing level.
+//
+// An unset level is NOT a drop reason (#40). Issue #34 settled that sbco:floor is not a
+// condition of the hierarchy, and Level is the only middle link the graph can do without:
+// tree.ts hangs the Room (or, with no room signal either, the Equipment) off the Building
+// instead, the same way it already skips an unset Room. Site and Building have no such
+// fallback -- without them the row has nothing to attach to -- and a point with no device
+// link has no Equipment to sit under.
 export function getHierarchyDropReasons(row: RowRecord): HierarchyDropReason[] {
   const signals = resolveHierarchySignals(row);
   const reasons: HierarchyDropReason[] = [];
 
   if (!signals.site) reasons.push('site');
   if (!signals.building) reasons.push('building');
-  if (!signals.level) reasons.push('level');
   if (reasons.length > 0) return reasons;
 
   if ((signals.pointId || signals.pointName) && !(signals.deviceId || signals.deviceName)) {
@@ -118,6 +124,37 @@ export function getHierarchyDropReasons(row: RowRecord): HierarchyDropReason[] {
 export function lacksRoomSignal(row: RowRecord): boolean {
   const signals = resolveHierarchySignals(row);
   return !signals.room;
+}
+
+// The same situation one level up: with no level signal the Room (or Equipment) hangs off the
+// Building. rec:BuildingShape allows rec:hasPart to reach a rec:Room, so the vendored SHACL
+// accepts it, but Building OS expects Site -> Building -> Level -> Room -> Equipment -> Point.
+export function lacksLevelSignal(row: RowRecord): boolean {
+  const signals = resolveHierarchySignals(row);
+  return !signals.level;
+}
+
+// Which column an Issue about this hierarchy signal should point at. issue.field addresses a
+// grid column -- apps/web highlights the cell by it and synthesizes a property row when the row
+// has no such key -- so it has to be the column this CSV actually carries ("floor" in the
+// pointlist.md format, "level" in a CSV that spells it that way), not the logical signal name.
+const HIERARCHY_FIELD_FALLBACKS = {
+  site: 'site',
+  building: 'building',
+  level: 'floor',
+  room: 'installationArea',
+  device: 'deviceId',
+  point: 'pointId',
+} as const;
+
+export function resolveHierarchyField(
+  row: RowRecord,
+  group: keyof typeof HIERARCHY_SIGNAL_GROUPS,
+): string {
+  for (const key of HIERARCHY_SIGNAL_GROUPS[group]) {
+    if (key in row) return key;
+  }
+  return HIERARCHY_FIELD_FALLBACKS[group];
 }
 
 export function hasHierarchySignals(rows: RowRecord[]): boolean {
@@ -173,9 +210,9 @@ export function listMissingHierarchyParents(row: RowRecord): string[] {
   if ((hasLevel || hasRoom || hasDevice || hasPoint) && !hasBuilding) {
     missing.push('building');
   }
-  if ((hasRoom || hasDevice || hasPoint) && !hasLevel) {
-    missing.push('level');
-  }
+  // An unset level is not a missing parent: the graph attaches what is below it to the
+  // Building instead (#40). It is reported as buildingos_level_missing (warning) by
+  // hierarchy-coverage.ts, because the shape is valid RDF but Building OS will not ingest it.
   if (hasPoint && !hasDevice) missing.push('device');
   return missing;
 }

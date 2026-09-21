@@ -51,9 +51,15 @@ RDF、YAML、DTDL、WoT、Tree JSON は Tree から生成するため、階層�
 外れた行を見ないまま「0 件」になることを防ぐためです。CSV と JSON-LD は行をそのまま
 書き出すため対象外です。
 
-`installation_area` が未設定で Equipment が Level 直下になる行は `buildingos_room_missing`
-（`warning`）として報告します。RDF としては妥当なためダウンロードはブロックしませんが、
-ビルOS はこの階層を受理しません。
+階層の途中の空間が未設定でも行は出力します。`installation_area` が未設定で Equipment が
+直上の空間の直下になる行は `buildingos_room_missing`、`floor` が未設定で Room または
+Equipment が Building 直下になる行は `buildingos_level_missing` として、いずれも `warning`
+で報告します。RDF としては妥当なためダウンロードはブロックしませんが、ビルOS はこれらの
+階層を受理しません。
+
+同じ `device_id` の行で site / building / floor / installation_area の解決結果が食い違う場合、
+Equipment は複数のノードに分かれ、元データに無い id（例: `DEV1__1`）が付きます。この場合は
+`equipment_split`（`warning`）として報告します。
 
 出力 API は非同期です。
 

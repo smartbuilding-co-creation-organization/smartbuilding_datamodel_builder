@@ -285,10 +285,9 @@ test('rejects over-limit input atomically and keeps the existing model', async (
 });
 
 test('blocks RDF download when a row cannot reach the output at all', async ({ page }) => {
-  // floor="-" reads as an unset Level, and Level is a link in the middle of the chain -- the
-  // row's Equipment and Point are never generated, so it contributes nothing to the Turtle.
-  // Before this check the file downloaded anyway and SHACL reported zero violations, having
-  // never seen the missing row.
+  // A point row with neither device_id nor device_name has no Equipment to sit under, so it
+  // contributes nothing to the Turtle. Before this check the file downloaded anyway and SHACL
+  // reported zero violations, having never seen the missing row.
   await loadCsv(page);
   await page.getByTestId('csv-input').setInputFiles({
     name: 'dropped-row.csv',
@@ -297,7 +296,7 @@ test('blocks RDF download when a row cannot reach the output at all', async ({ p
       [
         'gateway_id,device_id,device_name,device_type,site,building,floor,installation_area,point_type,point_specification,point_id,point_name,writable,local_id',
         'GW1,DEV1,Sensor 1,Sensor,S1,B1,1F,Room101,Temperature,Measurement,PT001,Temp,false,L1',
-        'GW1,DEV3,Sensor 3,Sensor,S1,B1,-,Room103,Temperature,Measurement,PT003,Temp,false,L3',
+        'GW1,,,Sensor,S1,B1,1F,Room103,Temperature,Measurement,PT003,Temp,false,L3',
       ].join('\n') + '\n',
     ),
   });
@@ -338,6 +337,36 @@ test('warns without blocking when installation_area leaves Equipment under a Lev
 
   await page.getByTestId('validation-summary').click();
   await expect(page.getByTestId('issues-drawer')).toContainText('buildingos_room_missing');
+});
+
+test('warns without blocking when an unset floor leaves the Room under the Building', async ({
+  page,
+}) => {
+  // #40: floor is not a condition of the hierarchy. The row is emitted with its Room attached
+  // to the Building, which the vendored SHACL accepts but Building OS will not ingest -- a
+  // warning, not a blocked download.
+  await loadCsv(page);
+  await page.getByTestId('csv-input').setInputFiles({
+    name: 'floorless.csv',
+    mimeType: 'text/csv',
+    buffer: Buffer.from(
+      [
+        'gateway_id,device_id,device_name,device_type,site,building,floor,installation_area,point_type,point_specification,point_id,point_name,writable,local_id',
+        'GW1,DEV1,Sensor 1,Sensor,S1,B1,1F,Room101,Temperature,Measurement,PT001,Temp,false,L1',
+        'GW1,DEV3,Sensor 3,Sensor,S1,B1,-,Room103,Temperature,Measurement,PT003,Temp,false,L3',
+      ].join('\n') + '\n',
+    ),
+  });
+
+  await selectFormat(page, 'RDF');
+  const download = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'ダウンロード', exact: true }).click();
+  await expect(await download).toBeTruthy();
+  await expect(page.getByTestId('output-error')).toHaveCount(0);
+
+  await page.getByTestId('validation-summary').click();
+  await expect(page.getByTestId('issues-drawer')).toContainText('buildingos_level_missing');
+  await expect(page.getByTestId('issues-drawer')).not.toContainText('row_dropped');
 });
 
 test('shows generated device templates', async ({ page }) => {

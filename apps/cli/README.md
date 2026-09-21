@@ -37,7 +37,7 @@ CSV は一括で読み込んでからパースする（ストリーミングで�
 
 ## 出力の件数照合
 
-RDF / YAML / DTDL / WoT / Tree JSON は Tree から生成するため、階層を解決できない行（`site` / `building` / `floor` が未設定、または Point があって `device_id` / `device_name` がいずれも未設定）は出力に一切含まれない。CLI は出力前に必ず次の行を標準エラー出力へ書き出す。
+RDF / YAML / DTDL / WoT / Tree JSON は Tree から生成するため、階層を解決できない行（`site` / `building` が未設定、または Point があって `device_id` / `device_name` がいずれも未設定）は出力に一切含まれない。CLI は出力前に必ず次の行を標準エラー出力へ書き出す。
 
 ```
 Rows read: 34895 -> rows in output: 31364 (dropped: 3531); resources emitted: 72850
@@ -45,7 +45,9 @@ Rows read: 34895 -> rows in output: 31364 (dropped: 3531); resources emitted: 72
 
 出力に含まれない行があれば `row_dropped`（`violation`）として報告し、既定では書き込みをブロックして終了コード `1` を返す。SHACL の結果が、出力から外れた行を見ないまま「violation 0 件」になることを防ぐための fail-closed である。承知の上で書き出す場合は `--allow-issues` を指定する。
 
-`installation_area` が未設定で Equipment が Level 直下になる行は `buildingos_room_missing`（`warning`）として報告する。RDF としては妥当なため書き込みはブロックしないが、ビルOS はこの階層を受理しない。
+`installation_area` が未設定で Equipment が直上の空間の直下になる行は `buildingos_room_missing`（`warning`）、`floor` が未設定で Room または Equipment が Building 直下になる行は `buildingos_level_missing`（`warning`）として報告する。いずれも RDF としては妥当なため書き込みはブロックしないが、ビルOS はこれらの階層を受理しない。
+
+同じ `device_id` の行で空間の解決結果が食い違い、Equipment が複数ノードに分裂する場合は `equipment_split`（`warning`）として報告する。
 
 行単位の Issue は先頭 200 件で打ち切るが、サマリの Issue には常に正確な総数と省略件数が入る。
 

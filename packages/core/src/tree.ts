@@ -145,30 +145,39 @@ function buildHierarchyTree(rows: RowRecord[]): Node[] {
     );
     ensureChild(siteNode, buildingNode);
 
-    const levelName = signals.level;
-    const levelKey = `level:${buildingNode.id}:${levelName}`;
-    const levelNode = ensureNode(
-      levelKey,
-      `level:${buildingNode.id}/${makeSlug(levelName)}`,
-      levelName,
-      'Level',
-      buildingNode.id,
-    );
-    ensureChild(buildingNode, levelNode);
+    // Level is optional (#40): with no floor signal the Room -- or the Equipment, when there is
+    // no room signal either -- attaches to the Building instead of vanishing with the whole row.
+    // rec:BuildingShape lists rec:Room among the classes rec:hasPart may reach, so the shape
+    // stays valid against the vendored SHACL; hierarchy-coverage.ts reports it as
+    // buildingos_level_missing because Building OS still expects the full chain.
+    let levelParent = buildingNode;
+    if (signals.level) {
+      const levelName = signals.level;
+      const levelKey = `level:${buildingNode.id}:${levelName}`;
+      const levelNode = ensureNode(
+        levelKey,
+        `level:${buildingNode.id}/${makeSlug(levelName)}`,
+        levelName,
+        'Level',
+        buildingNode.id,
+      );
+      ensureChild(buildingNode, levelNode);
+      levelParent = levelNode;
+    }
 
-    let roomParent = levelNode;
+    let roomParent = levelParent;
     if (signals.room) {
       const roomName = signals.room;
       const roomKind = signals.roomKind || 'Room';
-      const roomKey = `room:${levelNode.id}:${roomName}`;
+      const roomKey = `room:${levelParent.id}:${roomName}`;
       const roomNode = ensureNode(
         roomKey,
-        `room:${levelNode.id}/${makeSlug(roomName)}`,
+        `room:${levelParent.id}/${makeSlug(roomName)}`,
         roomName,
         roomKind,
-        levelNode.id,
+        levelParent.id,
       );
-      ensureChild(levelNode, roomNode);
+      ensureChild(levelParent, roomNode);
       roomParent = roomNode;
     }
 

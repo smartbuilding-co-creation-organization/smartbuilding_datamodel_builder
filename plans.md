@@ -331,9 +331,13 @@
 - `validate()` の `hierarchy_missing` は、`listMissingHierarchyParents()` から level を外し、行の生死と診断の意味を一致させる。
 - `apps/cli` の構造検証 Issue の見出し `Validation warnings:` は、violation を含み得るため `Validation issues:` に改める（Issue #40 提案 C）。
 - `schema/building_model.shacl.ttl` は vendored のため編集しない。
+- Level が任意になることで生じる副作用を同じ PR で塞ぐ。
+  - DTDL の `Building` interface の `hasPart` から `target: Level` を外す（Building → Room の関係を出力するため、interface と relationships が矛盾しないようにする）。
+  - Issue の `field` は論理名ではなく CSV が実際に持つ列名（`floor` / `level` など）を指す。`apps/web` は `field` でセルを強調し、行に無いキーはプロパティ行として合成するため、存在しない列名を返してはならない。
+  - 同じ device の行で空間の解決結果が食い違うと Equipment が複数ノードに分裂する（`DEV1` と `DEV1__1`）。floor 未設定行が出力に残る以上、これを無言にしないため `equipment_split`（warning）で報告する。
 
 ### 対象パス
-- `packages/core/src/row-utils.ts` / `tree.ts` / `hierarchy-coverage.ts` / `validate.ts` / `index.ts`
+- `packages/core/src/row-utils.ts` / `tree.ts` / `hierarchy-coverage.ts` / `validate.ts` / `dtdl.ts` / `index.ts`
 - `apps/cli/src/index.ts`
 - `README.md` / `pointlist.md` / `apps/web/src/components/HelpModal.tsx`
 - `packages/core/test/core.test.ts` / `apps/cli/test/cli.test.ts`
@@ -345,12 +349,16 @@
 - `site` または `building` が未設定の行、および point があって device が無い行は、従来どおり `row_dropped`（violation）でブロックされる。
 - 生成 RDF が `schema/building_model.shacl.ttl` の SHACL 検証を violation 0 件で通る。
 - `floor` 未設定時の挙動が `pointlist.md` と UI ヘルプに日英併記で更新される。
+- DTDL の `Building` interface が `hasPart` に `Level` 固定の target を持たず、twin graph の `building → hasPart → room` と矛盾しない。
+- `buildingos_level_missing` / `buildingos_room_missing` の `field` が、その CSV が実際に持つ列名（`floor` / `level` / `installationArea` / `room` など）になる。
+- 同じ device の行で空間が食い違う場合に `equipment_split`（warning）が出力され、同一なら出力されない（同梱 fixture で 0 件）。
 - `pnpm lint` / `pnpm format:check` / `pnpm typecheck` / `pnpm test` / `pnpm build` が成功する。
 
 ### 非目標
 - 未設定 Level のプレースホルダ自動生成。
 - ビルOS 側 Ingress の受理条件そのものの変更。
 - `schema/` 配下の vendored shapes の編集。
+- `validate()` の `hierarchy_missing` が返す `field`（`site` / `building` / `device`）の列名化。`device` は実際の列名（`deviceId`）ではないため UI が空のプロパティ行を合成するが、本タスクで新設した Issue ではなく既存の挙動のため、別タスクで扱う。
 
 ## 2.13 単位表記の語彙合意（Issue #39）
 
