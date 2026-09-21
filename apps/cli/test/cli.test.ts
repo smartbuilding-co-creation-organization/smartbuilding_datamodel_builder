@@ -179,8 +179,9 @@ describe('runCli hierarchy coverage', () => {
         'GW1,DEV1,Sensor 1,Sensor,S1,B1,1F,Room101,Temperature,Measurement,PT001,Temp,false,L1',
         // installation_area unset: emitted, but Equipment hangs off the Level (warning).
         'GW1,DEV2,Sensor 2,Sensor,S1,B1,1F,-,Temperature,Measurement,PT002,Temp,false,L2',
-        // floor unset: the row reaches no graph-derived output at all (violation).
-        'GW1,DEV3,Sensor 3,Sensor,S1,B1,-,Room103,Temperature,Measurement,PT003,Temp,false,L3',
+        // No device_id/device_name: the point has no Equipment to sit under, so it reaches
+        // no graph-derived output at all (violation).
+        'GW1,,,Sensor,S1,B1,1F,Room103,Temperature,Measurement,PT003,Temp,false,L3',
       ].join('\n') + '\n',
       'utf-8',
     );
@@ -230,6 +231,49 @@ describe('runCli hierarchy coverage', () => {
     expect(content.match(/sbco:PointExt/g) ?? []).toHaveLength(2);
     expect(content).not.toContain('PT003');
     expect(stderr.join('')).toContain('buildingos_room_missing');
+  });
+
+  it('writes a row whose floor is unset, and warns that Building OS will not take it', async () => {
+    // #40: floor is not a condition of the hierarchy, so the row reaches the output. The
+    // shape it produces (Room under Building) is valid RDF but not ingestible by Building
+    // OS, which is a warning -- it must not block the write.
+    const dir = mkdtempSync(join(tmpdir(), 'cli-no-floor-'));
+    tmpDirs.push(dir);
+    const input = join(dir, 'input.csv');
+    writeFileSync(
+      input,
+      [
+        'gateway_id,device_id,device_name,device_type,site,building,floor,installation_area,point_type,point_specification,point_id,point_name,writable,local_id',
+        'GW1,DEV1,Sensor 1,Sensor,S1,B1,1F,Room101,Temperature,Measurement,PT001,Temp,false,L1',
+        'GW1,DEV3,Sensor 3,Sensor,S1,B1,-,Room103,Temperature,Measurement,PT003,Temp,false,L3',
+      ].join('\n') + '\n',
+      'utf-8',
+    );
+    const out = join(dir, 'out.ttl');
+    const { io, stderr } = makeIo();
+
+    const code = await runCli(
+      ['--input', input, '--format', 'RDF', '--serializer', 'Turtle', '--out', out],
+      io,
+    );
+
+    expect(code).toBe(0);
+    const content = readFileSync(out, 'utf-8');
+    expect(content.match(/sbco:PointExt/g) ?? []).toHaveLength(2);
+    expect(content).toContain('PT003');
+    expect(stderr.join('')).toContain('buildingos_level_missing');
+    expect(stderr.join('')).toContain('Rows read: 2 -> rows in output: 2');
+    expect(stderr.join('')).not.toContain('row_dropped');
+  });
+
+  it('heads the structural findings with a severity-neutral label', async () => {
+    // The block can hold violations, so calling it "warnings" made a blocking finding read
+    // as advisory (#40).
+    const { io, stderr } = makeIo();
+    await runCli(['--input', INVALID_CSV, '--format', 'CSV'], io);
+
+    expect(stderr.join('')).toContain('Validation issues:');
+    expect(stderr.join('')).not.toContain('Validation warnings:');
   });
 
   it('does not block CSV output, which carries every row', async () => {
