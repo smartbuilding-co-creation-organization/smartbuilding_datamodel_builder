@@ -1,3 +1,4 @@
+import { resolveHierarchyIdVersion } from './hierarchy-identity';
 import { buildResourceGraph, ResourceNode } from './resource-graph';
 import { RowRecord } from './types';
 import { normalizeValue } from './row-utils';
@@ -64,7 +65,18 @@ export function buildOutputRows(rows: RowRecord[]): RowRecord[] {
     outputRows.push(resourceRowFromResource(resource));
   }
 
-  return outputRows;
+  const buildingById = new Map(
+    resources
+      .filter((resource) => resource.buildingId)
+      .map((resource) => [resource.id, resource.buildingId!]),
+  );
+  return resolveHierarchyIdVersion(rows) === '2'
+    ? outputRows.map((row) => ({
+        ...row,
+        hierarchyIdVersion: '2',
+        ...(buildingById.has(row.id) ? { building: buildingById.get(row.id)! } : {}),
+      }))
+    : outputRows;
 }
 
 function resourceRowFromResource(resource: ResourceNode): RowRecord {

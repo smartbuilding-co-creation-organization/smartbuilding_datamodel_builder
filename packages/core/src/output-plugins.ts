@@ -1,3 +1,4 @@
+import { resolveHierarchyIdVersion } from './hierarchy-identity';
 import { exportRdf } from './rdf';
 import { SchemaRoot } from './schema-mapping';
 import { Issue, RowRecord } from './types';
@@ -216,6 +217,9 @@ export async function runOutputPlugin(
   if (!plugin) {
     throw new Error(`Output plugin not found for ${format}/${serializer}`);
   }
+  // Validate v2 identity before mergeOutputRows deduplicates rows by public ID.
+  // Otherwise two conflicting explicit IDs could silently collapse into one resource.
+  if (resolveHierarchyIdVersion(options.rows) === '2') buildTree(options.rows);
   const merged = mergeOutputRows(options.rows, options.modelRows ?? []);
   const result = await plugin.run({ ...options, rows: merged });
 

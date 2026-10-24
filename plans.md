@@ -391,6 +391,27 @@
 ### 非目標
 - 合意前に本リポジトリの `schema/building_model.shacl.ttl` を直接編集すること。
 
+## 2.14 Issue #45: 空間公開IDとTreeキーの分離
+- 目的: 明示IDを保持し、BuildingとPointのbuilding参照を整合させる。
+- 現状確認: tree.tsが親IDを再帰連結、output-utils.tsがbuildingを入力のまま出力しており要対応。
+- 設計方針: hierarchy_id_version=2を全入力行に明示した場合だけ新方式。未指定/1はlegacyを維持。
+  公開IDは明示ID優先、fallbackは種別・親公開ID・名前の決定的128bit digest。
+  Treeのlogical key、公開ID、表示名、percent-encoded IRIを分離する。
+  重複明示ID、生成ID衝突、同一IDの親/表示名矛盾は失敗させ、勝手に再採番しない。
+  v2のPoint buildingは祖先Buildingの公開ID。site/floor/installation_areaはラベル。
+- 対象パス: packages/core/src（ID解決・Resource graph・出力統合）、関連unit、apps/web/src/state/store.ts と E2E（同名空間の編集分離）、README.md、pointlist.md、schema/mapping.md、docs/identity-migration.md。
+- 受入基準:
+  - [x] legacyのID/IRIを維持しv2を明示選択できる。
+  - [x] 明示ID、同名階/部屋の非衝突、入力並べ替え/再export、rename/moveの安定性をunitで検証。
+  - [x] Building IDとPoint building一致、35点/全階層/リンク、特殊文字のTurtle parseを検証。
+  - [x] 移行/別名/rollbackとRI contract検証手順を文書化する（他repoは読取専用、実環境適用なし）。
+  - [x] lint/typecheck/test/E2Eを実行する。
+- 非目標: #46 protocol、#44 ClockSource、RI製品変更、実データ再import、push/PR/merge。
+- 状態: Builder実装・ローカル検証完了。RI横断gateは未実行で、Issue全体の完了とはしない。
+- 残受入基準:
+  - [ ] disposable RI環境でimport→建物検索/認可/provisioning/履歴query/rollbackを横断検証する（docs/identity-migration.md）。
+- 検証: Node 22.23.3 / pnpm 9.15.9。install --frozen-lockfile、lint、format:check（変更ファイルはprettier --write）、typecheck、test、build、test:e2e（18件）。依存/lockfile変更なし。
+
 ## 3. マイルストーン（M0〜M3）
 
 ### M0: リポジトリ健全性

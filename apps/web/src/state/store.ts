@@ -129,7 +129,30 @@ export const useAppStore = create<AppState>((set, get) => ({
       };
       const columns = hierarchyColumns[kind] ?? [];
       if (prevName && nextName && prevName !== nextName && columns.length > 0) {
+        const v2 = currentRows.some((item) => item.hierarchyIdVersion === '2');
+        const scopedIds = new Set<string>();
+        const collect = (node: Node, inside = false) => {
+          const matched = inside || node.id === id;
+          if (matched) scopedIds.add(node.id);
+          node.children.forEach((child) => collect(child, matched));
+        };
+        if (v2) get().tree.forEach((node) => collect(node));
+        const labelColumns: Record<string, string> = {
+          site: 'siteName',
+          building: 'buildingName',
+          level: 'levelName',
+          floor: 'levelName',
+          room: 'roomName',
+          space: 'roomName',
+          zone: 'roomName',
+        };
         resolvedRows = currentRows.map((item) => {
+          if (v2) {
+            const labelColumn = labelColumns[kind];
+            return scopedIds.has(item.id) && labelColumn
+              ? { ...item, [labelColumn]: nextName }
+              : item;
+          }
           let updated = item;
           for (const column of columns) {
             if (normalizeValue(item[column]) === prevName) {
@@ -140,6 +163,12 @@ export const useAppStore = create<AppState>((set, get) => ({
           return updated;
         });
         resolvedModelRows = nextModelRows.map((item) => {
+          if (v2) {
+            const labelColumn = labelColumns[kind];
+            return scopedIds.has(item.id) && labelColumn
+              ? { ...item, [labelColumn]: nextName }
+              : item;
+          }
           let updated = item;
           for (const column of columns) {
             if (normalizeValue(item[column]) === prevName) {
@@ -150,6 +179,13 @@ export const useAppStore = create<AppState>((set, get) => ({
           return updated;
         });
       }
+    }
+    if (resolvedRows.some((item) => item.hierarchyIdVersion === '2')) {
+      const previousById = new Map(resolvedModelRows.map((item) => [item.id, item]));
+      resolvedModelRows = Array.from(buildResourceModelMap(resolvedRows).values()).map((item) => ({
+        ...previousById.get(item.id),
+        ...item,
+      }));
     }
     const { tree, issues } = recompute(resolvedRows, get().schema);
     const selectedId = get().selectedId;

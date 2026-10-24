@@ -1,3 +1,4 @@
+import { buildIdentityTree, resolveHierarchyIdVersion } from './hierarchy-identity';
 import { Node, RowRecord } from './types';
 import {
   getHierarchyDropReasons,
@@ -237,8 +238,20 @@ export function resolveTreeMode(rows: RowRecord[]): TreeMode {
 }
 
 export function buildTree(rows: RowRecord[]): Node[] {
+  const version = resolveHierarchyIdVersion(rows);
   if (resolveTreeMode(rows) === 'explicit-graph') {
     return buildParentChildTree(rows);
+  }
+  if (version === '2') {
+    const tree = buildIdentityTree(rows);
+    lastIndex = new Map();
+    const index = (nodes: Node[]) =>
+      nodes.forEach((node) => {
+        lastIndex.set(node.id, node);
+        index(node.children);
+      });
+    index(tree);
+    return tree;
   }
   return buildHierarchyTree(rows);
 }

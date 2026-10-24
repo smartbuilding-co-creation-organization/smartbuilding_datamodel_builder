@@ -16,6 +16,7 @@ export const KIND_TO_CLASS: Record<string, string> = {
 
 export const INTERNAL_ROW_KEYS: ReadonlySet<string> = new Set([
   '__rowId',
+  'hierarchyIdVersion',
   'parentId',
   'kind',
   'pointId',

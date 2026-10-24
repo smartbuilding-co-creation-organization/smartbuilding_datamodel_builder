@@ -234,6 +234,7 @@ export function exportRdf(rows: RowRecord[], options: RdfOptions = {}): string {
     const props: string[] = [`a ${safeClassName}`];
 
     const fields = collectOutputFields(resource.row, required);
+    if (resource.buildingId && !fields.includes('building')) fields.push('building');
     for (const field of fields) {
       if (STRUCTURED_FIELDS.has(field)) continue;
       const value = resolveOutputValue(resource, field, { autoFill });
