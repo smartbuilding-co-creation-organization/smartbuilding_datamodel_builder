@@ -14,6 +14,8 @@ import {
   getOutputPlugins,
   listUnrepresentedRows,
   parseCsv,
+  parseClockSidecar,
+  ClockSidecar,
   runOutputPlugin,
   validate,
 } from '@repo/core';
@@ -26,6 +28,7 @@ const USAGE = `Usage: pnpm cli -- --input <csv> --format <format> [--serializer 
        pnpm cli -- --list-formats
 
 Options:
+  --clocks <path>         Separate clock JSON sidecar (RDF/Turtle only; draft RI #606 contract)
   --input <path>          Input CSV file (required unless --list-formats)
   --format <name>         Output format, e.g. CSV, JSON, JSON-LD, RDF, YAML, DTDL, WoT
   --serializer <name>     Serializer name, required only when a format has more than one
@@ -96,12 +99,12 @@ function listFormats(stdout: Writer): void {
 // and carries only the rows the resource graph could place. Counted in rows, not resources --
 // the graph also synthesizes Site/Building/Level/Room nodes that were never rows of their own,
 // so a resource count is not comparable with the input row count.
-function describeCoverage(rows: RowRecord[], format: string): string {
+function describeCoverage(rows: RowRecord[], format: string, clocks?: ClockSidecar): string {
   if (format === 'CSV' || format === 'JSON-LD') {
     return `Rows read: ${rows.length} -> rows in output: ${rows.length}`;
   }
   const dropped = listUnrepresentedRows(rows).length;
-  const resources = buildOutputRows(rows).length;
+  const resources = buildOutputRows(rows).length + 2 * (clocks?.clockSources.length ?? 0);
   return (
     `Rows read: ${rows.length} -> rows in output: ${rows.length - dropped}` +
     ` (dropped: ${dropped}); resources emitted: ${resources}`
@@ -129,6 +132,7 @@ export async function runCli(
       args,
       options: {
         input: { type: 'string' },
+        clocks: { type: 'string' },
         format: { type: 'string' },
         serializer: { type: 'string' },
         out: { type: 'string' },
@@ -210,6 +214,19 @@ export async function runCli(
     return 2;
   }
 
+  let clocks: ClockSidecar | undefined;
+  if (values.clocks !== undefined) {
+    if (plugin.format !== 'RDF' || plugin.serializer !== 'Turtle') {
+      io.stderr.write('Clock sidecar requires RDF/Turtle; other formats cannot preserve clocks.\n');
+      return 2;
+    }
+    try {
+      clocks = parseClockSidecar(readFileSync(values.clocks, 'utf-8'));
+    } catch (error) {
+      io.stderr.write(`Failed to read clock sidecar: ${(error as Error).message}\n`);
+      return 2;
+    }
+  }
   const schema = loadSchema();
 
   let rows;
@@ -236,16 +253,32 @@ export async function runCli(
       ? { shapeText: readFileSync(SHACL_PATH, 'utf-8') }
       : undefined;
 
-  const result = await runOutputPlugin(plugin.format, plugin.serializer, { rows, schema, shacl });
+  let result;
+  try {
+    result = await runOutputPlugin(plugin.format, plugin.serializer, {
+      rows,
+      schema,
+      shacl,
+      clocks,
+    });
+  } catch (error) {
+    if (clocks === undefined) throw error;
+    io.stderr.write(`Clock export rejected: ${(error as Error).message}\n`);
+    return 2;
+  }
 
   // Print the reconciliation unconditionally, before the issues. A run that ends "0 blocking
   // issues" tells you nothing about how many rows it looked at; this line does, so a silent
   // drop cannot be mistaken for a clean conversion.
-  io.stderr.write(`${describeCoverage(rows, plugin.format)}\n`);
+  io.stderr.write(`${describeCoverage(rows, plugin.format, clocks)}\n`);
 
   const blockingIssues = (result.issues ?? []).filter(isBlockingIssue);
-  if (blockingIssues.length > 0 && !values['allow-issues']) {
-    io.stderr.write('Blocking validation issues (use --allow-issues to write anyway):\n');
+  if (blockingIssues.length > 0 && (clocks !== undefined || !values['allow-issues'])) {
+    io.stderr.write(
+      clocks !== undefined
+        ? 'Blocking validation issues (clock exports cannot bypass validation):\n'
+        : 'Blocking validation issues (use --allow-issues to write anyway):\n',
+    );
     for (const issue of blockingIssues) {
       io.stderr.write(`  ${formatIssue(issue)}\n`);
     }

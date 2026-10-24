@@ -412,6 +412,28 @@
   - [ ] disposable RI環境でimport→建物検索/認可/provisioning/履歴query/rollbackを横断検証する（docs/identity-migration.md）。
 - 検証: Node 22.23.3 / pnpm 9.15.9。install --frozen-lockfile、lint、format:check（変更ファイルはprettier --write）、typecheck、test、build、test:e2e（18件）。依存/lockfile変更なし。
 
+## 2.15 Clock sidecar入力とRI #606 draft RDF契約（Builder #44）
+- 目的: 設備35点CSVと独立した時計定義・適用関係からbos:ClockSource/BacnetClockBinding/usesClockSourceを出力する。
+- 現状確認: 現在時計専用入力なし。RI worktrees/ri-606 の6e0fefee8be2caaa33608d76845cbab2841cf9ddを読取で確認。契約はdraft。
+- 設計方針: version付きstrict JSON sidecar、明示clock/native IRI、公開Equipment IDによる結合。通常Pointに混ぜない。
+  core exportRdf/runOutputPlugin とCLI --clocksから入力。非対応formatは明示エラー。
+  #45 IDを保持し、#46と同じbos:protocol写像を使用。SHACL Coreとgateway/一意性等の意味検証を併用。
+- 対象パス: packages/core/src/{clocks,clock-shapes,rdf,output-plugins,index}.ts、apps/cli、関連unit・元RI SHACL独立検証script、README/pointlist/mapping/clock仕様。
+- 受入基準:
+  - [x] 35 Point/Device ID・Building参照・bos:protocolを保持し時計1と全設備の適用関係を出力する。
+  - [x] IRI/literal、native必須/数値範囲、readOnly/poll/s/secondsをSHACLと入力検証で確認する。
+  - [x] dangling/多重時計/Point override/重複ID/gateway越境/runtime混入/不正JSONを拒否する。
+  - [x] 入力順/再exportの決定性、別JSON往復、旧clockなし入力互換とCLI非対応formatの拒否を検証する。
+  - [x] lint/format:check/typecheck/test/buildを実行する。
+- 非目標: 他repo変更、UI時計エディタ、run context/telemetry/provisioning製品実装、push/merge/実環境適用。
+- 注記: 2.14での#44/#46非目標は#45コミットの境界を示す。本追加入力は今回の依頼で明示的に許可された別意図。
+
+- 状態: Builder producer実装・ローカル検証完了。RIサービスへのimport/認可/provisioning/履歴queryと実機適用は未実行。
+- 検証: Node 22.23.3 / pnpm 9.15.9。frozen install、lint、format:check（変更ファイルprettier --write）、typecheck、全unit、build、E2E 18件。
+  時計core 24件、CLI入力/出力保持/異常入力、元RI SHACL-SPARQL（pyshacl 0.40.0 / rdflib 7.6.0）9異常ケースが成功。
+  CLI v2結合出力は35行維持・42 resource（通常40＋clock/native各1）、violation 0。既存Point単位語彙warningは維持。
+  依存追加・lockfile変更なし。他worktreeは読取のみ。push/merge/実環境適用なし。
+
 ## 3. マイルストーン（M0〜M3）
 
 ### M0: リポジトリ健全性

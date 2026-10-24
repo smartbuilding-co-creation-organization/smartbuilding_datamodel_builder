@@ -185,3 +185,21 @@ Point and Device IDs (`BPT-*`, etc.) remain explicit and unchanged.
 
 Version selection is not an automatic deployment migration. See
 [identity migration and RI contract verification](../docs/identity-migration.md).
+
+## 9) Separate clock definitions (Builder #44 / RI #606 draft)
+
+`bos:` is `http://buildingos.gutp.jp/ontology#`, a Building OS extension namespace.
+CSV `protocol` maps to `bos:protocol` exactly as Builder #46; its value is retained without
+inference. Other unknown columns retain the existing custom predicate mapping.
+
+Clock resources do not enter CSV rows or the ordinary Point graph. An explicit versioned JSON
+sidecar supplies stable absolute ClockSource/BacnetClockBinding IRIs and Equipment public-ID
+bindings. `exportRdf(rows, { clocks })` appends their typed triples and equipment
+`bos:usesClockSource` IRI edges. `runOutputPlugin` validates the serialized RDF with
+`CLOCK_SOURCE_SHAPES` plus any supplied base SHACL; non-RDF formats reject clock input.
+No `sbco:ClockSource`, Point subtype, runtime state or unapproved SBCO clock predicate is emitted.
+Native BACnet parameters remain on the dedicated binding, not on the ClockSource or equipment
+Point. Equipment/Point IDs and protocol/addressing remain independent from clock addressing.
+
+See [clock input specification](../docs/clock-input.md) for the pinned RI contract, datatype
+ranges, strict schema, SHACL-Core/SPARQL-equivalent checks, round-trip and limitations.

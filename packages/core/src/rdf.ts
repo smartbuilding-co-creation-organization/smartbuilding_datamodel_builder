@@ -1,3 +1,4 @@
+import { exportClockRdf } from './clocks';
 import { buildResourceGraph } from './resource-graph';
 import { buildSchemaCache, getRequiredPropsFromCache, SchemaRoot } from './schema-mapping';
 import { RowRecord } from './types';
@@ -6,6 +7,7 @@ import { getOriginalHeaderName } from './csv';
 import { isTruthyValue } from './row-utils';
 
 type RdfOptions = {
+  clocks?: unknown;
   baseIri?: string;
   includePrefixes?: boolean;
   schema?: SchemaRoot;
@@ -103,6 +105,9 @@ const SBCO_FIELDS = new Set([
   'writable',
 ]);
 
+// Building OS-owned extension vocabulary; matches Builder #46.
+const BOS_FIELDS = new Set(['protocol']);
+
 const DATE_FIELDS = new Set(['commissioningDate', 'installationDate', 'turnoverDate']);
 // datamodels' schema (range: integer/boolean) is the source of truth for these -- see
 // smartbuilding_datamodel_builder#27: `interval`/`writable` used to serialize as plain string
@@ -157,6 +162,7 @@ function predicateFor(field: string): string {
   if (REC_FIELDS.has(field)) return `rec:${field}`;
   if (BRICK_FIELDS.has(field)) return `brick:${field}`;
   if (SBCO_FIELDS.has(field)) return `sbco:${field}`;
+  if (BOS_FIELDS.has(field)) return `bos:${field}`;
   return `<${UNKNOWN_PROPERTY_BASE}${strictPercentEncode(getOriginalHeaderName(field))}>`;
 }
 
@@ -211,6 +217,7 @@ export function exportRdf(rows: RowRecord[], options: RdfOptions = {}): string {
 
   const lines: string[] = [];
   if (includePrefixes) {
+    lines.push('@prefix bos: <http://buildingos.gutp.jp/ontology#> .');
     lines.push('@prefix sbco: <https://www.sbco.or.jp/ont/> .');
     lines.push(`@prefix sbr: <${baseIri}> .`);
     lines.push('@prefix rec: <https://w3id.org/rec/> .');
@@ -253,5 +260,8 @@ export function exportRdf(rows: RowRecord[], options: RdfOptions = {}): string {
     lines.push('');
   }
 
-  return lines.join('\n').trimEnd() + '\n';
+  const content = lines.join('\n').trimEnd() + '\n';
+  return options.clocks === undefined
+    ? content
+    : content + '\n' + exportClockRdf(rows, options.clocks, baseIri);
 }

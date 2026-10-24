@@ -235,3 +235,10 @@ v2で出力するPointの `building` は祖先Buildingの公開IDです。CSV原
 同じ階名・部屋名は親が異なれば別空間で、明示IDは全クラスを通じてデータセット内で一意にします。
 未指定IDの生成規則とrename/move時の安定性は [mapping仕様](schema/mapping.md#8-versioned-hierarchy-identity-45)、
 旧ID/IRIや履歴partitionの扱いは [移行手順](docs/identity-migration.md) を参照してください。
+
+## 時計は設備Pointとは別入力（Builder #44 / RI #606 draft）
+
+1行1 Pointと設備35点のIDを維持します。時計をCSVにPointとして追加せず、
+時計定義とEquipment公開IDへの適用関係を別JSONの`--clocks`で指定します。
+CSV `protocol`は#46と同じ`bos:protocol`へ出力し、未知プロパティへ落としません。
+時計入力のRDF/Turtle以外への出力は拒否します。詳細は [時計入力仕様](docs/clock-input.md)。

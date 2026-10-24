@@ -163,3 +163,12 @@ IDの重複・矛盾やversion混在はエラーになります。生成IDはren
 
 詳細は [IDマッピング仕様](schema/mapping.md#8-versioned-hierarchy-identity-45) と
 [既存データの移行・rollbackとRI検証](docs/identity-migration.md) を参照してください。
+
+### 時計を別JSONから出力する（RI #606 draft）
+
+設備35点CSVとは別に、時計定義・Equipmentへの適用関係をJSONで渡せます。
+`pnpm cli -- --input points.csv --clocks clocks.json --format RDF --out model.ttl`
+で`bos:ClockSource`、`bos:BacnetClockBinding`、`bos:usesClockSource`を出力します。
+時計を通常Pointに追加せず、設備IDとPointの`bos:protocol`を保持します。
+strict入力検証とSHACLを適用し、時計を保持できない出力形式は拒否します。
+入力例、core API、制約と検証方法は [時計入力仕様](docs/clock-input.md) を参照してください。
