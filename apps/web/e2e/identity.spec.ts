@@ -42,6 +42,17 @@ test('v2 keeps same-named rooms isolated during editing and exports consistent b
   await expect(page.getByTestId('tree-item-R1')).toContainText('Renamed room');
   await expect(page.getByTestId('tree-item-R2')).toContainText('Room 101');
 
+  await page
+    .getByTestId('tree-item-DEV001')
+    .locator('xpath=ancestor::*[@role="treeitem"][1]')
+    .locator('.MuiTreeItem-iconContainer')
+    .click();
+  await page.getByTestId('tree-item-DEV001').click();
+  await cell.dblclick();
+  await cell.locator('input').fill('Renamed equipment');
+  await cell.locator('input').press('Enter');
+  await expect(cell).toContainText('Renamed equipment');
+
   // Editing a point must not replace the source building label with its output reference.
   await page.getByTestId('grid-csv').locator('[role="row"][data-id="PT001__0"]').click();
   await cell.dblclick();
@@ -61,5 +72,6 @@ test('v2 keeps same-named rooms isolated during editing and exports consistent b
   expect(ttl).toContain('sbco:building "B1"');
   expect(ttl).toContain('sbco:building "B2"');
   expect(ttl).toContain('Renamed room');
+  expect(ttl).toContain('Renamed equipment');
   expect(errors).toEqual([]);
 });

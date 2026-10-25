@@ -966,3 +966,15 @@ Open Issue 13 件を現行 `main`（`aa50beb`）のコードに突き合わせ�
 - 方針: 今回の依頼により2.14/2.15のpush非目標を解除する。PR作成・merge・RI実環境適用は行わない。
 - PR準備: plans.md 2.14（Refs #45）と2.15（Refs #44、protocolはRefs #46）を含む2実装コミット。1 PR = 1意図の原則に従い、PR発行時は階層IDと時計入力の分割を検討する。
 - 検証: 今回はブランチ操作と文書更新のみ。実装検証は2.14/2.15の記録を参照し、今回のテスト再実行は省略する。RI横断gateは未実行。
+
+## 2.17 Codex reviewとPR発行
+- 目的: origin/mainとの差分をcodex reviewし、指摘対応・必要な回帰検証後にPRを発行する。
+- 対象: 2.14/2.15の実装、関連テスト・文書。今回の依頼でPR発行を許可。mergeは対象外。
+- 受入基準: レビュー指摘を解決し、品質ゲートと未実行のRI横断gateをPRに明記する。
+- 指摘対応: v2モデル再構築によるEquipment名の上書きを修正。入力から導出した値との差分としてInspector編集を保持する。
+- 指摘対応: fallback空間IDのrenameで失われた子孫プロパティ・選択・展開を、安定Pointを起点とする旧新ID対応で移行する。
+- 回帰検証: Equipment名編集→RDF出力のE2Eを拡張し、fallback階renameでRoomの追加プロパティ・選択・展開を保持するstore回帰テストを追加。
+- 指摘対応: Point/Equipmentを持たない空間専用行も、入力行の階層からrename対象を解決する。
+- 検証結果: Node 22.23.3 / pnpm 9.15.9でlint、format:check、typecheck、test（core/CLI/web store）、build、E2E 18件成功。E2Eは既定4173の接続timeoutを避け、一時設定で4185を使用（設定はコミットしない）。
+- レビュー結果: codex review --base origin/mainを指摘対応後に再実行し、最終結果はactionable regressionなし。RI横断gate・実機適用は未実行のまま。
+- 状態: ローカルレビュー・指摘対応完了。RI向けモデル出力の互換性対応として2.14/2.15を一つのPRにまとめ、各実装コミットと残gateをPR本文に明示する。
