@@ -978,3 +978,12 @@ Open Issue 13 件を現行 `main`（`aa50beb`）のコードに突き合わせ�
 - 検証結果: Node 22.23.3 / pnpm 9.15.9でlint、format:check、typecheck、test（core/CLI/web store）、build、E2E 18件成功。E2Eは既定4173の接続timeoutを避け、一時設定で4185を使用（設定はコミットしない）。
 - レビュー結果: codex review --base origin/mainを指摘対応後に再実行し、最終結果はactionable regressionなし。RI横断gate・実機適用は未実行のまま。
 - 状態: ローカルレビュー・指摘対応完了。RI向けモデル出力の互換性対応として2.14/2.15を一つのPRにまとめ、各実装コミットと残gateをPR本文に明示する。
+
+## 2.18 PR #47 の CI（依存監査）を通す
+- 目的: CI の `pnpm audit --audit-level high` が PR #47 で失敗している（main にも同じ依存がある）のを解消する。
+- 対象: package.json の overrides と依存範囲、pnpm-lock.yaml、zod 4 への移行に伴う `packages/core/src/validate.ts`。
+- 変更: vitest 3 → 4（開発依存。脆弱な tinypool を使わなくなる）、zod 3 → 4（実行時依存。使っているのは string/number/array/literal/enum/object/refine だけ）、vite 6.4.5、overrides で brace-expansion 1.1.20 / 2.1.6、fast-uri 3.1.7、source-map-js 1.2.2、undici 6.29.1。
+- 互換性: zod 4 では refine の第 2 引数に関数を渡せないため `{ error }` に書き換えた。kind の検証メッセージは同じ文面で、これを確かめる unit test を足した。RDF/YAML の出力は変えていない。
+- 受入基準: `pnpm audit --audit-level high` で high/critical が 0 件。lint、format:check、typecheck、test、build、E2E が通る。
+- 検証結果: Node 22.23.4 / pnpm 9.15.9 で上記すべて成功（core 161、web 2、CLI 23、E2E 18）。audit の残りは low 2 / moderate 8。
+- 状態: Completed（PR #47 に commit。merge は対象外）。

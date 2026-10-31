@@ -250,6 +250,13 @@ describe('validate', () => {
     expect(issues.some((issue) => issue.field === 'kind')).toBe(true);
   });
 
+  it('names the rejected kind value in the issue message', () => {
+    const rows = [{ id: 'row-1', kind: 'not-a-real-kind', name: 'Row 1' }];
+    const { issues } = validate(rows);
+    const kind = issues.find((issue) => issue.field === 'kind');
+    expect(kind?.message).toMatch(/^Invalid kind value: "not-a-real-kind"\. Expected one of: /);
+  });
+
   it('flags a row with no resolvable kind in an explicit id/parentId graph (#34)', () => {
     // An explicit id/kind/parentId graph CSV (e.g. re-imported from an external system) with a
     // blank kind for a spatial node. Unlike the Site/Building/Level/Room-column hierarchy-signal
