@@ -1,3 +1,4 @@
+import { resolveHierarchyIdVersion } from './hierarchy-identity';
 import { buildTree } from './tree';
 import { Node, RowRecord } from './types';
 import { inferRowKind, normalizeValue, resolveRowId, resolveRowName } from './row-utils';
@@ -37,6 +38,8 @@ export type ResourceNode = {
   className: string;
   parentId?: string;
   row?: RowRecord;
+  /** v2 reference resolved from topology; source row retains its label. */
+  buildingId?: string;
 };
 
 export type ResourceRelation = {
@@ -85,6 +88,23 @@ export function buildResourceGraph(rows: RowRecord[]) {
     };
     resources.push(resource);
     resourceById.set(resource.id, resource);
+  }
+
+  // Resolve reference-equivalent literals from topology, without mutating source CSV rows.
+  if (resolveHierarchyIdVersion(rows) === '2') {
+    for (const resource of resources) {
+      if (classCategory(resource.className) !== 'point' || !resource.row) continue;
+      let ancestor = resource.parentId ? resourceById.get(resource.parentId) : undefined;
+      const visited = new Set<string>();
+      while (ancestor && !visited.has(ancestor.id)) {
+        visited.add(ancestor.id);
+        if (ancestor.className === 'Building') {
+          resource.buildingId = ancestor.id;
+          break;
+        }
+        ancestor = ancestor.parentId ? resourceById.get(ancestor.parentId) : undefined;
+      }
+    }
   }
 
   const relations: ResourceRelation[] = [];

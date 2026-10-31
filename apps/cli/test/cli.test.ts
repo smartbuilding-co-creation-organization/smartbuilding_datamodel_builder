@@ -292,3 +292,70 @@ describe('runCli hierarchy coverage', () => {
     expect(stderr.join('')).toContain('Rows read: 3 -> rows in output: 3');
   });
 });
+
+describe('clock JSON sidecar CLI', () => {
+  const csv = resolve(REPO_ROOT, 'packages/core/test/fixtures/boptest-bestest-air.csv');
+  const clocks = resolve(REPO_ROOT, 'packages/core/test/fixtures/boptest-clocks.json');
+  it('combines 35-point CSV with a separate clock input and keeps bos:protocol', async () => {
+    const { io, stdout } = makeIo();
+    const dir = mkdtempSync(join(tmpdir(), 'clock-cli-v2-'));
+    tmpDirs.push(dir);
+    const versionedCsv = join(dir, 'points.csv');
+    const lines = readFileSync(csv, 'utf8').trim().split('\n');
+    writeFileSync(
+      versionedCsv,
+      lines
+        .map(
+          (line, index) =>
+            line +
+            (index === 0
+              ? ',hierarchy_id_version,site_id,building_id'
+              : ',2,site-boptest,bldg-boptest'),
+        )
+        .join('\n'),
+    );
+    expect(await runCli(['--input', versionedCsv, '--clocks', clocks, '--format', 'RDF'], io)).toBe(
+      0,
+    );
+    expect(stdout.join('')).toContain('sbco:id "bldg-boptest"');
+    expect(stdout.join('')).toContain('sbco:building "bldg-boptest"');
+    expect(stdout.join('')).toContain('ClockSource');
+    expect(stdout.join('')).toContain('bos:protocol "bacnet"');
+    expect((stdout.join('').match(/a sbco:PointExt/g) ?? []).length).toBe(35);
+  });
+  it('rejects unsupported formats and missing sidecars without output', async () => {
+    for (const args of [
+      ['--format', 'CSV', '--clocks', clocks],
+      ['--format', 'RDF', '--clocks', clocks + '-missing'],
+      ['--format', 'RDF', '--clocks', ''],
+    ]) {
+      const { io, stdout, stderr } = makeIo();
+      expect(await runCli(['--input', csv, ...args], io)).toBe(2);
+      expect(stdout).toEqual([]);
+      expect(stderr.join('')).toMatch(/clock/i);
+    }
+  });
+  it('keeps an existing output file on bad clock input, even with --allow-issues', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'clock-cli-'));
+    tmpDirs.push(dir);
+    const sidecar = join(dir, 'invalid.json');
+    const target = join(dir, 'model.ttl');
+    writeFileSync(
+      sidecar,
+      JSON.stringify({
+        ...JSON.parse(readFileSync(clocks, 'utf8')),
+        clockBindings: [{ equipmentId: 'BPT-0002', clockId: 'urn:missing' }],
+      }),
+    );
+    writeFileSync(target, 'previous artifact');
+    const { io, stdout } = makeIo();
+    expect(
+      await runCli(
+        ['--input', csv, '--format', 'RDF', '--clocks', sidecar, '--out', target, '--allow-issues'],
+        io,
+      ),
+    ).toBe(2);
+    expect(stdout).toEqual([]);
+    expect(readFileSync(target, 'utf8')).toBe('previous artifact');
+  });
+});

@@ -8,5 +8,5 @@
       "@repo/core": ["../../packages/core/src/index.ts"]
     }
   },
-  "include": ["src", "vite.config.ts", "playwright.config.ts", "e2e"]
+  "include": ["src", "vite.config.ts", "playwright.config.ts", "e2e", "test"]
 }

@@ -1,0 +1,29 @@
+{
+  "schemaVersion": "builder-clocks/1-draft",
+  "clockSources": [
+    {
+      "clockId": "urn:example:clock:shared-simulation",
+      "clockDomain": "simulation",
+      "unit": "s",
+      "readOnly": true,
+      "acquisitionMode": "poll",
+      "native": {
+        "bindingId": "urn:example:clock-binding:shared-simulation",
+        "protocol": "bacnet",
+        "gatewayId": "GW-BOPTEST-001",
+        "connectorId": "bacnet-example",
+        "deviceInstance": 1234,
+        "objectType": "analogValue",
+        "objectInstance": 2,
+        "property": "presentValue",
+        "unit": "seconds"
+      }
+    }
+  ],
+  "clockBindings": [
+    {
+      "equipmentId": "DEV-FCU-1",
+      "clockId": "urn:example:clock:shared-simulation"
+    }
+  ]
+}

@@ -81,3 +81,12 @@ pnpm --filter @repo/cli lint
 pnpm --filter @repo/cli typecheck
 pnpm --filter @repo/cli test
 ```
+
+### Clock JSON sidecar (RI #606 draft)
+
+Use `--clocks <json>` alongside the equipment CSV for RDF/Turtle output. The JSON contains
+`schemaVersion: "builder-clocks/1-draft"`, `clockSources` and `clockBindings`; equipment
+bindings use public Equipment IDs, not Point IDs. Clocks never become normal Points.
+Invalid clocks and incompatible formats fail before writing, even with `--allow-issues`.
+See [input and validation details](../../docs/clock-input.md). Fixture native addresses are
+synthetic contract examples, not a deployment address map.
