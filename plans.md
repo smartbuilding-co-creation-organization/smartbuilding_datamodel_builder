@@ -391,6 +391,49 @@
 ### 非目標
 - 合意前に本リポジトリの `schema/building_model.shacl.ttl` を直接編集すること。
 
+## 2.14 Issue #45: 空間公開IDとTreeキーの分離
+- 目的: 明示IDを保持し、BuildingとPointのbuilding参照を整合させる。
+- 現状確認: tree.tsが親IDを再帰連結、output-utils.tsがbuildingを入力のまま出力しており要対応。
+- 設計方針: hierarchy_id_version=2を全入力行に明示した場合だけ新方式。未指定/1はlegacyを維持。
+  公開IDは明示ID優先、fallbackは種別・親公開ID・名前の決定的128bit digest。
+  Treeのlogical key、公開ID、表示名、percent-encoded IRIを分離する。
+  重複明示ID、生成ID衝突、同一IDの親/表示名矛盾は失敗させ、勝手に再採番しない。
+  v2のPoint buildingは祖先Buildingの公開ID。site/floor/installation_areaはラベル。
+- 対象パス: packages/core/src（ID解決・Resource graph・出力統合）、関連unit、apps/web/src/state/store.ts と E2E（同名空間の編集分離）、README.md、pointlist.md、schema/mapping.md、docs/identity-migration.md。
+- 受入基準:
+  - [x] legacyのID/IRIを維持しv2を明示選択できる。
+  - [x] 明示ID、同名階/部屋の非衝突、入力並べ替え/再export、rename/moveの安定性をunitで検証。
+  - [x] Building IDとPoint building一致、35点/全階層/リンク、特殊文字のTurtle parseを検証。
+  - [x] 移行/別名/rollbackとRI contract検証手順を文書化する（他repoは読取専用、実環境適用なし）。
+  - [x] lint/typecheck/test/E2Eを実行する。
+- 非目標: #46 protocol、#44 ClockSource、RI製品変更、実データ再import、push/PR/merge。
+- 状態: Builder実装・ローカル検証完了。RI横断gateは未実行で、Issue全体の完了とはしない。
+- 残受入基準:
+  - [ ] disposable RI環境でimport→建物検索/認可/provisioning/履歴query/rollbackを横断検証する（docs/identity-migration.md）。
+- 検証: Node 22.23.3 / pnpm 9.15.9。install --frozen-lockfile、lint、format:check（変更ファイルはprettier --write）、typecheck、test、build、test:e2e（18件）。依存/lockfile変更なし。
+
+## 2.15 Clock sidecar入力とRI #606 draft RDF契約（Builder #44）
+- 目的: 設備35点CSVと独立した時計定義・適用関係からbos:ClockSource/BacnetClockBinding/usesClockSourceを出力する。
+- 現状確認: 現在時計専用入力なし。RI worktrees/ri-606 の6e0fefee8be2caaa33608d76845cbab2841cf9ddを読取で確認。契約はdraft。
+- 設計方針: version付きstrict JSON sidecar、明示clock/native IRI、公開Equipment IDによる結合。通常Pointに混ぜない。
+  core exportRdf/runOutputPlugin とCLI --clocksから入力。非対応formatは明示エラー。
+  #45 IDを保持し、#46と同じbos:protocol写像を使用。SHACL Coreとgateway/一意性等の意味検証を併用。
+- 対象パス: packages/core/src/{clocks,clock-shapes,rdf,output-plugins,index}.ts、apps/cli、関連unit・元RI SHACL独立検証script、README/pointlist/mapping/clock仕様。
+- 受入基準:
+  - [x] 35 Point/Device ID・Building参照・bos:protocolを保持し時計1と全設備の適用関係を出力する。
+  - [x] IRI/literal、native必須/数値範囲、readOnly/poll/s/secondsをSHACLと入力検証で確認する。
+  - [x] dangling/多重時計/Point override/重複ID/gateway越境/runtime混入/不正JSONを拒否する。
+  - [x] 入力順/再exportの決定性、別JSON往復、旧clockなし入力互換とCLI非対応formatの拒否を検証する。
+  - [x] lint/format:check/typecheck/test/buildを実行する。
+- 非目標: 他repo変更、UI時計エディタ、run context/telemetry/provisioning製品実装、push/merge/実環境適用。
+- 注記: 2.14での#44/#46非目標は#45コミットの境界を示す。本追加入力は今回の依頼で明示的に許可された別意図。
+
+- 状態: Builder producer実装・ローカル検証完了。RIサービスへのimport/認可/provisioning/履歴queryと実機適用は未実行。
+- 検証: Node 22.23.3 / pnpm 9.15.9。frozen install、lint、format:check（変更ファイルprettier --write）、typecheck、全unit、build、E2E 18件。
+  時計core 24件、CLI入力/出力保持/異常入力、元RI SHACL-SPARQL（pyshacl 0.40.0 / rdflib 7.6.0）9異常ケースが成功。
+  CLI v2結合出力は35行維持・42 resource（通常40＋clock/native各1）、violation 0。既存Point単位語彙warningは維持。
+  依存追加・lockfile変更なし。他worktreeは読取のみ。push/merge/実環境適用なし。
+
 ## 3. マイルストーン（M0〜M3）
 
 ### M0: リポジトリ健全性
@@ -914,3 +957,33 @@ Open Issue 13 件を現行 `main`（`aa50beb`）のコードに突き合わせ�
 - [ ] schema（JSON Schema/LinkML）連携
 - [ ] Tauri 化
 - [ ] IFC/DTDL/RDF 以外の外部フォーマットへのエクスポート
+
+
+## 2.16 リモートブランチ整理とPR準備
+- 目的: mainに取り込み済みのリモートブランチを削除し、現在の開発成果をレビュー可能にする。
+- 対象: originのマージ済み8ブランチ、feat/45-resource-ids、PR準備メモ。
+- 受入基準: 削除対象の先端がmainの祖先であり対応PRがmergedであることを確認し、開発ブランチをpushしてupstreamを設定する。
+- 方針: 今回の依頼により2.14/2.15のpush非目標を解除する。PR作成・merge・RI実環境適用は行わない。
+- PR準備: plans.md 2.14（Refs #45）と2.15（Refs #44、protocolはRefs #46）を含む2実装コミット。1 PR = 1意図の原則に従い、PR発行時は階層IDと時計入力の分割を検討する。
+- 検証: 今回はブランチ操作と文書更新のみ。実装検証は2.14/2.15の記録を参照し、今回のテスト再実行は省略する。RI横断gateは未実行。
+
+## 2.17 Codex reviewとPR発行
+- 目的: origin/mainとの差分をcodex reviewし、指摘対応・必要な回帰検証後にPRを発行する。
+- 対象: 2.14/2.15の実装、関連テスト・文書。今回の依頼でPR発行を許可。mergeは対象外。
+- 受入基準: レビュー指摘を解決し、品質ゲートと未実行のRI横断gateをPRに明記する。
+- 指摘対応: v2モデル再構築によるEquipment名の上書きを修正。入力から導出した値との差分としてInspector編集を保持する。
+- 指摘対応: fallback空間IDのrenameで失われた子孫プロパティ・選択・展開を、安定Pointを起点とする旧新ID対応で移行する。
+- 回帰検証: Equipment名編集→RDF出力のE2Eを拡張し、fallback階renameでRoomの追加プロパティ・選択・展開を保持するstore回帰テストを追加。
+- 指摘対応: Point/Equipmentを持たない空間専用行も、入力行の階層からrename対象を解決する。
+- 検証結果: Node 22.23.3 / pnpm 9.15.9でlint、format:check、typecheck、test（core/CLI/web store）、build、E2E 18件成功。E2Eは既定4173の接続timeoutを避け、一時設定で4185を使用（設定はコミットしない）。
+- レビュー結果: codex review --base origin/mainを指摘対応後に再実行し、最終結果はactionable regressionなし。RI横断gate・実機適用は未実行のまま。
+- 状態: ローカルレビュー・指摘対応完了。RI向けモデル出力の互換性対応として2.14/2.15を一つのPRにまとめ、各実装コミットと残gateをPR本文に明示する。
+
+## 2.18 PR #47 の CI（依存監査）を通す
+- 目的: CI の `pnpm audit --audit-level high` が PR #47 で失敗している（main にも同じ依存がある）のを解消する。
+- 対象: package.json の overrides と依存範囲、pnpm-lock.yaml、zod 4 への移行に伴う `packages/core/src/validate.ts`。
+- 変更: vitest 3 → 4（開発依存。脆弱な tinypool を使わなくなる）、zod 3 → 4（実行時依存。使っているのは string/number/array/literal/enum/object/refine だけ）、vite 6.4.5、overrides で brace-expansion 1.1.20 / 2.1.6、fast-uri 3.1.7、source-map-js 1.2.2、undici 6.29.1。
+- 互換性: zod 4 では refine の第 2 引数に関数を渡せないため `{ error }` に書き換えた。kind の検証メッセージは同じ文面で、これを確かめる unit test を足した。RDF/YAML の出力は変えていない。
+- 受入基準: `pnpm audit --audit-level high` で high/critical が 0 件。lint、format:check、typecheck、test、build、E2E が通る。
+- 検証結果: Node 22.23.4 / pnpm 9.15.9 で上記すべて成功（core 161、web 2、CLI 23、E2E 18）。audit の残りは low 2 / moderate 8。
+- 状態: Completed（PR #47 に commit。merge は対象外）。

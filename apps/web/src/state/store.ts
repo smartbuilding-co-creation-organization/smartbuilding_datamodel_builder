@@ -44,6 +44,10 @@ function recompute(rows: RowRecord[], schema?: SchemaRoot) {
   return { tree, issues };
 }
 
+function hierarchyIds(nodes: Node[]): string[] {
+  return nodes.flatMap((node) => [node.id, ...hierarchyIds(node.children)]);
+}
+
 function initialExpandedItems(tree: Node[]): string[] {
   const items = ['root'];
   const visit = (nodes: Node[], depth: number) => {
@@ -129,7 +133,31 @@ export const useAppStore = create<AppState>((set, get) => ({
       };
       const columns = hierarchyColumns[kind] ?? [];
       if (prevName && nextName && prevName !== nextName && columns.length > 0) {
+        const v2 = currentRows.some((item) => item.hierarchyIdVersion === '2');
+        const scopedIds = new Set<string>();
+        const collect = (node: Node, inside = false) => {
+          const matched = inside || node.id === id;
+          if (matched) scopedIds.add(node.id);
+          node.children.forEach((child) => collect(child, matched));
+        };
+        if (v2) get().tree.forEach((node) => collect(node));
+        const labelColumns: Record<string, string> = {
+          site: 'siteName',
+          building: 'buildingName',
+          level: 'levelName',
+          floor: 'levelName',
+          room: 'roomName',
+          space: 'roomName',
+          zone: 'roomName',
+        };
         resolvedRows = currentRows.map((item) => {
+          if (v2) {
+            const labelColumn = labelColumns[kind];
+            return (scopedIds.has(item.id) || hierarchyIds(buildTree([item])).includes(id)) &&
+              labelColumn
+              ? { ...item, [labelColumn]: nextName }
+              : item;
+          }
           let updated = item;
           for (const column of columns) {
             if (normalizeValue(item[column]) === prevName) {
@@ -140,6 +168,12 @@ export const useAppStore = create<AppState>((set, get) => ({
           return updated;
         });
         resolvedModelRows = nextModelRows.map((item) => {
+          if (v2) {
+            const labelColumn = labelColumns[kind];
+            return scopedIds.has(item.id) && labelColumn
+              ? { ...item, [labelColumn]: nextName }
+              : item;
+          }
           let updated = item;
           for (const column of columns) {
             if (normalizeValue(item[column]) === prevName) {
@@ -151,9 +185,43 @@ export const useAppStore = create<AppState>((set, get) => ({
         });
       }
     }
+    const renamedIds = new Map<string, string>();
+    if (resolvedRows.some((item) => item.hierarchyIdVersion === '2')) {
+      // Each source row keeps its position while its generated hierarchy IDs may change.
+      currentRows.forEach((oldRow, index) => {
+        const newRow = resolvedRows[index];
+        if (oldRow === newRow) return;
+        const oldIds = hierarchyIds(buildTree([oldRow]));
+        const newIds = hierarchyIds(buildTree([newRow]));
+        if (oldIds.length === newIds.length) {
+          oldIds.forEach((oldId, position) => renamedIds.set(oldId, newIds[position]));
+        }
+      });
+      const previousById = new Map(
+        resolvedModelRows.map((item) => [renamedIds.get(item.id) ?? item.id, item]),
+      );
+      const sourceById = new Map(
+        Array.from(buildResourceModelMap(currentRows), ([key, value]) => [
+          renamedIds.get(key) ?? key,
+          value,
+        ]),
+      );
+      resolvedModelRows = Array.from(buildResourceModelMap(resolvedRows).values()).map((item) => {
+        const previous = previousById.get(item.id);
+        const source = sourceById.get(item.id);
+        // Refresh derived hierarchy fields, then restore properties edited in the inspector.
+        const edits = Object.fromEntries(
+          Object.entries(previous ?? {}).filter(([key, value]) => value !== source?.[key]),
+        );
+        return { ...item, ...edits } as RowRecord;
+      });
+    }
     const { tree, issues } = recompute(resolvedRows, get().schema);
     const selectedId = get().selectedId;
-    const nextSelectedId = selectedId === id && row.id && row.id !== id ? row.id : selectedId;
+    const nextSelectedId =
+      selectedId === id && row.id && row.id !== id
+        ? row.id
+        : (renamedIds.get(selectedId) ?? selectedId);
     const validTreeIds = new Set<string>(['root']);
     const stack = [...tree];
     while (stack.length > 0) {
@@ -169,7 +237,9 @@ export const useAppStore = create<AppState>((set, get) => ({
       issues,
       outputIssues: [],
       selectedId: nextSelectedId,
-      expandedItems: get().expandedItems.filter((item) => validTreeIds.has(item)),
+      expandedItems: get()
+        .expandedItems.map((item) => renamedIds.get(item) ?? item)
+        .filter((item) => validTreeIds.has(item)),
     });
   },
   setRows: (rows) => {

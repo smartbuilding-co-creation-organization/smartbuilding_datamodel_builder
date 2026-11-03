@@ -121,3 +121,85 @@ that repo's `docs/architecture` for the canonical REC/Brick/SBCO equivalence tab
 property mapping above ever falls out of sync with those vendored files or with `rdf.ts`, this
 document is wrong — fix it here, and check whether `REC_FIELDS`/`BRICK_FIELDS`/`SBCO_FIELDS` in
 `rdf.ts` need a matching update.
+
+## 8) Versioned hierarchy identity (#45)
+
+`hierarchy_id_version` (normalized to `hierarchyIdVersion`) is a dataset-wide CSV switch.
+All input rows must select `2` to use the new identity scheme. Missing/blank/`1` selects
+legacy. Mixing versions or using an unsupported version fails; it never silently migrates.
+The switch is retained in CSV/model rows but is not an RDF predicate. Explicit
+`id`/`kind`/`parent_id` graphs keep their supplied IDs and topology in both versions.
+
+| Concern | Legacy (default) | Version 2 |
+| --- | --- | --- |
+| Public space ID (`Node.id`, `sbco:id`) | Recursive prefixed parent IDs/slugs | Explicit spatial ID, otherwise deterministic fallback |
+| Internal logical Tree key | Parent ID + label string | `Node.treeKey`: JSON tuple `[kind, parentPublicId, "id" or "name", explicitId or label]` |
+| Display name (`rec:name`) | Existing signal precedence | Name column, then conventional label column, then explicit ID |
+| IRI | Base + `encodeURIComponent(publicId)` | Same escaping; no blanket decoding/replacement |
+| Point `sbco:building` | Input `building` value | Ancestor Building's public ID, including in output plugins/YAML |
+
+`Node.id` remains the public ID used by UI selection and graph links for API compatibility.
+The logical key is separately calculated/stored and is never serialized as `sbco:id` or an IRI.
+Public IDs share one namespace across **all classes in a dataset**. Explicit IDs are trimmed,
+otherwise preserved, including Japanese and reserved characters. Identical IDs identifying
+conflicting classes, parents or display names fail with a hierarchy identity error. Version 2
+never suffixes an explicit Point/Device/spatial ID to resolve a collision. A genuinely repeated
+row referring to the same node is allowed. Partial/contradictory metadata is rejected rather
+than resolved by CSV order.
+
+Version 2 columns (snake_case or normalized camelCase):
+
+| Entity | Explicit public ID | Display name precedence |
+| --- | --- | --- |
+| Site | `site_id` | `site_name`, `site`, `site_id` |
+| Building | `building_id` | `building_name`, `building`, `building_id` |
+| Level | `level_id` | `level_name`, `floor_name`, `level`, `floor`, `level_id` |
+| Room/Zone | `room_id` | `room_name`, `installation_area`, `room`, `space`, `target_area`, `zone`, `room_id` |
+| Equipment | `device_id` | `device_name`, `device_id` |
+| Point | `point_id` | `point_name`, `point_id` |
+
+`site`, `building`, `floor` and `installation_area` are **input display labels**, not
+explicit IDs in version 2. Setting `building=bldg-boptest` alone therefore does not declare
+an explicit ID; also set `building_id=bldg-boptest` when that literal is the intended key.
+The exported Point `building` is deliberately a reference-equivalent ID; `site`/`floor`/
+`installation_area` remain label metadata. Topology (`rec:hasPart`, `rec:locatedIn`,
+`rec:hasPoint`) supplies the authoritative hierarchy. Original CSV cells are not mutated.
+
+Fallback public IDs are `<lowercase-kind>-<32 lowercase hex digits>`: FNV-1a 128 of the
+UTF-8 encoded JSON logical-key tuple, with offset `6c62272e07bb014262b821756295c58d`
+and prime `1000000000000000000013b`, reduced modulo 2^128 after each multiplication.
+They contain no recursive ancestor path. Exact label punctuation is retained in hash input,
+so names that collide under a slug stay distinct. Parent public ID scopes the fallback:
+same-named levels/rooms in different buildings remain distinct. Hashes are not security
+boundaries; generated/generated and generated/explicit ID collisions are detected and fail.
+Use explicit IDs to distinguish equal labels under the same parent. Missing Level/Room
+still uses the existing optional-hierarchy behavior.
+
+Explicit IDs survive rename/move between exports. A move changes the logical Tree key;
+the same explicit ID cannot occupy two parents simultaneously. A fallback changes when its
+label or immediate parent public ID changes; descendants using fallbacks may consequently
+change too. Explicit descendants retain their IDs. Spatial rename in the UI is scoped to the
+selected subtree in version 2. Child arrays are sorted by public ID using code-unit comparison,
+so graph traversal/serialization is independent of input row order for consistent metadata.
+Point and Device IDs (`BPT-*`, etc.) remain explicit and unchanged.
+
+Version selection is not an automatic deployment migration. See
+[identity migration and RI contract verification](../docs/identity-migration.md).
+
+## 9) Separate clock definitions (Builder #44 / RI #606 draft)
+
+`bos:` is `http://buildingos.gutp.jp/ontology#`, a Building OS extension namespace.
+CSV `protocol` maps to `bos:protocol` exactly as Builder #46; its value is retained without
+inference. Other unknown columns retain the existing custom predicate mapping.
+
+Clock resources do not enter CSV rows or the ordinary Point graph. An explicit versioned JSON
+sidecar supplies stable absolute ClockSource/BacnetClockBinding IRIs and Equipment public-ID
+bindings. `exportRdf(rows, { clocks })` appends their typed triples and equipment
+`bos:usesClockSource` IRI edges. `runOutputPlugin` validates the serialized RDF with
+`CLOCK_SOURCE_SHAPES` plus any supplied base SHACL; non-RDF formats reject clock input.
+No `sbco:ClockSource`, Point subtype, runtime state or unapproved SBCO clock predicate is emitted.
+Native BACnet parameters remain on the dedicated binding, not on the ClockSource or equipment
+Point. Equipment/Point IDs and protocol/addressing remain independent from clock addressing.
+
+See [clock input specification](../docs/clock-input.md) for the pinned RI contract, datatype
+ranges, strict schema, SHACL-Core/SPARQL-equivalent checks, round-trip and limitations.

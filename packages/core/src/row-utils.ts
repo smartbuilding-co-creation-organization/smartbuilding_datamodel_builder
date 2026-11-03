@@ -70,12 +70,25 @@ export function resolveHierarchySignals(row: RowRecord): {
   pointId: string;
   pointName: string;
 } {
-  const roomSignal = pickFirstWithKind(row, HIERARCHY_SIGNAL_GROUPS.room);
+  const v2 = normalizeValue(row.hierarchyIdVersion) === '2';
+  const originalRoom = pickFirstWithKind(row, HIERARCHY_SIGNAL_GROUPS.room);
+  const roomSignal = v2
+    ? {
+        value: pickFirst(row, ['roomName', ...HIERARCHY_SIGNAL_GROUPS.room, 'roomId']),
+        kind: originalRoom.kind || 'Room',
+      }
+    : originalRoom;
 
   return {
-    site: pickFirst(row, HIERARCHY_SIGNAL_GROUPS.site),
-    building: pickFirst(row, HIERARCHY_SIGNAL_GROUPS.building),
-    level: pickFirst(row, HIERARCHY_SIGNAL_GROUPS.level),
+    site: pickFirst(row, v2 ? ['siteName', 'site', 'siteId'] : HIERARCHY_SIGNAL_GROUPS.site),
+    building: pickFirst(
+      row,
+      v2 ? ['buildingName', 'building', 'buildingId'] : HIERARCHY_SIGNAL_GROUPS.building,
+    ),
+    level: pickFirst(
+      row,
+      v2 ? ['levelName', 'floorName', 'level', 'floor', 'levelId'] : HIERARCHY_SIGNAL_GROUPS.level,
+    ),
     room: roomSignal.value,
     roomKind: roomSignal.kind,
     deviceId: normalizeHierarchyValue(row.deviceId),
@@ -176,6 +189,9 @@ export function hasHierarchySignals(rows: RowRecord[]): boolean {
 export function getHierarchySignature(row: RowRecord): string {
   const signals = resolveHierarchySignals(row);
   return [
+    ...(row.hierarchyIdVersion === '2'
+      ? [row.hierarchyIdVersion, row.siteId, row.buildingId, row.levelId, row.roomId]
+      : []),
     signals.site,
     signals.building,
     signals.level,

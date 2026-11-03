@@ -57,6 +57,7 @@ export function exportYaml(rows: RowRecord[], options: YamlOptions = {}): string
     const fields = collectOutputFields(resource.row, required).filter(
       (field) => field !== 'id' && field !== 'name',
     );
+    if (resource.buildingId && !fields.includes('building')) fields.push('building');
     for (const field of fields) {
       const value = resolveOutputValue(resource, field, { autoFill });
       if (!value) continue;

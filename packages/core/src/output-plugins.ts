@@ -1,3 +1,6 @@
+import { validateClockSidecar } from './clocks';
+import { CLOCK_SOURCE_SHAPES } from './clock-shapes';
+import { resolveHierarchyIdVersion } from './hierarchy-identity';
 import { exportRdf } from './rdf';
 import { SchemaRoot } from './schema-mapping';
 import { Issue, RowRecord } from './types';
@@ -6,7 +9,7 @@ import { exportDtdlInterfaces, exportDtdlTwinGraph } from './dtdl';
 import { buildWotThings } from './wot';
 import { validateWotThings } from './wot-validate';
 import { buildOutputRows, mergeOutputRows } from './output-aggregation';
-import { validateRowsWithShacl } from './shacl';
+import { validateRdfWithShacl, validateRowsWithShacl } from './shacl';
 import { exportCsv } from './csv';
 import { buildTree } from './tree';
 import { checkHierarchyCoverage } from './hierarchy-coverage';
@@ -20,6 +23,7 @@ export type OutputPluginResult = {
 
 export type OutputPluginRunOptions = {
   rows: RowRecord[];
+  clocks?: unknown;
   modelRows?: RowRecord[];
   schema?: SchemaRoot;
   shacl?: {
@@ -88,12 +92,18 @@ const OUTPUT_PLUGINS: OutputPlugin[] = [
     label: 'RDF (Turtle)',
     format: 'RDF',
     serializer: 'Turtle',
-    run: async ({ rows, schema, shacl }) => {
+    run: async ({ rows, schema, shacl, clocks }) => {
       const outputRows = buildOutputRows(rows);
-      const content = exportRdf(outputRows, { schema, autoFill: false });
-      const validation = shacl
-        ? await validateRowsWithShacl(outputRows, shacl.shapeText, { schema })
-        : undefined;
+      const content = exportRdf(outputRows, { schema, autoFill: false, clocks });
+      const validation =
+        clocks !== undefined
+          ? await validateRdfWithShacl(
+              content,
+              (shacl?.shapeText ?? '') + '\n' + CLOCK_SOURCE_SHAPES,
+            )
+          : shacl
+            ? await validateRowsWithShacl(outputRows, shacl.shapeText, { schema })
+            : undefined;
       return {
         content,
         extension: 'ttl',
@@ -216,6 +226,16 @@ export async function runOutputPlugin(
   if (!plugin) {
     throw new Error(`Output plugin not found for ${format}/${serializer}`);
   }
+  if (options.clocks !== undefined) {
+    if (plugin.id !== 'rdf-turtle')
+      throw new Error(
+        'Clock sidecar requires RDF/Turtle; this format cannot preserve clock definitions.',
+      );
+    validateClockSidecar(options.rows, options.clocks);
+  }
+  // Validate v2 identity before mergeOutputRows deduplicates rows by public ID.
+  // Otherwise two conflicting explicit IDs could silently collapse into one resource.
+  if (resolveHierarchyIdVersion(options.rows) === '2') buildTree(options.rows);
   const merged = mergeOutputRows(options.rows, options.modelRows ?? []);
   const result = await plugin.run({ ...options, rows: merged });
 

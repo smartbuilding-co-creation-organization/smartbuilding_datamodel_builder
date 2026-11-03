@@ -1,3 +1,4 @@
+import { resolveHierarchyIdVersion } from './hierarchy-identity';
 import { buildResourceGraph } from './resource-graph';
 import { normalizeValue } from './row-utils';
 import { RowRecord } from './types';
@@ -60,5 +61,8 @@ export function buildResourceModelMap(rows: RowRecord[]): ResourceModelMap {
     map.set(resource.id, record);
   }
 
+  if (resolveHierarchyIdVersion(rows) === '2') {
+    for (const row of map.values()) row.hierarchyIdVersion = '2';
+  }
   return map;
 }

@@ -59,6 +59,8 @@ export function resolveOutputValue(
     return value || (autoFill ? resource.id : '');
   }
 
+  if (field === 'building' && resource.buildingId) return resource.buildingId;
+
   const rowValue = normalizeValue(resource.row?.[field]);
   if (rowValue) return rowValue;
 

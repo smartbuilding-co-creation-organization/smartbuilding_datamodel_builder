@@ -18,3 +18,5 @@ export * from './validate';
 export * from './wot';
 export * from './wot-validate';
 export * from './yaml';
+export * from './clocks';
+export * from './clock-shapes';

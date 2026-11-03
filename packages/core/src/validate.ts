@@ -7,12 +7,12 @@ import { KIND_TO_CLASS } from './constants';
 // Accept every alias tree.ts/resource-graph.ts resolve to a class (e.g. "room",
 // "level"), not just the canonical schema/mapping.md names. Otherwise rows the
 // rest of the app treats as valid get flagged here as an "invalid" kind.
-const KindSchema = z.string().refine(
-  (value) => Object.prototype.hasOwnProperty.call(KIND_TO_CLASS, value.toLowerCase()),
-  (value) => ({
-    message: `Invalid kind value: "${value}". Expected one of: ${Object.keys(KIND_TO_CLASS).join(', ')}`,
-  }),
-);
+const KindSchema = z
+  .string()
+  .refine((value) => Object.prototype.hasOwnProperty.call(KIND_TO_CLASS, value.toLowerCase()), {
+    error: (issue) =>
+      `Invalid kind value: "${String(issue.input)}". Expected one of: ${Object.keys(KIND_TO_CLASS).join(', ')}`,
+  });
 
 const POINTLIST_REQUIRED_FIELDS = [
   'gatewayId',

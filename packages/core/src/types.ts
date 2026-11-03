@@ -2,6 +2,8 @@
 
 export type Node = {
   id: string;
+  /** Internal logical identity in hierarchy ID v2; never an RDF identifier. */
+  treeKey?: string;
   name: string;
   parentId?: string;
   kind?: string;

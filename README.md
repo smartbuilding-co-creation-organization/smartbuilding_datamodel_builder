@@ -148,3 +148,27 @@ schema/            JSON Schema、OWL、SHACL、mapping 文書
 脆弱性は公開 Issue に書かず、[SECURITY.md](SECURITY.md) の非公開窓口へ報告してください。変更提案は [CONTRIBUTING.md](CONTRIBUTING.md) と [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) に従ってください。
 
 Apache License 2.0 で提供します。Copyright 2026 Smart Building Co-Creation Organization. 詳細は [LICENSE](LICENSE)、[NOTICE](NOTICE)、[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) を参照してください。
+
+### 階層IDの明示指定（Issue #45）
+
+既存CSVは従来のID/IRIを維持します。新方式を使う場合は全行に
+`hierarchy_id_version=2` を追加し、`site_id` / `building_id` / `level_id` / `room_id`
+で公開IDを指定できます。`site_name` / `building_name` / `level_name` / `room_name`
+は表示名です。従来の `site` / `building` / `floor` / `installation_area` も表示名として使えます。
+
+明示IDは保持し、未指定の空間IDは親と名前から決定的に生成します。同名の階・部屋が
+別建物にあっても区別します。新方式のPoint `building`出力はBuildingの公開IDに揃えます。
+IDの重複・矛盾やversion混在はエラーになります。生成IDはrename/moveで変わり得るため、
+安定性が必要な空間は明示IDを設定してください。
+
+詳細は [IDマッピング仕様](schema/mapping.md#8-versioned-hierarchy-identity-45) と
+[既存データの移行・rollbackとRI検証](docs/identity-migration.md) を参照してください。
+
+### 時計を別JSONから出力する（RI #606 draft）
+
+設備35点CSVとは別に、時計定義・Equipmentへの適用関係をJSONで渡せます。
+`pnpm cli -- --input points.csv --clocks clocks.json --format RDF --out model.ttl`
+で`bos:ClockSource`、`bos:BacnetClockBinding`、`bos:usesClockSource`を出力します。
+時計を通常Pointに追加せず、設備IDとPointの`bos:protocol`を保持します。
+strict入力検証とSHACLを適用し、時計を保持できない出力形式は拒否します。
+入力例、core API、制約と検証方法は [時計入力仕様](docs/clock-input.md) を参照してください。
